@@ -6,7 +6,7 @@
 
 build: verify or download sources, build the three reference tables and the index, run every
 check, write the table to a temporary file, reopen and verify it, rename it into place, then
-write the manifest. A blocking failure stops before anything is written.
+write the manifest. A failed validation prevents replacement of the published table.
 audit: rerun the readback on the existing table against freshly verified sources.
 """
 
@@ -98,22 +98,22 @@ def cmd_fetch(cfg: dict, mode: str) -> int:
 
 
 def write_output(cfg: dict, registry, schema: dict, mode: str, table: pd.DataFrame, index: pd.DataFrame,
-                 simd: pd.DataFrame, gov: pd.DataFrame, report: Report, extra: dict, on_readback=None) -> dict:
+                 simd: pd.DataFrame, gov: pd.DataFrame, report: Report, extra: dict) -> dict:
     """Write the table to a temporary file, read it back against the reference tables, rename it
     into place, then write the manifest and the build report. Shared by the CLI and Dagster.
     Raises BuildStopped, leaving the previous output untouched, if the readback fails."""
+    report.require()
     decisions_sha = sha256(cfg["decisions"])
     results = cfg["results_root"]
     final, candidate = results / OUTPUT_NAME, results / (OUTPUT_NAME + ".candidate")
-    output.write_table(table, schema, candidate, {
-        "band_convention": output.BAND_CONVENTION, "schema_version": schema["version"],
-        "spd_release": registry.spd_release, "decisions_sha256": decisions_sha,
-        "sources": [{"key": o.key, "sha256": o.sha256} for o in registry.objects]})
-    before = len(report.checks)
-    info = output.readback(candidate, schema, index, simd, gov, registry, report)
-    if any(not c.passed and c.severity == "blocking" for c in report.checks[before:]):
+    output.write_table(table, schema, candidate, output.table_metadata(registry, schema, decisions_sha))
+    try:
+        info = output.readback(candidate, schema, index, simd, gov, registry, report,
+                               decisions_sha256=decisions_sha)
+        report.require()
+    except Exception:
         candidate.unlink(missing_ok=True)
-        Report(checks=report.checks[before:]).require()
+        raise
     candidate.replace(final)
     info.update(path=str(final), decisions_sha256=decisions_sha, manifest=str(results / "manifest.json"),
                 build_report=str(results / "BUILD_REPORT.md"))
@@ -151,7 +151,8 @@ def cmd_audit(cfg: dict, mode: str) -> int:
         print(f"no table at {final}")
         return 1
     print("Read back")
-    info = output.readback(final, schema, index, simd, gov, registry, report)
+    info = output.readback(final, schema, index, simd, gov, registry, report,
+                           decisions_sha256=sha256(cfg["decisions"]))
     man_path = cfg["results_root"] / "manifest.json"
     if man_path.is_file():
         recorded = json.loads(man_path.read_text())["output"]["sha256"]

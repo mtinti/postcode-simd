@@ -41,6 +41,18 @@ def load_schema(path: Path) -> dict:
     return {"version": raw["version"], "fields": raw["fields"], "sha256": sha256(path)}
 
 
+def table_metadata(registry: Registry, schema: dict, decisions_sha256: str) -> dict:
+    """The provenance contract, supplied by the caller, never inferred from a saved file."""
+    return {"band_convention": BAND_CONVENTION, "schema_version": schema["version"],
+            "spd_release": registry.spd_release, "decisions_sha256": decisions_sha256,
+            "sources": [{"key": o.key, "sha256": o.sha256} for o in registry.objects]}
+
+
+def same_values(a: pd.Series, b: pd.Series) -> pd.Series:
+    """Null equals null, but never a supplied value (including an empty string)."""
+    return a.eq(b).fillna(False) | (a.isna() & b.isna())
+
+
 def arrow_schema(schema: dict, metadata: dict) -> pa.Schema:
     fields = [pa.field(f["name"], ARROW[f["type"]], nullable=bool(f["nullable"])) for f in schema["fields"]]
     return pa.schema(fields, metadata={k: (v if isinstance(v, str) else json.dumps(v)) for k, v in metadata.items()})
@@ -52,7 +64,7 @@ def _column(series: pd.Series, field: dict) -> pa.Array:
         values = [None if pd.isna(v) else v.date() for v in series]
         return pa.array(values, type=pa.date32())
     if kind == "string":
-        values = [None if (v is None or (isinstance(v, float) and pd.isna(v))) else str(v) for v in series]
+        values = [None if pd.isna(v) else str(v) for v in series]
         return pa.array(values, type=pa.string())
     if kind == "bool":
         return pa.array(series.astype(bool).tolist(), type=pa.bool_())
@@ -73,7 +85,7 @@ def write_table(table: pd.DataFrame, schema: dict, path: Path, metadata: dict) -
 
 
 def readback(path: Path, schema: dict, index: pd.DataFrame, simd: pd.DataFrame, gov: pd.DataFrame,
-             registry: Registry, report: Report) -> dict:
+             registry: Registry, report: Report, *, decisions_sha256: str) -> dict:
     """Reopen the saved file and compare it with the accepted sources, not with memory.
 
     Original columns are compared with the index built from the source files. SIMD and
@@ -86,15 +98,26 @@ def readback(path: Path, schema: dict, index: pd.DataFrame, simd: pd.DataFrame, 
     report.equal("readback.column_names", saved_schema.names, expected_names)
     report.equal("readback.column_types", [str(t) for t in saved_schema.types], [str(ARROW[f["type"]]) for f in schema["fields"]])
     report.equal("readback.nullability", [f.nullable for f in saved_schema], [bool(f["nullable"]) for f in schema["fields"]])
+    report.require()  # Invalid structure cannot safely be compared column by column.
     meta = saved_schema.metadata or {}
-    report.equal("readback.metadata_present", sorted(k.decode() for k in meta), sorted(["band_convention", "schema_version", "spd_release", "sources", "decisions_sha256"]))
+    expected_meta = arrow_schema(schema, table_metadata(registry, schema, decisions_sha256)).metadata
+    report.equal("readback.metadata_present", sorted(k.decode() for k in meta), sorted(k.decode() for k in expected_meta))
+    for key, expected in expected_meta.items():
+        actual = meta.get(key)
+        report.equal(f"readback.metadata.{key.decode()}",
+                     actual.decode("utf-8", errors="replace") if actual is not None else None, expected.decode())
 
     saved = file.read().to_pandas(date_as_object=False)
     report.equal("readback.rows", len(saved), len(index))
+    nulls = {f["name"]: int(saved[f["name"]].isna().sum()) for f in schema["fields"] if not f["nullable"]}
+    report.equal("readback.required_values_nonnull", {c: n for c, n in nulls.items() if n}, {})
     report.equal("readback.primary_key_unique", int(saved.duplicated(["pc_norm", "introduced_on"]).sum()), 0)
+    if len(saved) != len(index):
+        report.require()
 
     # Source fidelity for the original and derived index columns.
     idx = index.reset_index(drop=True)
+    index_differences = {}
     for column in idx.columns:
         a, b = saved[column], idx[column]
         if column in ("introduced_on", "deleted_on"):
@@ -103,15 +126,20 @@ def readback(path: Path, schema: dict, index: pd.DataFrame, simd: pd.DataFrame, 
             a, b = a.astype(bool), b.astype(bool)
         else:
             a, b = a.astype("string"), b.astype("string")
-        same = (a.eq(b) | (a.isna() & b.isna()))
+        same = same_values(a, b)
         if not same.all():
-            report.add(f"readback.index.{column}", False, f"{int((~same).sum())} value(s) differ from source")
-    report.add("readback.index_columns", not report.blocking_failures, f"{len(idx.columns)} index columns compared")
+            index_differences[column] = int((~same).sum())
+            report.add(f"readback.index.{column}", False, f"{index_differences[column]} value(s) differ from source")
+    report.equal("readback.index_columns", index_differences, {}, detail=f"{len(idx.columns)} index columns compared")
 
     # Re-lookup every attached value from the saved file's own data-zone codes.
     expected = attach(saved, simd, gov, registry)
-    differing = {c: int(saved[c].astype("int64" if not c.startswith("phs_dz") else "string").ne(expected[c].astype("int64" if not c.startswith("phs_dz") else "string")).sum()) for c in expected.columns}
-    bad = {c: n for c, n in differing.items() if n}
+    bad = {}
+    for column in expected.columns:
+        kind = "string" if column.startswith("phs_dz") else "Int64"
+        same = same_values(saved[column].astype(kind), expected[column].astype(kind))
+        if not same.all():
+            bad[column] = int((~same).sum())
     report.equal("readback.attached_values", bad, {}, detail=f"{len(expected.columns)} attached columns re-looked-up" if not bad else f"differ: {bad}")
     return {"rows": len(saved), "columns": len(saved.columns), "sha256": sha256(path),
             "logical_fingerprint": logical_fingerprint(saved),

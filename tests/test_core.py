@@ -14,7 +14,7 @@ import pyarrow.parquet as pq
 
 from simd_ingest.core.checks import Report
 from simd_ingest.core.fetch import FetchError, _extract_member
-from simd_ingest.core.sources import load_registry, verify_root
+from simd_ingest.core.sources import load_registry, sha256, verify_root
 from simd_ingest.core.spd import (active_on, classify_links, current_candidates, interval_summary,
                                   parse_dates, postcode_keys)
 
@@ -116,11 +116,13 @@ class SavedTableIntegrity(unittest.TestCase):
         from simd_ingest.core import output
         cls.output = output
         cls.schema = output.load_schema(cls.cfg["output_schema"])
+        cls.decisions_sha = sha256(cls.cfg["decisions"])
 
     def test_good_file_passes_and_modified_cell_fails(self):
         path = ROOT / "results" / "postcode_simd.parquet"
         report = Report()
-        self.output.readback(path, self.schema, self.index, self.simd, self.gov, self.registry, report)
+        self.output.readback(path, self.schema, self.index, self.simd, self.gov, self.registry, report,
+                             decisions_sha256=self.decisions_sha)
         self.assertEqual([c.name for c in report.blocking_failures], [])
         table = pq.read_table(path)
         with tempfile.TemporaryDirectory() as temp:
@@ -132,5 +134,6 @@ class SavedTableIntegrity(unittest.TestCase):
             table2 = table.set_column(col, table.schema.field(col), pa.array(values, type=table.schema.field(col).type))
             pq.write_table(table2, bad)
             report = Report()
-            self.output.readback(bad, self.schema, self.index, self.simd, self.gov, self.registry, report)
+            self.output.readback(bad, self.schema, self.index, self.simd, self.gov, self.registry, report,
+                                 decisions_sha256=self.decisions_sha)
             self.assertIn("readback.attached_values", [c.name for c in report.blocking_failures])
