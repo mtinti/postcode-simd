@@ -1,4 +1,10 @@
-"""postcode_simd: the index with all six editions attached, in the frozen column order."""
+"""postcode_simd: the index with every edition joined on, one edition at a time.
+
+join_edition adds one edition's columns by one merge on one data zone column, then checks
+that the row count is unchanged and that no new column is empty. Twelve of those, in a fixed
+order, take the index to the frozen 162-column contract. The order does not affect the
+result; each join uses its own key. It is fixed so that a reader can follow it.
+"""
 
 from __future__ import annotations
 
@@ -22,36 +28,51 @@ def geography_columns(vintage: int) -> list:
     return [f"phs_dz{vintage}_{g}" for g in GEOGRAPHY]
 
 
-def attach(index: pd.DataFrame, simd: pd.DataFrame, gov: pd.DataFrame, registry: Registry) -> pd.DataFrame:
-    """Look up every edition through the data zone of its vintage. Returns only the added columns."""
-    added = {}
-    for vintage in sorted({int(e["dz_vintage"]) for e in registry.phs_editions}):
-        first = next(e["key"] for e in registry.phs_editions if int(e["dz_vintage"]) == vintage)
-        geo = simd[simd["edition"] == first].set_index("dz_code")[GEOGRAPHY]
-        codes = index[f"DataZone{vintage}Code"]
-        for g in GEOGRAPHY:
-            added[f"phs_dz{vintage}_{g}"] = codes.map(geo[g])
+def first_edition_of_vintage(registry: Registry, vintage: int) -> str:
+    return next(e["key"] for e in registry.phs_editions if int(e["dz_vintage"]) == vintage)
+
+
+def join_edition(table: pd.DataFrame, edition_table: pd.DataFrame, ed: dict, kind: str,
+                 registry: Registry, report: Report) -> pd.DataFrame:
+    """One merge: look the record's data zone up in one edition table and copy its values on.
+
+    kind is "phs" or "gov". The first PHS edition of each data-zone vintage also brings the
+    PHS geography codes for that vintage, which are identical across the vintage's editions.
+    """
+    key, vintage = ed["key"], int(ed["dz_vintage"])
+    dz_col = f"DataZone{vintage}Code"
+    fields = PHS_FIELDS if kind == "phs" else GOV_FIELDS
+    right = edition_table.set_index("dz_code")[fields].rename(columns={f: f"simd{key}_{f}" for f in fields})
+    if kind == "phs" and key == first_edition_of_vintage(registry, vintage):
+        geo = edition_table.set_index("dz_code")[GEOGRAPHY].rename(columns={g: f"phs_dz{vintage}_{g}" for g in GEOGRAPHY})
+        right = pd.concat([geo, right], axis=1)
+    before = len(table)
+    out = table.merge(right, left_on=dz_col, right_index=True, how="left", validate="many_to_one").reset_index(drop=True)
+    label = f"join.{kind}.{key}"
+    report.equal(f"{label}.rows_unchanged", len(out), before, detail=f"{len(out):,} rows before and after the merge on {dz_col}")
+    report.equal(f"{label}.every_record_matched", int(out[list(right.columns)].isna().sum().sum()), 0,
+                 detail=f"{len(right.columns)} columns added, none empty")
+    return out
+
+
+def build_postcode_simd(index: pd.DataFrame, phs_tables: dict, gov_tables: dict, registry: Registry,
+                        columns: list, report: Report) -> pd.DataFrame:
+    """The ladder: the index, then one join per PHS edition, then one per government edition."""
+    out = index
     for ed in registry.phs_editions:
-        key, vintage = ed["key"], int(ed["dz_vintage"])
-        codes = index[f"DataZone{vintage}Code"]
-        p = simd[simd["edition"] == key].set_index("dz_code")
-        g = gov[gov["edition"] == key].set_index("dz_code")
-        for f in PHS_FIELDS:
-            added[f"simd{key}_{f}"] = codes.map(p[f])
-        for f in GOV_FIELDS:
-            added[f"simd{key}_{f}"] = codes.map(g[f])
-    return pd.DataFrame(added, index=index.index)
+        out = join_edition(out, phs_tables[ed["key"]], ed, "phs", registry, report)
+    for ed in registry.govscot_editions:
+        out = join_edition(out, gov_tables[ed["key"]], ed, "gov", registry, report)
+    return finish(out, index, registry, columns, report)
 
 
-def build_postcode_simd(index: pd.DataFrame, simd: pd.DataFrame, gov: pd.DataFrame,
-                        registry: Registry, columns: list, report: Report) -> pd.DataFrame:
-    added = attach(index, simd, gov, registry)
-    table = pd.concat([index, added], axis=1)
+def finish(table: pd.DataFrame, index: pd.DataFrame, registry: Registry, columns: list, report: Report) -> pd.DataFrame:
+    """Order the columns to the frozen schema and run the whole-table checks."""
     missing = [c for c in columns if c not in table.columns]
     extra = [c for c in table.columns if c not in columns]
     report.equal("join.schema_columns", {"missing": missing, "extra": extra}, {"missing": [], "extra": []})
     table = table[columns]
-
+    added = table[[c for c in columns if c.startswith("simd") or c.startswith("phs_dz")]]
     report.equal("join.rows", len(table), registry.spd_published_totals["all"])
     report.equal("join.primary_key_unique", int(table.duplicated(["pc_norm", "introduced_on"]).sum()), 0)
     simd_cols = [c for c in added.columns if c.startswith("simd")]
@@ -69,3 +90,26 @@ def build_postcode_simd(index: pd.DataFrame, simd: pd.DataFrame, gov: pd.DataFra
     own = table["ScottishIndexOfMultipleDeprivation2020Rank"].astype("int64")
     report.equal("join.directory_rank_agreement", int(own.ne(table["simd2020v2_rank"]).sum()), 0)
     return table
+
+
+def attach(index: pd.DataFrame, simd: pd.DataFrame, gov: pd.DataFrame, registry: Registry) -> pd.DataFrame:
+    """Re-lookup of every attached column from the long reference tables, used by readback to
+    check a saved file against the sources independently of the ladder. Returns only the
+    added columns."""
+    added = {}
+    for vintage in sorted({int(e["dz_vintage"]) for e in registry.phs_editions}):
+        first = first_edition_of_vintage(registry, vintage)
+        geo = simd[simd["edition"] == first].set_index("dz_code")[GEOGRAPHY]
+        codes = index[f"DataZone{vintage}Code"]
+        for g in GEOGRAPHY:
+            added[f"phs_dz{vintage}_{g}"] = codes.map(geo[g])
+    for ed in registry.phs_editions:
+        key, vintage = ed["key"], int(ed["dz_vintage"])
+        codes = index[f"DataZone{vintage}Code"]
+        p = simd[simd["edition"] == key].set_index("dz_code")
+        g = gov[gov["edition"] == key].set_index("dz_code")
+        for f in PHS_FIELDS:
+            added[f"simd{key}_{f}"] = codes.map(p[f])
+        for f in GOV_FIELDS:
+            added[f"simd{key}_{f}"] = codes.map(g[f])
+    return pd.DataFrame(added, index=index.index)

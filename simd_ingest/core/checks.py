@@ -6,7 +6,6 @@ written. Diagnostic differences are recorded and reported, never enforced.
 
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import asdict, dataclass, field
 
@@ -78,39 +77,3 @@ class Report:
 
     def to_records(self) -> list:
         return [asdict(c) for c in self.checks]
-
-
-# --- shared numeric checks -------------------------------------------------------------
-
-def divergence(source: pd.Series, published: pd.Series) -> dict:
-    """Count and fingerprint the zones where two band series differ.
-
-    The fingerprint is a SHA256 over sorted "zone|source|published" lines, so a baseline
-    match proves the same zones differ by the same amounts, not merely the same count.
-    """
-    if not source.index.is_unique or set(source.index) != set(published.index):
-        raise ValueError("Divergence comparison requires the same unique zone universe")
-    published = published.reindex(source.index)
-    delta = (source - published).abs()
-    rows = pd.DataFrame({"source": source, "published": published})[delta.ne(0)].sort_index()
-    payload = "\n".join(f"{zone}|{int(a)}|{int(b)}" for zone, a, b in rows.itertuples(index=True, name=None))
-    return {"count": len(rows), "max_difference": int(delta.max()) if len(delta) else 0,
-            "sha256": hashlib.sha256(payload.encode("utf-8")).hexdigest()}
-
-
-def reconstruct_population_bands(rank: pd.Series, population: pd.Series, groups: pd.Series) -> pd.DataFrame:
-    """Population-weighted bands by the midpoint rule, in exact integer arithmetic.
-
-    Zones are ordered by rank within each group. A zone's band is the band into which the
-    midpoint of its population interval falls. This reproduces PHS's published Scotland-level
-    deciles and quintiles in every edition; it is a diagnostic, not a source of values.
-    """
-    frame = pd.DataFrame({"rank": rank, "pop": population.astype("int64"), "group": groups}).sort_values("rank")
-    total = frame["pop"].groupby(frame["group"]).transform("sum")
-    midpoint2 = 2 * frame["pop"].groupby(frame["group"]).cumsum() - frame["pop"]
-    out = pd.DataFrame(index=frame.index)
-    for name, k in (("decile", 10), ("quintile", 5)):
-        out[name] = ((midpoint2 * k + 2 * total - 1) // (2 * total)).clip(upper=k)
-    out["most15pc"] = (midpoint2 * 10 <= total * 3).astype(int)
-    out["least15pc"] = (midpoint2 * 10 >= total * 17).astype(int)
-    return out.reindex(rank.index)

@@ -18,17 +18,18 @@ import os
 import sys
 from pathlib import Path
 
+import pandas as pd
 import yaml
 
-from .core import output
+from .core import output, report as build_report
 from .core.checks import BuildStopped, Report
 from .core.crosscheck import cross_check
 from .core.fetch import ensure_sources
-from .core.govscot import build_govscot_bands
+from .core.govscot import read_gov_edition
 from .core.join import build_postcode_simd
-from .core.phs import build_phs_bands
+from .core.phs import canonicalise_phs, read_phs_source
 from .core.sources import load_registry, sha256
-from .core.spd import build_postcode_index
+from .core.spd import read_index_file, union_index
 
 OUTPUT_NAME = "postcode_simd.parquet"
 
@@ -62,8 +63,7 @@ def print_report(report: Report) -> None:
             tag = "FAIL" if c.severity == "blocking" else "WARN"
             print(f"  [{tag}] {c.name}: {c.detail}")
     s = report.summary()
-    print(f"  {s['blocking_passed']} blocking checks passed, {s['blocking_failed']} failed; "
-          f"{s['diagnostic_agree']} diagnostics agree, {s['diagnostic_differ']} differ")
+    print(f"  {s['blocking_passed']} checks passed, {s['blocking_failed']} failed")
 
 
 def prepare(cfg: dict, mode: str, report: Report):
@@ -74,16 +74,19 @@ def prepare(cfg: dict, mode: str, report: Report):
     print(f"Sources ({mode})")
     ensure_sources(registry, mode, root, cfg["cache_root"], report)
     report.require()
-    print("Reference tables")
-    simd = build_phs_bands(registry, root, report)
-    gov = build_govscot_bands(registry, root, report)
+    print("Prepare: the index")
+    parts = {spec["role"]: read_index_file(spec, registry, root, report, baselines) for spec in registry.spd_files}
     report.require()
-    cross_check(simd, gov, baselines, report)
+    index = union_index(parts["small_user"], parts["large_user"], registry, report, baselines)
     report.require()
-    print("Postcode index")
-    index = build_postcode_index(registry, root, report, baselines)
+    print("Prepare: the editions")
+    phs_tables = {ed["key"]: canonicalise_phs(ed, read_phs_source(ed, root, report), report) for ed in registry.phs_editions}
+    gov_tables = {ed["key"]: read_gov_edition(ed, root, report) for ed in registry.govscot_editions}
     report.require()
-    return registry, baselines, simd, gov, index
+    for key in phs_tables:
+        cross_check(phs_tables[key], gov_tables[key], baselines, report)
+    report.require()
+    return registry, baselines, phs_tables, gov_tables, index
 
 
 def cmd_fetch(cfg: dict, mode: str) -> int:
@@ -94,41 +97,54 @@ def cmd_fetch(cfg: dict, mode: str) -> int:
     return 0 if ok else 1
 
 
-def cmd_build(cfg: dict, mode: str) -> int:
-    report = Report()
-    registry, baselines, simd, gov, index = prepare(cfg, mode, report)
-    schema = output.load_schema(cfg["output_schema"])
-    print("Join")
-    table = build_postcode_simd(index, simd, gov, registry, [f["name"] for f in schema["fields"]], report)
-    report.require()
-
+def write_output(cfg: dict, registry, schema: dict, mode: str, table: pd.DataFrame, index: pd.DataFrame,
+                 simd: pd.DataFrame, gov: pd.DataFrame, report: Report, extra: dict, on_readback=None) -> dict:
+    """Write the table to a temporary file, read it back against the reference tables, rename it
+    into place, then write the manifest and the build report. Shared by the CLI and Dagster.
+    Raises BuildStopped, leaving the previous output untouched, if the readback fails."""
     decisions_sha = sha256(cfg["decisions"])
     results = cfg["results_root"]
-    final = results / OUTPUT_NAME
-    candidate = results / (OUTPUT_NAME + ".candidate")
-    metadata = {"band_convention": output.BAND_CONVENTION, "schema_version": schema["version"],
-                "spd_release": registry.spd_release, "decisions_sha256": decisions_sha,
-                "sources": [{"key": o.key, "sha256": o.sha256} for o in registry.objects]}
-    print("Write and read back")
-    output.write_table(table, schema, candidate, metadata)
+    final, candidate = results / OUTPUT_NAME, results / (OUTPUT_NAME + ".candidate")
+    output.write_table(table, schema, candidate, {
+        "band_convention": output.BAND_CONVENTION, "schema_version": schema["version"],
+        "spd_release": registry.spd_release, "decisions_sha256": decisions_sha,
+        "sources": [{"key": o.key, "sha256": o.sha256} for o in registry.objects]})
+    before = len(report.checks)
     info = output.readback(candidate, schema, index, simd, gov, registry, report)
-    try:
-        report.require()
-    except BuildStopped:
+    if any(not c.passed and c.severity == "blocking" for c in report.checks[before:]):
         candidate.unlink(missing_ok=True)
-        raise
+        Report(checks=report.checks[before:]).require()
     candidate.replace(final)
-    info["path"] = str(final)
-    man = output.manifest(registry, schema, decisions_sha, sha256(cfg["baselines"]), mode, info, report, {})
+    info.update(path=str(final), decisions_sha256=decisions_sha, manifest=str(results / "manifest.json"),
+                build_report=str(results / "BUILD_REPORT.md"))
+    man = output.manifest(registry, schema, decisions_sha, sha256(cfg["baselines"]), mode, info, report, extra)
     (results / "manifest.json").write_text(json.dumps(man, indent=2))
+    (results / "BUILD_REPORT.md").write_text(build_report.render(report, registry, table, info, mode, index, simd, gov))
+    return info
+
+
+def cmd_build(cfg: dict, mode: str) -> int:
+    report = Report()
+    registry, baselines, phs_tables, gov_tables, index = prepare(cfg, mode, report)
+    schema = output.load_schema(cfg["output_schema"])
+    print("Join: one edition at a time")
+    table = build_postcode_simd(index, phs_tables, gov_tables, registry, [f["name"] for f in schema["fields"]], report)
+    report.require()
+    simd = pd.concat(phs_tables.values(), ignore_index=True)
+    gov = pd.concat(gov_tables.values(), ignore_index=True)
+    print("Write and read back")
+    info = write_output(cfg, registry, schema, mode, table, index, simd, gov, report, {})
     print_report(report)
-    print(f"Wrote {final}  {info['rows']:,} rows x {info['columns']} columns  {info['sha256'][:16]}")
+    print(f"Wrote {info['path']}  {info['rows']:,} rows x {info['columns']} columns  {info['sha256'][:16]}")
+    print(f"Build report: {info['build_report']}")
     return 0
 
 
 def cmd_audit(cfg: dict, mode: str) -> int:
     report = Report()
-    registry, baselines, simd, gov, index = prepare(cfg, mode, report)
+    registry, baselines, phs_tables, gov_tables, index = prepare(cfg, mode, report)
+    simd = pd.concat(phs_tables.values(), ignore_index=True)
+    gov = pd.concat(gov_tables.values(), ignore_index=True)
     schema = output.load_schema(cfg["output_schema"])
     final = cfg["results_root"] / OUTPUT_NAME
     if not final.is_file():

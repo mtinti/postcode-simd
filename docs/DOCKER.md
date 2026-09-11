@@ -60,7 +60,8 @@ docker compose up dagster
 ```
 
 Then open <http://localhost:3000>. The graph shows eighteen source assets, the decision log
-and the four tables. Select the job `build_postcode_simd` and materialise all. The run, its
+and the four tables. Select the job `build_postcode_simd` and materialise all. Afterwards read
+`./results/BUILD_REPORT.md`, which the run writes: the whole build in order with its numbers. The run, its
 materialisations with metadata and data versions, and every check result are written to
 `./.dagster` on your machine, which is the provenance record. Stop the server with Ctrl-C or
 `docker compose down`; the record stays.

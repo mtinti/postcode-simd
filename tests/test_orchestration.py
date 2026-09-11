@@ -75,7 +75,6 @@ class DagsterJob(unittest.TestCase):
         self.assertEqual(manifest["output"]["rows"], 247773)
         evaluations = result.get_asset_check_evaluations()
         self.assertTrue(all(e.passed for e in evaluations), [e.check_name for e in evaluations if not e.passed])
-        self.assertIn("population_reconstruction", {e.check_name for e in evaluations})
         keys = [k for k in defs.resolve_asset_graph().get_all_asset_keys()]
         first = data_versions(instance, keys)
         self.assertTrue(all(first.values()), first)

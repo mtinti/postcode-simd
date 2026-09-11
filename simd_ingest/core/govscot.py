@@ -1,5 +1,5 @@
-"""govscot_bands: Scottish Government unweighted bands and population, one row per edition
-and data zone, read from the shapefile attribute tables. Nothing is calculated."""
+"""Scottish Government unweighted bands and population, one edition at a time, read from the
+shapefile attribute tables. Nothing is calculated and nothing needs inverting."""
 
 from __future__ import annotations
 
@@ -21,14 +21,10 @@ def read_dbf(path: Path) -> pd.DataFrame:
     return pd.DataFrame(iter(DBF(str(path), lowernames=True)))
 
 
-def build_govscot_bands(registry: Registry, root: Path, report: Report) -> pd.DataFrame:
-    frames = [_read_edition(ed, Path(root) / ed["file"], report) for ed in registry.govscot_editions]
-    return pd.concat(frames, ignore_index=True)[COLUMNS]
-
-
-def _read_edition(ed: dict, path: Path, report: Report) -> pd.DataFrame:
+def read_gov_edition(ed: dict, root: Path, report: Report) -> pd.DataFrame:
+    """One edition's table: the declared columns picked by name, typed and checked."""
     key, cols, label = ed["key"], ed["columns"], f"govscot.{ed['key']}"
-    d = read_dbf(path)
+    d = read_dbf(Path(root) / ed["file"])
     missing = [c for c in cols.values() if c not in d.columns]
     if not report.equal(f"{label}.columns_present", missing, [], detail=f"missing {missing}" if missing else "all declared columns present"):
         return pd.DataFrame(columns=COLUMNS)
@@ -49,3 +45,9 @@ def _read_edition(ed: dict, path: Path, report: Report) -> pd.DataFrame:
         report.equal(f"{label}.{band}.range", bool(out[band].between(1, k).all()), True)
         report.equal(f"{label}.{band}.monotone", int(ordered[band].diff().lt(0).sum()), 0)
     return out
+
+
+def build_govscot_bands(registry: Registry, root: Path, report: Report) -> pd.DataFrame:
+    """All six edition tables stacked, for readback and the trace."""
+    frames = [read_gov_edition(ed, Path(root), report) for ed in registry.govscot_editions]
+    return pd.concat(frames, ignore_index=True)[COLUMNS]

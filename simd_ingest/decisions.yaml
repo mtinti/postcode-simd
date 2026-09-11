@@ -101,7 +101,7 @@ decisions:
 
   - id: reconstruction-is-diagnostic
     date: 2026-09-10
-    status: implemented
+    status: superseded   # by trust-the-sources, 11 September 2026
     decision: Reconstructing the PHS population-weighted bands from ranks and population is a diagnostic that never blocks a build and never replaces a published value.
     reason: The ingestion guarantee is source fidelity, not reproduction of the publisher's method.
     evidence: The midpoint rule reproduces every Scotland-level decile and quintile in all six editions; three 15% flag cells and two Shetland sub-geography zones differ. Expected exceptions are pinned in acceptance_baselines.yaml.
@@ -178,3 +178,18 @@ decisions:
     decision: "When several split parts of a postcode are valid, every lookup resolves to the A part by default and reports status a_part. A split=\"report\" rule returns split_consensus or split_conflict instead. The result's label records which rule was used. Python and SQL are tested to agree under both."
     reason: "NRS builds the Scottish Statistics Postcode Lookup by converting split postcodes to the A part, because A is the part with more addresses, so every official statistic uses that convention. Matching it by default means an analyst reconciling against official figures gets the same answer; the report rule keeps the ambiguity visible for anyone who wants it. Supersedes the never-choose-A rule of lookup-statuses."
     evidence: "NRS Scottish Statistics Postcode Lookup information note; SPD 2026/2 bulletin on suffix ordering; docs/NRS_GUIDANCE_CHECK.md. On the synthetic cohort, 56 events resolve as a_part."
+
+  - id: visible-steps-and-build-report
+    date: 2026-09-11
+    status: implemented
+    decision: "The build is written as small named steps in code: one function per directory file, per PHS file as published, per canonicalised PHS edition, per government edition, and one join per edition, each with its own checks. The Dagster graph stays at five things, sources plus four tables, and the steps appear as rows in a build report, results/BUILD_REPORT.md, written by every build in plain language with that run's numbers. docs/HOW_IT_IS_BUILT.md is the static one-page companion."
+    reason: "A first attempt exposed every step as a graph node, fifty-one in all, and a reviewer could not read it. A graph is a machine's view; a reviewer needs a narrative with numbers. The steps stay visible where they help, in the code and the report, and out of the graph where they do not."
+    evidence: "CLI and Dagster builds on branch ladder both produced sha256 c685cd137652ec37 under main's decision log, byte-identical to main. Twenty-two assets, twenty-four checks, intermediates about 16 MB of Parquet."
+
+  - id: trust-the-sources
+    date: 2026-09-11
+    status: implemented
+    decision: "No SIMD value is recomputed or compared between publishers. The population reconstruction diagnostic, the band-formula checks and the PHS-versus-government divergence fingerprints are removed. The one remaining cross-source check is that PHS and the Scottish Government list the same data zones with the same ranks in every edition."
+    reason: "The pipeline's guarantee is that the published values reach the table unchanged, which the hash pins, the per-step checks and the readback establish. Recomputing bands to see whether the publisher's method can be reproduced answered a different question and made the build harder to read. The rank check stays because it is what justifies joining the two sources on the data zone."
+    evidence: "Removing these checks changes no value; the output remains byte-identical."
+
