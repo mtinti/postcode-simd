@@ -21,7 +21,7 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from .core import output
+from .core import output, report as build_report
 from .core.checks import BuildStopped, Report
 from .core.crosscheck import cross_check
 from .core.fetch import ensure_sources
@@ -98,6 +98,32 @@ def cmd_fetch(cfg: dict, mode: str) -> int:
     return 0 if ok else 1
 
 
+def write_output(cfg: dict, registry, schema: dict, mode: str, table: pd.DataFrame, index: pd.DataFrame,
+                 simd: pd.DataFrame, gov: pd.DataFrame, report: Report, extra: dict, on_readback=None) -> dict:
+    """Write the table to a temporary file, read it back against the reference tables, rename it
+    into place, then write the manifest and the build report. Shared by the CLI and Dagster.
+    Raises BuildStopped, leaving the previous output untouched, if the readback fails."""
+    decisions_sha = sha256(cfg["decisions"])
+    results = cfg["results_root"]
+    final, candidate = results / OUTPUT_NAME, results / (OUTPUT_NAME + ".candidate")
+    output.write_table(table, schema, candidate, {
+        "band_convention": output.BAND_CONVENTION, "schema_version": schema["version"],
+        "spd_release": registry.spd_release, "decisions_sha256": decisions_sha,
+        "sources": [{"key": o.key, "sha256": o.sha256} for o in registry.objects]})
+    before = len(report.checks)
+    info = output.readback(candidate, schema, index, simd, gov, registry, report)
+    if any(not c.passed and c.severity == "blocking" for c in report.checks[before:]):
+        candidate.unlink(missing_ok=True)
+        Report(checks=report.checks[before:]).require()
+    candidate.replace(final)
+    info.update(path=str(final), decisions_sha256=decisions_sha, manifest=str(results / "manifest.json"),
+                build_report=str(results / "BUILD_REPORT.md"))
+    man = output.manifest(registry, schema, decisions_sha, sha256(cfg["baselines"]), mode, info, report, extra)
+    (results / "manifest.json").write_text(json.dumps(man, indent=2))
+    (results / "BUILD_REPORT.md").write_text(build_report.render(report, registry, table, info, mode, index, simd, gov))
+    return info
+
+
 def cmd_build(cfg: dict, mode: str) -> int:
     report = Report()
     registry, baselines, phs_tables, gov_tables, index = prepare(cfg, mode, report)
@@ -107,28 +133,11 @@ def cmd_build(cfg: dict, mode: str) -> int:
     report.require()
     simd = pd.concat(phs_tables.values(), ignore_index=True)
     gov = pd.concat(gov_tables.values(), ignore_index=True)
-
-    decisions_sha = sha256(cfg["decisions"])
-    results = cfg["results_root"]
-    final = results / OUTPUT_NAME
-    candidate = results / (OUTPUT_NAME + ".candidate")
-    metadata = {"band_convention": output.BAND_CONVENTION, "schema_version": schema["version"],
-                "spd_release": registry.spd_release, "decisions_sha256": decisions_sha,
-                "sources": [{"key": o.key, "sha256": o.sha256} for o in registry.objects]}
     print("Write and read back")
-    output.write_table(table, schema, candidate, metadata)
-    info = output.readback(candidate, schema, index, simd, gov, registry, report)
-    try:
-        report.require()
-    except BuildStopped:
-        candidate.unlink(missing_ok=True)
-        raise
-    candidate.replace(final)
-    info["path"] = str(final)
-    man = output.manifest(registry, schema, decisions_sha, sha256(cfg["baselines"]), mode, info, report, {})
-    (results / "manifest.json").write_text(json.dumps(man, indent=2))
+    info = write_output(cfg, registry, schema, mode, table, index, simd, gov, report, {})
     print_report(report)
-    print(f"Wrote {final}  {info['rows']:,} rows x {info['columns']} columns  {info['sha256'][:16]}")
+    print(f"Wrote {info['path']}  {info['rows']:,} rows x {info['columns']} columns  {info['sha256'][:16]}")
+    print(f"Build report: {info['build_report']}")
     return 0
 
 

@@ -63,25 +63,27 @@ export DAGSTER_HOME=$PWD/.dagster
 dagster dev -m simd_ingest.orchestration.definitions
 ```
 
-Open the URL it prints, select the `build_postcode_simd` job and materialise all. The graph is a
-ladder in three groups. `sources`: eighteen assets, one per pinned file plus the decision log.
-`prepare`: `index_small` and `index_large` become `postcode_index`; each PHS file becomes
-`phs_<edition>_source` as published and then `phs_<edition>` with bands turned so that 1 means
-most deprived, which only 2004 and 2006 need; each shapefile table becomes `gov_<edition>`.
-`join`: starting from `postcode_index`, one rung per edition, `joined_phs_2004` through
-`joined_phs_2020v2` then `joined_gov_2004` onwards, each a single merge on one data zone column
-that adds that edition's columns, ending in `postcode_simd`, which also writes the file, reads
-it back and writes the manifest.
+Open the URL it prints, select the `build_postcode_simd` job and materialise all. The graph has
+five things in it: eighteen source assets, one per pinned file plus the decision log, and four
+tables. `postcode_index` is both directory files with keys and dates derived. `phs_bands` is the
+six PHS editions with the 2004 and 2006 bands turned so that 1 means most deprived. `govscot_bands`
+is the six government editions from the shapefile tables. `postcode_simd` joins them, one edition
+at a time in a fixed order, then writes the file, reads it back and writes the manifest. Every
+check is attached to the asset it guards; blocking checks fail the asset and nothing downstream
+runs; the population reconstruction is a warning.
 
-Every rung carries a blocking check: the row count is unchanged and no new column is empty. A
-failed rung stops the ladder there and leaves the rungs above it materialised for inspection.
-The order of the rungs does not affect the result, since each join uses its own key; it is fixed
-so that a reader can follow it. Intermediate tables are written as Parquet under `data/work`,
-about 260 MB per run, and are disposable.
+**For a reviewer, the graph is not the place to start.** Every build writes
+`results/BUILD_REPORT.md`, a page that says what happened to the data in order with that run's
+numbers: the sources verified, the index assembled, each PHS edition and whether it was turned,
+each government edition and whether its ranks match, the twelve joins with rows before and
+after, the output and its readback, the diagnostics, and one postcode followed through. It is
+written by the CLI and by the Dagster job alike. `docs/HOW_IT_IS_BUILT.md` is the static
+companion: the six judgements in the pipeline, where each lives in the code, and which check
+guards it.
 
 The instance directory `.dagster` is the provenance record: every run, every materialisation with
-its metadata and data version, every check result. Back it up with `results/`. Intermediate tables
-go to `data/work`, which is disposable.
+its metadata and data version, every check result. Back it up with `results/`. The three intermediate
+tables go to `data/work` as Parquet, about 16 MB, and are disposable.
 
 To see why the data is the way it is, open the `source/decisions` asset, or read
 `simd_ingest/decisions.yaml` directly. Each table's materialisation records the hash of the

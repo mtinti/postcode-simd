@@ -179,10 +179,9 @@ decisions:
     reason: "NRS builds the Scottish Statistics Postcode Lookup by converting split postcodes to the A part, because A is the part with more addresses, so every official statistic uses that convention. Matching it by default means an analyst reconciling against official figures gets the same answer; the report rule keeps the ambiguity visible for anyone who wants it. Supersedes the never-choose-A rule of lookup-statuses."
     evidence: "NRS Scottish Statistics Postcode Lookup information note; SPD 2026/2 bulletin on suffix ordering; docs/NRS_GUIDANCE_CHECK.md. On the synthetic cohort, 56 events resolve as a_part."
 
-  - id: ladder-pipeline
+  - id: visible-steps-and-build-report
     date: 2026-09-11
     status: implemented
-    decision: "The build is a ladder of small visible steps rather than a few large ones. Each directory file, each PHS file as published, each canonicalised PHS edition and each government edition is its own table with its own checks. The join is one rung per edition, a single merge on one data zone column, checked for unchanged row count and no empty column, with a failed rung stopping the ladder there. The CLI runs the same steps in the same order."
-    reason: "So that a reviewer can validate one step at a time and open any intermediate. The order of the rungs does not affect the result, since each join uses its own key; it is fixed for readability. The output is byte-identical to the previous structure, verified on the branch before merging."
-    evidence: "CLI and Dagster ladder builds on branch ladder both produced sha256 c685cd137652ec37, the same file as main under the same decision log. 51 assets, 63 checks, intermediates about 260 MB of Parquet per run."
-
+    decision: "The build is written as small named steps in code: one function per directory file, per PHS file as published, per canonicalised PHS edition, per government edition, and one join per edition, each with its own checks. The Dagster graph stays at five things, sources plus four tables, and the steps appear as rows in a build report, results/BUILD_REPORT.md, written by every build in plain language with that run's numbers. docs/HOW_IT_IS_BUILT.md is the static one-page companion."
+    reason: "A first attempt exposed every step as a graph node, fifty-one in all, and a reviewer could not read it. A graph is a machine's view; a reviewer needs a narrative with numbers. The steps stay visible where they help, in the code and the report, and out of the graph where they do not."
+    evidence: "CLI and Dagster builds on branch ladder both produced sha256 c685cd137652ec37 under main's decision log, byte-identical to main. Twenty-two assets, twenty-four checks, intermediates about 16 MB of Parquet."

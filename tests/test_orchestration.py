@@ -93,8 +93,7 @@ class DagsterJob(unittest.TestCase):
         self.assertIn("pin_verified", failed)
         self.assertEqual(failed["pin_verified"].asset_key, AssetKey(["source", "phs", "simd2004_02042020_csv"]))
         materialised = {e.asset_key.to_user_string() for e in result.get_asset_materialization_events()}
-        self.assertNotIn("phs_2004_source", materialised)
-        self.assertNotIn("joined_phs_2004", materialised)
+        self.assertNotIn("phs_bands", materialised)
         self.assertNotIn("postcode_simd", materialised)
         self.assertIn("source/phs/simd2006_02042020_csv", materialised)
         self.assertFalse((self.temp / "results" / "postcode_simd.parquet").exists())
