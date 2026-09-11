@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "simd-ingest"
-version = "1.1.0"
+version = "1.1.1"
 description = "Every edition of the Scottish Index of Multiple Deprivation attached to every record of the Scottish Postcode Directory, built from hash-pinned public sources with the lineage recorded."
 readme = "README.md"
 requires-python = ">=3.12"

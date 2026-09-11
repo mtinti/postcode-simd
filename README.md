@@ -11,7 +11,7 @@ SIMD edition from 2004 to 2020v2. The lookups that come with it follow the PHS d
 guidance for analysts, including the rule for choosing an edition by the year of the data and
 the handling of split postcodes.
 
-Status: v1.1.0, built from Scottish Postcode Directory 2026/2. The repository holds the means
+Status: v1.1.1, built from Scottish Postcode Directory 2026/2. The repository holds the means
 to reproduce the table and the record of how it was built. It holds no source data and no
 output; a clone that runs the build gets the same file, hash for hash.
 
@@ -31,7 +31,7 @@ pip install -e ".[dev]"
 ```
 
 This installs the package, the `simd-ingest` command and the test dependencies. Python 3.12
-and the versions pinned in `pyproject.toml` and `requirements.txt` are what v1.1.0 was verified
+and the versions pinned in `pyproject.toml` and `requirements.txt` are what v1.1.1 was verified
 with. Nothing needs a GIS library; the shapefile attribute tables are read with `dbfread`.
 
 ## Build
@@ -106,7 +106,7 @@ t = pd.read_parquet("results/postcode_simd.parquet")
 # Current SIMD 2020v2 quintile for a postcode as a person writes it.
 key = "G71 8BQ".upper().replace(" ", "")
 rows = t[t.is_current & (t.pc_base == key)]
-# len(rows) == 0: not found.  == 1: unique.  > 1: a split postcode; report it, never pick A.
+# len(rows) == 0: not found.  == 1: unique.  > 1: a split postcode; lookup.py takes the A part as NRS does.
 rows[["pc_norm", "DataZone2011Code", "simd2020v2_pw_scotland_quintile"]]
 
 # The record valid for a full postcode on a given day, half-open interval. The two date
@@ -132,7 +132,7 @@ WHERE pc_norm = 'AB101BF'
 ```
 
 For the lookups the PHS guidance describes, most recent or at a date, with split postcodes
-and cohort files handled, use `simd_ingest.lookup`. `docs/EXAMPLES.md` walks through four
+resolved to the A part as NRS does and cohort files handled, use `simd_ingest.lookup`. `docs/EXAMPLES.md` walks through four
 worked cases with real output. For linking a cohort by era, each event taking the edition
 the guidance recommends for its year, see `docs/LINKAGE_BY_ERA.md`, which gives the same
 rule in Python and in one SQL query that runs on DuckDB and SQL Server.

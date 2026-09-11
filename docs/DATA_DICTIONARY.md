@@ -4,7 +4,7 @@ One row per Scottish Postcode Directory record, both user types, current and del
 six SIMD editions attached. Generated from `simd_ingest/output_schema.yaml`; do not edit by hand.
 
 Current build: 247,773 rows by 162 columns, SPD release 2026_2, 
-built 2026-09-11T09:09:47Z. Parquet SHA256 `054f56ac0e469597265825a5ebb1c7d868ac8a1f5232eac144d3a0ee6b66f4d4`; rows-only fingerprint 
+built 2026-09-11T11:53:48Z. Parquet SHA256 `c685cd137652ec37c389b96bd02de0f95c87b91303911b6bec472bbe564ab83b`; rows-only fingerprint 
 `59369357e44e45a5ac74b217692fd8e4799fd0aafc3b04e4e2c255abf722dc97`. The file hash also covers the embedded provenance metadata, 
 so it changes when the decision log changes; the fingerprint changes only when the data does.
 
@@ -43,8 +43,9 @@ the same guidance describes for pre-1996 data is not included.
 
 - **Split postcodes.** NRS splits a postcode that straddles a boundary into A, B or C parts, each its
   own record with its own data zone. `pc_base` is the postcode as a person writes it. Filter current
-  records on `pc_base` and you may get more than one row with different SIMD values. Report that as
-  ambiguous; never pick A.
+  records on `pc_base` and you may get more than one row with different SIMD values. The lookups
+  in `simd_ingest.lookup` resolve that to the A part by default, as NRS does, and say so; a report
+  rule shows the ambiguity instead. Never average or vote.
 - **Large-user postcodes and PO boxes.** The directory assigns them a data zone, so SIMD is attached.
   PHS practice attaches no deprivation to PO boxes. Filter on `spd_user_type` and on
   `LinkedSmallUserPostcode` in (`NO LINKP`, `NO LINK`) if you want that behaviour.

@@ -11,7 +11,9 @@
 --
 -- The measure is the PHS population-weighted within-Scotland quintile, 1 = most deprived.
 -- To change it, edit the six lines of the CASE that picks the column. PO boxes are excluded
--- by default, following the PHS guidance; see the predicate on the join.
+-- by default, following the PHS guidance; see the predicate on the join. A split postcode
+-- with several valid parts resolves to the A part, the NRS convention, with status a_part;
+-- delete the three lines marked "A part" to report split_consensus / split_conflict instead.
 
 WITH era AS (
     SELECT * FROM (VALUES (1996, 2003, '2004'), (2004, 2006, '2006'), (2007, 2009, '2009v2'),
@@ -30,6 +32,7 @@ matched AS (
     SELECT ev.id, ev.event_date, ev.edition, ev.pc_key,
            p.pc_norm, p.pc_base,
            CASE WHEN p.pc_norm = ev.pc_key AND p.pc_norm <> p.pc_base THEN 1 ELSE 0 END AS is_part,
+           CASE WHEN p.pc_norm <> p.pc_base AND RIGHT(p.pc_norm, 1) = 'A' THEN 1 ELSE 0 END AS is_a,
            CASE WHEN p.introduced_on <= ev.event_date
                  AND (p.deleted_on IS NULL OR p.deleted_on > ev.event_date) THEN 1 ELSE 0 END AS is_valid,
            CASE ev.edition
@@ -60,7 +63,10 @@ summary AS (
            SUM(is_valid)   AS n_valid,
            COUNT(DISTINCT CASE WHEN is_valid = 1 THEN value END)   AS n_values,
            MIN(CASE WHEN is_valid = 1 THEN value END)              AS value,
-           MIN(CASE WHEN is_valid = 1 THEN pc_norm END)            AS pc_norm
+           MIN(CASE WHEN is_valid = 1 THEN pc_norm END)            AS pc_norm,
+           SUM(CASE WHEN is_valid = 1 AND is_a = 1 THEN 1 ELSE 0 END) AS n_a,
+           MIN(CASE WHEN is_valid = 1 AND is_a = 1 THEN value END)   AS a_value,
+           MIN(CASE WHEN is_valid = 1 AND is_a = 1 THEN pc_norm END) AS a_pc_norm
     FROM scoped
     GROUP BY id
 )
@@ -69,12 +75,18 @@ SELECT id, event_date, edition AS simd_edition,
             WHEN n_known = 0     THEN 'not_found'
             WHEN n_valid = 0     THEN 'deleted'          -- known postcode, nothing valid that day
             WHEN n_valid = 1     THEN 'unique'
+            WHEN n_a = 1         THEN 'a_part'           -- A part: several parts, the A part is used
             WHEN n_values = 1    THEN 'split_consensus'  -- several parts, one value
             ELSE                      'split_conflict'   -- several parts, different values
        END AS simd_status,
-       CASE WHEN n_valid = 1 OR (n_valid > 1 AND n_values = 1) THEN value END AS simd_value,
+       CASE WHEN n_valid = 1 OR (n_valid > 1 AND n_values = 1) THEN value
+            WHEN n_valid > 1 AND n_a = 1 THEN a_value    -- A part
+       END AS simd_value,
        -- No edition means no SIMD answer at all, so the matched key is withheld too. An as-of
        -- lookup without an edition still finds the record if that is what you need.
-       CASE WHEN n_valid = 1 AND edition IS NOT NULL THEN pc_norm END AS simd_pc_norm
+       CASE WHEN edition IS NULL THEN NULL
+            WHEN n_valid = 1 THEN pc_norm
+            WHEN n_valid > 1 AND n_a = 1 THEN a_pc_norm   -- A part
+       END AS simd_pc_norm
 FROM summary
 ORDER BY id;

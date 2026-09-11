@@ -139,7 +139,7 @@ decisions:
 
   - id: lookup-statuses
     date: 2026-09-11
-    status: implemented
+    status: superseded   # by split-resolution-a-part, same day
     decision: simd_ingest.lookup resolves a postcode to one of five statuses, unique, split_consensus, split_conflict, deleted or not_found. Several valid records agree on the requested measure gives consensus with the value; disagreement gives conflict with a null value. A full NRS key selects its own split part. Never choose A, average or vote.
     reason: The policy already agreed in the plan, made executable. Ambiguity is reported, not hidden.
     evidence: On the 226 current ordinary postcodes with more than one record, rank gives 203 conflicts and 23 consensus; docs/EXAMPLES.md.
@@ -170,3 +170,11 @@ decisions:
     reason: "The PHS guidance, Appendix A, attaches no deprivation to PO boxes because their location is a sorting office. An analyst reading the guidance expects the default to match it; the table stays source-faithful because the exclusion is applied at lookup time, not at build time."
     evidence: "1,518 current PO box records among 4,767 current large-user records."
 
+
+
+  - id: split-resolution-a-part
+    date: 2026-09-11
+    status: implemented
+    decision: "When several split parts of a postcode are valid, every lookup resolves to the A part by default and reports status a_part. A split=\"report\" rule returns split_consensus or split_conflict instead. The result's label records which rule was used. Python and SQL are tested to agree under both."
+    reason: "NRS builds the Scottish Statistics Postcode Lookup by converting split postcodes to the A part, because A is the part with more addresses, so every official statistic uses that convention. Matching it by default means an analyst reconciling against official figures gets the same answer; the report rule keeps the ambiguity visible for anyone who wants it. Supersedes the never-choose-A rule of lookup-statuses."
+    evidence: "NRS Scottish Statistics Postcode Lookup information note; SPD 2026/2 bulletin on suffix ordering; docs/NRS_GUIDANCE_CHECK.md. On the synthetic cohort, 56 events resolve as a_part."

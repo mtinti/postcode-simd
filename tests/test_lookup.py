@@ -39,12 +39,19 @@ class Statuses(unittest.TestCase):
         cases = [("ZZ1 1ZZ", None, lookup.NOT_FOUND, None), ("ab10 1bf", None, lookup.UNIQUE, 3),
                  ("AB10 1BF", "2004-06-01", lookup.UNIQUE, 2), ("AB10 1BF", "2008-01-01", lookup.DELETED, None),
                  ("AB10 1BF", "2005-10-05", lookup.DELETED, None), ("AB10 1BF", "2011-10-13", lookup.UNIQUE, 3),
-                 ("G71 8BQ", None, lookup.SPLIT_CONFLICT, None), ("G71 8BQA", None, lookup.UNIQUE, 5),
-                 ("AB12 3GQ", None, lookup.SPLIT_CONSENSUS, 4), ("KA6 6EY", "2026-02-18", lookup.DELETED, None)]
+                 ("G71 8BQ", None, lookup.A_PART, 5), ("G71 8BQA", None, lookup.UNIQUE, 5), ("G71 8BQB", None, lookup.UNIQUE, 2),
+                 ("AB12 3GQ", None, lookup.A_PART, 4), ("KA6 6EY", "2026-02-18", lookup.DELETED, None)]
         for postcode, on, status, value in cases:
             with self.subTest(postcode=postcode, on=on):
                 r = lookup.lookup(self.t, postcode, edition="2020v2", on=on)
                 self.assertEqual((r.status, r.value), (status, value))
+        # The report rule refuses to choose.
+        r = lookup.lookup(self.t, "G71 8BQ", edition="2020v2", split="report")
+        self.assertEqual((r.status, r.value), (lookup.SPLIT_CONFLICT, None))
+        r = lookup.lookup(self.t, "AB12 3GQ", edition="2020v2", split="report")
+        self.assertEqual((r.status, r.value), (lookup.SPLIT_CONSENSUS, 4))
+        with self.assertRaises(ValueError):
+            lookup.lookup(self.t, "G71 8BQ", edition="2020v2", split="majority")
 
     def test_attach_keeps_every_row_in_order(self):
         cohort = pd.DataFrame({"id": [1, 2, 3, 4, 5, 6, 7],
@@ -52,10 +59,13 @@ class Statuses(unittest.TestCase):
                                "event_date": ["2020-01-01", "2004-06-01", "2008-01-01", "2020-01-01", "2020-01-01", "2020-01-01", "2020-01-01"]})
         out = lookup.attach(cohort, self.t, "postcode", "event_date", edition="2020v2")
         self.assertEqual(out["id"].tolist(), cohort["id"].tolist())
-        self.assertEqual(out["simd_status"].tolist(), [lookup.SPLIT_CONFLICT, lookup.UNIQUE, lookup.DELETED, lookup.SPLIT_CONSENSUS, lookup.NOT_FOUND, lookup.NOT_FOUND, lookup.UNIQUE])
-        self.assertEqual([None if pd.isna(v) else int(v) for v in out["simd_value"]], [None, 2, None, 4, None, None, 2])
-        self.assertEqual(out["simd_pc_norm"].tolist()[1], "AB101BF")
-        self.assertEqual(out.attrs["simd_label"], "SIMD 2020v2, PHS population-weighted, within-Scotland quintile, 1 = most deprived")
+        self.assertEqual(out["simd_status"].tolist(), [lookup.A_PART, lookup.UNIQUE, lookup.DELETED, lookup.A_PART, lookup.NOT_FOUND, lookup.NOT_FOUND, lookup.UNIQUE])
+        self.assertEqual([None if pd.isna(v) else int(v) for v in out["simd_value"]], [5, 2, None, 4, None, None, 2])
+        self.assertEqual(out["simd_pc_norm"].tolist()[:2], ["G718BQA", "AB101BF"])
+        self.assertEqual(out.attrs["simd_label"], "SIMD 2020v2, PHS population-weighted, within-Scotland quintile, 1 = most deprived, split postcodes resolved to the A part")
+        reported = lookup.attach(cohort, self.t, "postcode", "event_date", edition="2020v2", split="report")
+        self.assertEqual(reported["simd_status"].tolist(), [lookup.SPLIT_CONFLICT, lookup.UNIQUE, lookup.DELETED, lookup.SPLIT_CONSENSUS, lookup.NOT_FOUND, lookup.NOT_FOUND, lookup.UNIQUE])
+        self.assertEqual([None if pd.isna(v) else int(v) for v in reported["simd_value"]], [None, 2, None, 4, None, None, 2])
         current = lookup.attach(cohort, self.t, "postcode", None, edition="2020v2")
         self.assertEqual(current["simd_status"].tolist()[1:3], [lookup.UNIQUE, lookup.UNIQUE])
 
@@ -64,9 +74,9 @@ class Statuses(unittest.TestCase):
                          ["2004", "2004", "2006", "2009v2", "2012", "2016", "2020v2", "2020v2"])
         with self.assertRaises(ValueError):
             lookup.recommended_edition(1995)
-        self.assertEqual(lookup.label("simd2004_uw_scotland_decile"), "SIMD 2004, Scottish Government unweighted, within-Scotland decile, 1 = most deprived")
-        self.assertEqual(lookup.label("simd2016_pw_hb_quintile"), "SIMD 2016, PHS population-weighted, within-NHS-Board quintile, 1 = most deprived")
-        self.assertEqual(lookup.label("simd2012_rank"), "SIMD 2012 rank, 1 = most deprived")
+        self.assertEqual(lookup.label("simd2004_uw_scotland_decile", "report"), "SIMD 2004, Scottish Government unweighted, within-Scotland decile, 1 = most deprived, split postcodes reported")
+        self.assertEqual(lookup.label("simd2016_pw_hb_quintile"), "SIMD 2016, PHS population-weighted, within-NHS-Board quintile, 1 = most deprived, split postcodes resolved to the A part")
+        self.assertEqual(lookup.label("simd2012_rank", "report"), "SIMD 2012 rank, 1 = most deprived, split postcodes reported")
 
 
 @unittest.skipUnless(FILE.is_file(), "no build output")
@@ -77,11 +87,14 @@ class RealFile(unittest.TestCase):
 
     def test_documented_examples(self):
         r = lookup.lookup(self.t, "G71 8BQ", edition="2020v2")
-        self.assertEqual(r.status, lookup.SPLIT_CONFLICT)
+        self.assertEqual((r.status, r.value), (lookup.A_PART, 5))
         self.assertEqual(sorted(r.candidates["simd2020v2_pw_scotland_quintile"]), [2, 5])
+        self.assertEqual(lookup.lookup(self.t, "G71 8BQ", edition="2020v2", split="report").status, lookup.SPLIT_CONFLICT)
         r = lookup.lookup(self.t, "AB12 3GQ", edition="2020v2")
-        self.assertEqual((r.status, r.value), (lookup.SPLIT_CONSENSUS, 4))
-        self.assertEqual(lookup.lookup(self.t, "AB12 3GQ", edition="2020v2", measure="rank").status, lookup.SPLIT_CONFLICT)
+        self.assertEqual((r.status, r.value), (lookup.A_PART, 4))
+        self.assertEqual((lookup.lookup(self.t, "AB12 3GQ", edition="2020v2", measure="rank").status, lookup.lookup(self.t, "AB12 3GQ", edition="2020v2", measure="rank").value), (lookup.A_PART, 5484))
+        self.assertEqual(lookup.lookup(self.t, "AB12 3GQ", edition="2020v2", measure="rank", split="report").status, lookup.SPLIT_CONFLICT)
+        self.assertEqual(lookup.lookup(self.t, "AB12 3GQ", edition="2020v2", split="report").status, lookup.SPLIT_CONSENSUS)
         r = lookup.lookup(self.t, "AB10 1BF", edition="2006", on="2004-06-01")
         self.assertEqual(r.status, lookup.UNIQUE)
         self.assertEqual(lookup.lookup(self.t, "AB10 1BF", edition="2009v2", on="2008-01-01").status, lookup.DELETED)
@@ -90,10 +103,12 @@ class RealFile(unittest.TestCase):
         current = self.t[self.t["is_current"]]
         multi = current.groupby("pc_base").size()
         multi = multi[multi > 1].index
-        statuses = [lookup.lookup(self.t, base, edition="2020v2", measure="rank").status for base in multi]
-        self.assertEqual(len(statuses), 226)
-        self.assertEqual(statuses.count(lookup.SPLIT_CONFLICT), 203)
-        self.assertEqual(statuses.count(lookup.SPLIT_CONSENSUS), 23)
+        default = [lookup.lookup(self.t, base, edition="2020v2", measure="rank").status for base in multi]
+        self.assertEqual(len(default), 226)
+        self.assertEqual(default.count(lookup.A_PART), 226)
+        reported = [lookup.lookup(self.t, base, edition="2020v2", measure="rank", split="report").status for base in multi]
+        self.assertEqual(reported.count(lookup.SPLIT_CONFLICT), 203)
+        self.assertEqual(reported.count(lookup.SPLIT_CONSENSUS), 23)
 
 
 
@@ -119,23 +134,34 @@ class ByEraPythonAndSqlAgree(unittest.TestCase):
         # Write postcodes the way people do: a space before the inward code, mixed case.
         written = [None if k is None else (k[:-3].lower() + " " + k[-3:]) if len(k) <= 7 else (k[:-4] + " " + k[-4:]) for k in keys]
         cls.events = pd.DataFrame({"id": range(1, len(keys) + 1), "postcode": written, "event_date": dates}).sample(frac=1, random_state=5).reset_index(drop=True)
-        cls.py = lookup.attach_by_era(cls.events, t, "postcode", "event_date")
-        con = duckdb.connect()
-        con.execute(f"CREATE VIEW postcode_simd AS SELECT * FROM '{FILE}'")
-        con.register("events", cls.events)
-        cls.sql = con.execute((ROOT / "docs" / "sql" / "link_by_era.sql").read_text()).df()
+        cls.con = duckdb.connect()
+        cls.con.execute(f"CREATE VIEW postcode_simd AS SELECT * FROM '{FILE}'")
+        cls.con.register("events", cls.events)
+        cls.sql_text = (ROOT / "docs" / "sql" / "link_by_era.sql").read_text()
 
-    def test_same_status_value_and_key_for_every_event(self):
-        py = self.py.sort_values("id").reset_index(drop=True)
-        sql = self.sql.sort_values("id").reset_index(drop=True)
+    def compare(self, py, sql):
+        py = py.sort_values("id").reset_index(drop=True)
+        sql = sql.sort_values("id").reset_index(drop=True)
         self.assertEqual(len(py), len(sql))
         self.assertEqual(py["simd_status"].tolist(), sql["simd_status"].tolist())
         norm = lambda s: [None if pd.isna(v) else int(v) for v in s]
         self.assertEqual(norm(py["simd_value"]), norm(sql["simd_value"]))
         self.assertEqual([None if pd.isna(v) else v for v in py["simd_pc_norm"]], [None if pd.isna(v) else v for v in sql["simd_pc_norm"]])
         self.assertEqual([None if pd.isna(v) else v for v in py["simd_edition"]], [None if pd.isna(v) else v for v in sql["simd_edition"]])
-        counts = py["simd_status"].value_counts()
-        self.assertTrue(set(lookup.STATUSES) <= set(counts.index), counts.to_dict())
+        return py["simd_status"].value_counts()
+
+    def test_default_rule_a_part(self):
+        counts = self.compare(lookup.attach_by_era(self.events, self.t, "postcode", "event_date"),
+                              self.con.execute(self.sql_text).df())
+        self.assertIn(lookup.A_PART, counts.index)
+        self.assertNotIn(lookup.SPLIT_CONFLICT, counts.index)
+
+    def test_report_rule_after_deleting_the_marked_lines(self):
+        sql = "\n".join(line for line in self.sql_text.splitlines() if "-- A part" not in line)
+        counts = self.compare(lookup.attach_by_era(self.events, self.t, "postcode", "event_date", split="report"),
+                              self.con.execute(sql).df())
+        self.assertIn(lookup.SPLIT_CONFLICT, counts.index)
+        self.assertNotIn(lookup.A_PART, counts.index)
 
 if __name__ == "__main__":
     unittest.main()

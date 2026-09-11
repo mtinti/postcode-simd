@@ -10,10 +10,11 @@ the analyst, who passes an edition and a measure explicitly.
     lookup.lookup(t, "AB10 1BF", edition="2012", on="2012-06-01")      # at a date
     lookup.attach(cohort, t, "postcode", "event_date", edition="2020v2")  # a whole frame
 
-Statuses, and the rule behind them: several records can be valid for one ordinary postcode
-because NRS splits postcodes that straddle a boundary into A, B and C parts. If every valid
-record agrees on the requested measure the answer is `split_consensus`; if they disagree it
-is `split_conflict` and the value is null. The module never picks A, averages, or votes.
+Split postcodes: NRS splits a postcode that straddles a boundary into A, B and C parts, each
+its own record, and the A part is the one with more addresses. By default, as in NRS's own
+Scottish Statistics Postcode Lookup, a lookup on the ordinary postcode resolves to the A part
+and says so with status `a_part`. Pass `split="report"` to refuse instead: several valid parts
+that agree give `split_consensus`, parts that disagree give `split_conflict` with a null value.
 """
 
 from __future__ import annotations
@@ -31,8 +32,10 @@ GUIDANCE_TABLE_4 = [(1996, 2003, "2004"), (2004, 2006, "2006"), (2007, 2009, "20
                     (2010, 2013, "2012"), (2014, 2016, "2016"), (2017, 9999, "2020v2")]
 
 NOT_FOUND, UNIQUE, SPLIT_CONSENSUS, SPLIT_CONFLICT, DELETED = "not_found", "unique", "split_consensus", "split_conflict", "deleted"
+A_PART = "a_part"          # several split parts valid; resolved to the A part, the NRS convention
 NO_EDITION = "no_edition"  # the event predates SIMD; the guidance points to Carstairs
-STATUSES = (NOT_FOUND, UNIQUE, SPLIT_CONSENSUS, SPLIT_CONFLICT, DELETED, NO_EDITION)
+STATUSES = (NOT_FOUND, UNIQUE, A_PART, SPLIT_CONSENSUS, SPLIT_CONFLICT, DELETED, NO_EDITION)
+SPLIT_RULES = ("a_part", "report")
 
 _SCOPE = {"scotland": "within-Scotland", "hb": "within-NHS-Board", "hscp": "within-HSCP", "ca": "within-council-area"}
 _WEIGHT = {"pw": "PHS population-weighted", "uw": "Scottish Government unweighted"}
@@ -64,8 +67,13 @@ def column(edition: str, measure: str) -> str:
     return f"simd{edition}_{measure}"
 
 
-def label(col: str) -> str:
-    """The label the guidance's checklist requires, derived from the column name."""
+def label(col: str, split: str = "a_part") -> str:
+    """The label the guidance's checklist requires, derived from the column name, plus how
+    split postcodes were resolved."""
+    return _measure_label(col) + (", split postcodes resolved to the A part" if split == "a_part" else ", split postcodes reported")
+
+
+def _measure_label(col: str) -> str:
     m = re.fullmatch(r"simd(?P<ed>[0-9v]+)_(?:(?P<w>pw|uw)_(?P<scope>[a-z]+)_(?P<measure>[a-z]+)|(?P<other>rank|most15pc|least15pc))", col)
     if not m:
         raise ValueError(f"not a SIMD column: {col}")
@@ -102,9 +110,18 @@ class Result:
         return f"{self.postcode} {when}: {self.status}, {self.label} = {self.value}"
 
 
-def _resolve(valid: pd.DataFrame, col: str) -> tuple:
+def _check_split(split: str) -> None:
+    if split not in SPLIT_RULES:
+        raise ValueError(f"split must be one of {SPLIT_RULES}, not {split!r}")
+
+
+def _resolve(valid: pd.DataFrame, col: str, split: str) -> tuple:
     if len(valid) == 1:
         return UNIQUE, valid[col].iloc[0]
+    if split == "a_part":
+        a = valid[(valid["pc_norm"] != valid["pc_base"]) & valid["pc_norm"].str.endswith("A")]
+        if len(a) == 1:
+            return A_PART, a[col].iloc[0]
     values = valid[col].unique()
     if len(values) == 1:
         return SPLIT_CONSENSUS, values[0]
@@ -112,9 +129,11 @@ def _resolve(valid: pd.DataFrame, col: str) -> tuple:
 
 
 def lookup(table: pd.DataFrame, postcode: str, edition: str, measure: str = "pw_scotland_quintile", on=None,
-           include_po_boxes: bool = False, include_large_users: bool = True) -> Result:
+           include_po_boxes: bool = False, include_large_users: bool = True, split: str = "a_part") -> Result:
     """SIMD for one postcode, current or valid on a day. The postcode may be an ordinary
-    postcode or a full NRS key with its split suffix. PO boxes are excluded unless asked for."""
+    postcode or a full NRS key with its split suffix. PO boxes are excluded unless asked for.
+    Split postcodes resolve to the A part unless split="report"."""
+    _check_split(split)
     table = scope(table, include_po_boxes, include_large_users)
     col = column(edition, measure)
     key = normalise_postcode(pd.Series([postcode])).iloc[0]
@@ -126,25 +145,27 @@ def lookup(table: pd.DataFrame, postcode: str, edition: str, measure: str = "pw_
     by_part = (table["pc_norm"] == key) & (table["pc_norm"] != table["pc_base"])
     cand = table[by_part] if by_part.any() else table[by_base]
     if cand.empty:
-        return Result(postcode, key, edition, measure, when, NOT_FOUND, None, label(col), cand)
+        return Result(postcode, key, edition, measure, when, NOT_FOUND, None, label(col, split), cand)
     if when is None:
         valid = cand[cand["is_current"]]
     else:
         valid = cand[(cand["introduced_on"] <= when) & (cand["deleted_on"].isna() | (cand["deleted_on"] > when))]
     if valid.empty:
-        return Result(postcode, key, edition, measure, when, DELETED, None, label(col), cand)
-    status, value = _resolve(valid, col)
-    return Result(postcode, key, edition, measure, when, status, value, label(col), valid)
+        return Result(postcode, key, edition, measure, when, DELETED, None, label(col, split), cand)
+    status, value = _resolve(valid, col, split)
+    return Result(postcode, key, edition, measure, when, status, value, label(col, split), valid)
 
 
 def attach(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, date_col: str | None,
            edition: str, measure: str = "pw_scotland_quintile", prefix: str = "simd",
-           include_po_boxes: bool = False, include_large_users: bool = True) -> pd.DataFrame:
-    """One result per event row: status, value and the matched NRS key where unique.
+           include_po_boxes: bool = False, include_large_users: bool = True, split: str = "a_part") -> pd.DataFrame:
+    """One result per event row: status, value and the matched NRS key where resolved.
 
     Rows are never dropped or duplicated. With `date_col` the record valid on the event's
     date is used; without it, the current record. PO boxes are excluded unless asked for.
+    Split postcodes resolve to the A part unless split="report".
     """
+    _check_split(split)
     table = scope(table, include_po_boxes, include_large_users)
     col = column(edition, measure)
     ev = pd.DataFrame({"_row": range(len(events)),
@@ -166,22 +187,32 @@ def attach(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, date_co
     else:
         valid = known & m["is_current"].fillna(False).astype(bool)
     v = m[valid]
+    a = v[(v["pc_norm"] != v["pc_base"]) & v["pc_norm"].str.endswith("A")]
+    rows = range(len(events))
     summary = pd.DataFrame({"n_known": known.groupby(m["_row"]).sum(),
-                            "n_valid": v.groupby("_row").size().reindex(range(len(events)), fill_value=0),
-                            "n_values": v.groupby("_row")[col].nunique().reindex(range(len(events)), fill_value=0),
-                            "value": v.groupby("_row")[col].first().reindex(range(len(events))),
-                            "pc_norm": v.groupby("_row")["pc_norm"].first().reindex(range(len(events)))})
+                            "n_valid": v.groupby("_row").size().reindex(rows, fill_value=0),
+                            "n_values": v.groupby("_row")[col].nunique().reindex(rows, fill_value=0),
+                            "value": v.groupby("_row")[col].first().reindex(rows),
+                            "pc_norm": v.groupby("_row")["pc_norm"].first().reindex(rows),
+                            "n_a": a.groupby("_row").size().reindex(rows, fill_value=0),
+                            "a_value": a.groupby("_row")[col].first().reindex(rows),
+                            "a_pc_norm": a.groupby("_row")["pc_norm"].first().reindex(rows)})
     status = pd.Series(NOT_FOUND, index=summary.index)
     status[(summary["n_known"] > 0) & (summary["n_valid"] == 0)] = DELETED
     status[summary["n_valid"] == 1] = UNIQUE
     status[(summary["n_valid"] > 1) & (summary["n_values"] == 1)] = SPLIT_CONSENSUS
     status[(summary["n_valid"] > 1) & (summary["n_values"] > 1)] = SPLIT_CONFLICT
-    resolved = status.isin([UNIQUE, SPLIT_CONSENSUS])
+    if split == "a_part":
+        status[(summary["n_valid"] > 1) & (summary["n_a"] == 1)] = A_PART
+    value = summary["value"].where(status.isin([UNIQUE, SPLIT_CONSENSUS]))
+    value[status == A_PART] = summary["a_value"][status == A_PART]
+    pc_norm = summary["pc_norm"].where(status == UNIQUE)
+    pc_norm[status == A_PART] = summary["a_pc_norm"][status == A_PART]
     out = events.copy()
     out[f"{prefix}_status"] = status.values
-    out[f"{prefix}_value"] = summary["value"].where(resolved).astype("Int64").values
-    out[f"{prefix}_pc_norm"] = summary["pc_norm"].where(status == UNIQUE).values
-    out.attrs[f"{prefix}_label"] = label(col)
+    out[f"{prefix}_value"] = value.astype("Int64").values
+    out[f"{prefix}_pc_norm"] = pc_norm.values
+    out.attrs[f"{prefix}_label"] = label(col, split)
     assert len(out) == len(events)
     return out
 
@@ -197,7 +228,7 @@ def edition_for(dates: pd.Series) -> pd.Series:
 
 def attach_by_era(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, date_col: str,
                   measure: str = "pw_scotland_quintile", prefix: str = "simd",
-                  include_po_boxes: bool = False, include_large_users: bool = True) -> pd.DataFrame:
+                  include_po_boxes: bool = False, include_large_users: bool = True, split: str = "a_part") -> pd.DataFrame:
     """The guidance's first approach: each event takes the edition recommended for its year,
     and the record valid on its date. Adds an edition column and a per-row label.
 
@@ -208,9 +239,9 @@ def attach_by_era(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, 
     for ed in edition.dropna().unique():
         rows = events[edition == ed]
         part = attach(rows, table, postcode_col, date_col, edition=ed, measure=measure, prefix=prefix,
-                      include_po_boxes=include_po_boxes, include_large_users=include_large_users)
+                      include_po_boxes=include_po_boxes, include_large_users=include_large_users, split=split)
         part[f"{prefix}_edition"] = ed
-        part[f"{prefix}_label"] = label(column(ed, measure))
+        part[f"{prefix}_label"] = label(column(ed, measure), split)
         parts.append(part)
     none = events[edition.isna()].copy()
     if len(none):
