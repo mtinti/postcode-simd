@@ -1,0 +1,15 @@
+manual_data/
+data/
+results/
+out/
+.dagster/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+.git/
+*.md
+!README.md
+!docs/*.md
+docs/plans/

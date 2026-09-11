@@ -1,0 +1,16 @@
+# Operational settings. Relative paths resolve against the project root, which is the
+# parent of this file's directory. Use absolute paths to run against another location.
+source_manifest: simd_ingest/sources.yaml
+baselines: simd_ingest/acceptance_baselines.yaml
+decisions: simd_ingest/decisions.yaml
+output_schema: simd_ingest/output_schema.yaml
+
+# offline: use pre-supplied files under source_roots.offline; no network access.
+# download: fetch every pinned object into cache_root and place files under source_roots.download.
+source_mode: offline
+source_roots:
+  offline: manual_data
+  download: data/sources
+cache_root: data/cache
+work_root: data/work          # Dagster's intermediate tables; disposable
+results_root: results

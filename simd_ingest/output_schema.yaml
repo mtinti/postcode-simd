@@ -1,0 +1,815 @@
+# Frozen output schema. Order, Arrow type and nullability are the contract.
+# 65 directory columns + 7 derived + 6 PHS geography + 6 editions x 14 SIMD fields = 162.
+version: postcode_simd_wide_v1
+columns: 162
+fields:
+- name: Postcode
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: PostcodeDistrict
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: PostcodeSector
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: DateOfIntroduction
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: DateOfDeletion
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: GridReferenceEasting
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: GridReferenceNorthing
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: Latitude
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: Longitude
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: SplitIndicator
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: CouncilArea2019Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: UKParliamentaryConstituency2024Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: ScottishParliamentaryRegion2026Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: ScottishParliamentaryConstituency2026Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: ElectoralWard2022Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: HealthBoardArea2019Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: HealthBoardArea2006Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: HealthBoardArea1995Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: IntegrationAuthority2019Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: OutputArea2022Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: OutputArea2011Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: OutputArea2001Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: OutputArea1991Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: DataZone2022Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: DataZone2011Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: DataZone2001Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: IntermediateZone2022Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: IntermediateZone2011Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: IntermediateZone2001Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: CensusHouseholdCount2022
+  type: string
+  nullable: true
+  source: directory
+  note: small-user only
+- name: CensusPopulationCount2022
+  type: string
+  nullable: true
+  source: directory
+  note: small-user only
+- name: CensusHouseholdCount2011
+  type: string
+  nullable: true
+  source: directory
+  note: small-user only
+- name: CensusPopulationCount2011
+  type: string
+  nullable: true
+  source: directory
+  note: small-user only
+- name: CensusHouseholdCount2001
+  type: string
+  nullable: true
+  source: directory
+  note: small-user only
+- name: CensusPopulationCount2001
+  type: string
+  nullable: true
+  source: directory
+  note: small-user only
+- name: CensusHouseholdCount1991
+  type: string
+  nullable: true
+  source: directory
+  note: small-user only
+- name: CensusPopulationCount1991
+  type: string
+  nullable: true
+  source: directory
+  note: small-user only
+- name: ScottishIndexOfMultipleDeprivation2020Rank
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: LAU2025Level1Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: ITL2025Level2Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: ITL2025Level3Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: Locality2020Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: Locality2022Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: Locality2001Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: Locality1991Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: Settlement2020Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: Settlement2022Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: Settlement2001Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: CivilParish1930Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: EnterpriseRegion2008Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: IslandCode
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: LocalGovernmentDistrict1995Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: LocalGovernmentDistrict1991Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: NationalPark2010Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: RegistrationDistrict2007Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: ROACommunityPlanningPartnership2006Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: ROALocal2006Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: StrategicDevelopmentPlanningArea2013Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: TravelToWorkArea2011Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: UrbanRural6Fold2022Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: UrbanRural8Fold2022Code
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: GridLinkIndicator
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: GridLinkPositionalAccuracy
+  type: string
+  nullable: false
+  source: directory
+  note: ''
+- name: NeverDigitised
+  type: string
+  nullable: true
+  source: directory
+  note: small-user only
+- name: LinkedSmallUserPostcode
+  type: string
+  nullable: true
+  source: directory
+  note: large-user only
+- name: pc_norm
+  type: string
+  nullable: false
+  source: derived
+  note: 'primary key part 1: uppercased, spaces removed, NRS suffix kept'
+- name: pc_base
+  type: string
+  nullable: false
+  source: derived
+  note: 'ordinary postcode: validated small-user split suffix removed; can be ambiguous'
+- name: spd_user_type
+  type: string
+  nullable: false
+  source: derived
+  note: small_user or large_user
+- name: spd_release
+  type: string
+  nullable: false
+  source: derived
+  note: directory release this record came from
+- name: introduced_on
+  type: date32
+  nullable: false
+  source: derived
+  note: primary key part 2
+- name: deleted_on
+  type: date32
+  nullable: true
+  source: derived
+  note: null while current; validity is [introduced_on, deleted_on)
+- name: is_current
+  type: bool
+  nullable: false
+  source: derived
+  note: deleted_on is null
+- name: phs_dz2001_hb
+  type: string
+  nullable: false
+  source: phs
+  note: health board PHS assigned to the 2001 data zone when computing within-geography bands
+- name: phs_dz2001_hscp
+  type: string
+  nullable: false
+  source: phs
+  note: HSCP PHS assigned to the 2001 data zone when computing within-geography bands
+- name: phs_dz2001_ca
+  type: string
+  nullable: false
+  source: phs
+  note: council area PHS assigned to the 2001 data zone when computing within-geography bands
+- name: phs_dz2011_hb
+  type: string
+  nullable: false
+  source: phs
+  note: health board PHS assigned to the 2011 data zone when computing within-geography bands
+- name: phs_dz2011_hscp
+  type: string
+  nullable: false
+  source: phs
+  note: HSCP PHS assigned to the 2011 data zone when computing within-geography bands
+- name: phs_dz2011_ca
+  type: string
+  nullable: false
+  source: phs
+  note: council area PHS assigned to the 2011 data zone when computing within-geography bands
+- name: simd2004_rank
+  type: int16
+  nullable: false
+  source: phs
+  note: 1 = most deprived; identical to the Scottish Government rank
+- name: simd2004_pw_scotland_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within scotland; 1 = most deprived
+- name: simd2004_pw_scotland_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within scotland; 1 = most deprived
+- name: simd2004_pw_hb_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within hb; 1 = most deprived
+- name: simd2004_pw_hb_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within hb; 1 = most deprived
+- name: simd2004_pw_hscp_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within hscp; 1 = most deprived
+- name: simd2004_pw_hscp_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within hscp; 1 = most deprived
+- name: simd2004_pw_ca_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within ca; 1 = most deprived
+- name: simd2004_pw_ca_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within ca; 1 = most deprived
+- name: simd2004_most15pc
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted 15% most deprived flag, as published
+- name: simd2004_least15pc
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted 15% least deprived flag, as published
+- name: simd2004_uw_scotland_quintile
+  type: int8
+  nullable: false
+  source: govscot
+  note: Scottish Government unweighted quintile; 1 = most deprived
+- name: simd2004_uw_scotland_decile
+  type: int8
+  nullable: false
+  source: govscot
+  note: Scottish Government unweighted decile; 1 = most deprived
+- name: simd2004_uw_scotland_vigintile
+  type: int8
+  nullable: false
+  source: govscot
+  note: Scottish Government unweighted vigintile; 1 = most deprived
+- name: simd2006_rank
+  type: int16
+  nullable: false
+  source: phs
+  note: 1 = most deprived; identical to the Scottish Government rank
+- name: simd2006_pw_scotland_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within scotland; 1 = most deprived
+- name: simd2006_pw_scotland_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within scotland; 1 = most deprived
+- name: simd2006_pw_hb_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within hb; 1 = most deprived
+- name: simd2006_pw_hb_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within hb; 1 = most deprived
+- name: simd2006_pw_hscp_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within hscp; 1 = most deprived
+- name: simd2006_pw_hscp_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within hscp; 1 = most deprived
+- name: simd2006_pw_ca_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within ca; 1 = most deprived
+- name: simd2006_pw_ca_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within ca; 1 = most deprived
+- name: simd2006_most15pc
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted 15% most deprived flag, as published
+- name: simd2006_least15pc
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted 15% least deprived flag, as published
+- name: simd2006_uw_scotland_quintile
+  type: int8
+  nullable: false
+  source: govscot
+  note: Scottish Government unweighted quintile; 1 = most deprived
+- name: simd2006_uw_scotland_decile
+  type: int8
+  nullable: false
+  source: govscot
+  note: Scottish Government unweighted decile; 1 = most deprived
+- name: simd2006_uw_scotland_vigintile
+  type: int8
+  nullable: false
+  source: govscot
+  note: Scottish Government unweighted vigintile; 1 = most deprived
+- name: simd2009v2_rank
+  type: int16
+  nullable: false
+  source: phs
+  note: 1 = most deprived; identical to the Scottish Government rank
+- name: simd2009v2_pw_scotland_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within scotland; 1 = most deprived
+- name: simd2009v2_pw_scotland_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within scotland; 1 = most deprived
+- name: simd2009v2_pw_hb_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within hb; 1 = most deprived
+- name: simd2009v2_pw_hb_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within hb; 1 = most deprived
+- name: simd2009v2_pw_hscp_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within hscp; 1 = most deprived
+- name: simd2009v2_pw_hscp_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within hscp; 1 = most deprived
+- name: simd2009v2_pw_ca_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within ca; 1 = most deprived
+- name: simd2009v2_pw_ca_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within ca; 1 = most deprived
+- name: simd2009v2_most15pc
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted 15% most deprived flag, as published
+- name: simd2009v2_least15pc
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted 15% least deprived flag, as published
+- name: simd2009v2_uw_scotland_quintile
+  type: int8
+  nullable: false
+  source: govscot
+  note: Scottish Government unweighted quintile; 1 = most deprived
+- name: simd2009v2_uw_scotland_decile
+  type: int8
+  nullable: false
+  source: govscot
+  note: Scottish Government unweighted decile; 1 = most deprived
+- name: simd2009v2_uw_scotland_vigintile
+  type: int8
+  nullable: false
+  source: govscot
+  note: Scottish Government unweighted vigintile; 1 = most deprived
+- name: simd2012_rank
+  type: int16
+  nullable: false
+  source: phs
+  note: 1 = most deprived; identical to the Scottish Government rank
+- name: simd2012_pw_scotland_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within scotland; 1 = most deprived
+- name: simd2012_pw_scotland_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within scotland; 1 = most deprived
+- name: simd2012_pw_hb_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within hb; 1 = most deprived
+- name: simd2012_pw_hb_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within hb; 1 = most deprived
+- name: simd2012_pw_hscp_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within hscp; 1 = most deprived
+- name: simd2012_pw_hscp_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within hscp; 1 = most deprived
+- name: simd2012_pw_ca_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within ca; 1 = most deprived
+- name: simd2012_pw_ca_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within ca; 1 = most deprived
+- name: simd2012_most15pc
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted 15% most deprived flag, as published
+- name: simd2012_least15pc
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted 15% least deprived flag, as published
+- name: simd2012_uw_scotland_quintile
+  type: int8
+  nullable: false
+  source: govscot
+  note: Scottish Government unweighted quintile; 1 = most deprived
+- name: simd2012_uw_scotland_decile
+  type: int8
+  nullable: false
+  source: govscot
+  note: Scottish Government unweighted decile; 1 = most deprived
+- name: simd2012_uw_scotland_vigintile
+  type: int8
+  nullable: false
+  source: govscot
+  note: Scottish Government unweighted vigintile; 1 = most deprived
+- name: simd2016_rank
+  type: int16
+  nullable: false
+  source: phs
+  note: 1 = most deprived; identical to the Scottish Government rank
+- name: simd2016_pw_scotland_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within scotland; 1 = most deprived
+- name: simd2016_pw_scotland_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within scotland; 1 = most deprived
+- name: simd2016_pw_hb_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within hb; 1 = most deprived
+- name: simd2016_pw_hb_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within hb; 1 = most deprived
+- name: simd2016_pw_hscp_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within hscp; 1 = most deprived
+- name: simd2016_pw_hscp_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within hscp; 1 = most deprived
+- name: simd2016_pw_ca_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within ca; 1 = most deprived
+- name: simd2016_pw_ca_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within ca; 1 = most deprived
+- name: simd2016_most15pc
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted 15% most deprived flag, as published
+- name: simd2016_least15pc
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted 15% least deprived flag, as published
+- name: simd2016_uw_scotland_quintile
+  type: int8
+  nullable: false
+  source: govscot
+  note: Scottish Government unweighted quintile; 1 = most deprived
+- name: simd2016_uw_scotland_decile
+  type: int8
+  nullable: false
+  source: govscot
+  note: Scottish Government unweighted decile; 1 = most deprived
+- name: simd2016_uw_scotland_vigintile
+  type: int8
+  nullable: false
+  source: govscot
+  note: Scottish Government unweighted vigintile; 1 = most deprived
+- name: simd2020v2_rank
+  type: int16
+  nullable: false
+  source: phs
+  note: 1 = most deprived; identical to the Scottish Government rank
+- name: simd2020v2_pw_scotland_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within scotland; 1 = most deprived
+- name: simd2020v2_pw_scotland_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within scotland; 1 = most deprived
+- name: simd2020v2_pw_hb_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within hb; 1 = most deprived
+- name: simd2020v2_pw_hb_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within hb; 1 = most deprived
+- name: simd2020v2_pw_hscp_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within hscp; 1 = most deprived
+- name: simd2020v2_pw_hscp_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within hscp; 1 = most deprived
+- name: simd2020v2_pw_ca_decile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted decile within ca; 1 = most deprived
+- name: simd2020v2_pw_ca_quintile
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted quintile within ca; 1 = most deprived
+- name: simd2020v2_most15pc
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted 15% most deprived flag, as published
+- name: simd2020v2_least15pc
+  type: int8
+  nullable: false
+  source: phs
+  note: PHS population-weighted 15% least deprived flag, as published
+- name: simd2020v2_uw_scotland_quintile
+  type: int8
+  nullable: false
+  source: govscot
+  note: Scottish Government unweighted quintile; 1 = most deprived
+- name: simd2020v2_uw_scotland_decile
+  type: int8
+  nullable: false
+  source: govscot
+  note: Scottish Government unweighted decile; 1 = most deprived
+- name: simd2020v2_uw_scotland_vigintile
+  type: int8
+  nullable: false
+  source: govscot
+  note: Scottish Government unweighted vigintile; 1 = most deprived

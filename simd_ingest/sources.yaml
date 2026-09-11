@@ -1,0 +1,149 @@
+# Pinned sources for the postcode-SIMD build. Version 2, 10 September 2026.
+#
+# Thirteen remote objects supply seventeen logical files. A remote object is what is
+# downloaded; a logical file is what a builder reads. For a plain file they are the
+# same bytes. For an archive, the declared members are extracted and each member's
+# own hash is the pin. A pin is never updated by the pipeline: changed bytes stop it.
+#
+# Retired on 10 September 2026, with hashes kept in decisions.yaml as evidence: the two
+# statistics.gov.scot extracts, the rank-to-band workbook and the 2020v2 ranks workbook.
+# Every value they supplied is in the maps.gov.scot tables and was verified identical.
+version: 2
+spd_release: '2026_2'
+
+licences:
+  phs: "Open Government Licence v3.0, stated in the PHS open data package metadata"
+  nrs: "NRS terms; confirm before redistributing copies of the index"
+  maps_gov_scot: "Open Government Licence, stated in each shapefile's .shp.xml"
+
+remote_objects:
+  - key: phs_2004
+    publisher: phs
+    url: https://www.opendata.nhs.scot/dataset/78d41fa9-1a62-4f7b-9edb-3e8522a93378/resource/a97fca71-ebbb-4897-a611-88024a76ff21/download/simd2004_02042020.csv
+    format: file
+    sha256: dcc871e88353884a166c09ab406fa798d2e8f0ba58000db55066ba6723bda45f
+    files:
+      - {path: PHS/simd2004_02042020.csv, sha256: dcc871e88353884a166c09ab406fa798d2e8f0ba58000db55066ba6723bda45f}
+  - key: phs_2006
+    publisher: phs
+    url: https://www.opendata.nhs.scot/dataset/78d41fa9-1a62-4f7b-9edb-3e8522a93378/resource/6f871d03-d2af-4fe2-a615-d2d2ca76c3a5/download/simd2006_02042020.csv
+    format: file
+    sha256: 69f9fb1a2e51d464366497c51f68aaaf80a23774f96daa5c492dc1db1aa8c578
+    files:
+      - {path: PHS/simd2006_02042020.csv, sha256: 69f9fb1a2e51d464366497c51f68aaaf80a23774f96daa5c492dc1db1aa8c578}
+  - key: phs_2009v2
+    publisher: phs
+    url: https://www.opendata.nhs.scot/dataset/78d41fa9-1a62-4f7b-9edb-3e8522a93378/resource/d9738550-4cf9-428e-8453-c2aad463ff68/download/simd2009v2_23062019.csv
+    format: file
+    sha256: effa76a989820f28a470cd3af4fc1268b7ac5313bb4d394c06e913e0b782bbb9
+    files:
+      - {path: PHS/simd2009v2_23062019.csv, sha256: effa76a989820f28a470cd3af4fc1268b7ac5313bb4d394c06e913e0b782bbb9}
+  - key: phs_2012
+    publisher: phs
+    url: https://www.opendata.nhs.scot/dataset/78d41fa9-1a62-4f7b-9edb-3e8522a93378/resource/dd4b13d3-066b-4714-bb1f-730e1a1ee692/download/simd2012_02042020.csv
+    format: file
+    sha256: c4c12b6346ee9fa14383e41eaccf6d479df0c745f3fafc753b035d3600a897d3
+    files:
+      - {path: PHS/simd2012_02042020.csv, sha256: c4c12b6346ee9fa14383e41eaccf6d479df0c745f3fafc753b035d3600a897d3}
+  - key: phs_2016
+    publisher: phs
+    url: https://www.opendata.nhs.scot/dataset/78d41fa9-1a62-4f7b-9edb-3e8522a93378/resource/cadf715a-c365-4dcf-a6e0-acd7e3af21ec/download/simd2016_18052020.csv
+    format: file
+    sha256: 3a98af3b181d8273eca18587663175ca28d18f338d3003be620798001aeca3a6
+    files:
+      - {path: PHS/simd2016_18052020.csv, sha256: 3a98af3b181d8273eca18587663175ca28d18f338d3003be620798001aeca3a6}
+  - key: phs_2020v2
+    publisher: phs
+    url: https://www.opendata.nhs.scot/dataset/78d41fa9-1a62-4f7b-9edb-3e8522a93378/resource/acade396-8430-4b34-895a-b3e757fa346e/download/simd2020v2_22062020.csv
+    format: file
+    sha256: 686bc9aa38b61891f701e10d8a3970397c7be7f3819798dc43584ae42cb3a391
+    files:
+      - {path: PHS/simd2020v2_22062020.csv, sha256: 686bc9aa38b61891f701e10d8a3970397c7be7f3819798dc43584ae42cb3a391}
+
+  - key: nrs_spd_2026_2
+    publisher: nrs
+    url: https://www.nrscotland.gov.uk/media/hy3j3g1s/spd_postcodeindex_cut_26_2_csv.zip
+    format: zip
+    sha256: 4e93069ddb9c39c211cafdc56eeb16c4b0ed4872c9a95c20e23ec73c3b499057
+    files:
+      - {member: SmallUser.csv, path: SPD/spd_postcodeindex_cut_26_2_csv/SmallUser.csv, sha256: fc82f1091ac160b4d7c4a8f923466cbb1c8292f4fe30d15c7252446a86f14d6b}
+      - {member: LargeUser.csv, path: SPD/spd_postcodeindex_cut_26_2_csv/LargeUser.csv, sha256: dcb060cbce01b3a6a133aad61d0453d250bc2d8fa0890b5f6dab3e82553a0f87}
+      - {member: spd-indexdatadictionary-2026-2.docx, path: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx, sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a}
+      - {member: spd-newsbulletin-2026-2.docx, path: SPD/spd_postcodeindex_cut_26_2_csv/spd-newsbulletin-2026-2.docx, sha256: 5e050523a4319267e81c6ef7a71961f2e2f988953e6ff9923c8590c94c8dfac5}
+
+  - key: sg_simd_2004
+    publisher: maps_gov_scot
+    url: https://maps.gov.scot/ATOM/shapefiles/SG_SIMD_2004.zip
+    format: zip
+    sha256: 3bc179d9eebac7873544c8d2fc3f6892aab3fa16fcccb317449aaec998de2603
+    files:
+      - {member: SG_SIMD_2004.dbf, path: data.gov.uk/SG_SIMD_2004/SG_SIMD_2004.dbf, sha256: 8a17b1aa0df6eccc935485cf480178d0177fd1405522592c91e6793d0b436b8c}
+  - key: sg_simd_2006
+    publisher: maps_gov_scot
+    url: https://maps.gov.scot/ATOM/shapefiles/SG_SIMD_2006.zip
+    format: zip
+    sha256: fe7c662ee48cfe282b4c8ef9b96713ad76b1a0e448f0515d5243fb67e1c9a2c8
+    files:
+      - {member: SG_SIMD_2006.dbf, path: data.gov.uk/SG_SIMD_2006/SG_SIMD_2006.dbf, sha256: 2730fae78d66a23658bf2b5a81604d3256c0bc633c6cec7123230f49081c0f58}
+  - key: sg_simd_2009
+    publisher: maps_gov_scot
+    url: https://maps.gov.scot/ATOM/shapefiles/SG_SIMD_2009.zip
+    format: zip
+    sha256: 438a14225afcfd1d36fc8a4ea45b14d81e74f1257054028ab1c7da6f65b9014a
+    files:
+      - {member: SG_SIMD_2009.dbf, path: data.gov.uk/SG_SIMD_2009/SG_SIMD_2009.dbf, sha256: 6dde46887ba7fe3d8eea9147d022c039018ba12627549309d20704b1c15f6860}
+  - key: sg_simd_2012
+    publisher: maps_gov_scot
+    url: https://maps.gov.scot/ATOM/shapefiles/SG_SIMD_2012.zip
+    format: zip
+    sha256: c91aea4cbf39d116ba1bc219fe88034a4f351ac93930f4f9229c1ccf1a17733d
+    files:
+      - {member: SG_SIMD_2012.dbf, path: data.gov.uk/SG_SIMD_2012/SG_SIMD_2012.dbf, sha256: 4dc58c30c7d023e4e39739e9d2e56fa9f4153a41ef4eeacbe9ba95d60e319095}
+  - key: sg_simd_2016
+    publisher: maps_gov_scot
+    url: https://maps.gov.scot/ATOM/shapefiles/SG_SIMD_2016.zip
+    format: zip
+    sha256: bffbec7c3f45da16d3dc5c34dcaef64435083167330fac4a5c3610bcefa8b5d0
+    files:
+      - {member: SG_SIMD_2016.dbf, path: data.gov.uk/SG_SIMD_2016/SG_SIMD_2016.dbf, sha256: 56de8f233702c23b8d13b203d406ba204bbd72fc82b3ec5e8e6676ad819fa137}
+  - key: sg_simd_2020
+    publisher: maps_gov_scot
+    url: https://maps.gov.scot/ATOM/shapefiles/SG_SIMD_2020.zip
+    format: zip
+    sha256: 33f166949c0e8a54fe2601d63cd760fdd41b1f2aee54e7f3d411c82b7c38b9e0
+    files:
+      - {member: SG_SIMD_2020.dbf, path: data.gov.uk/SG_SIMD_2020/SG_SIMD_2020.dbf, sha256: 3eb0f27aa4aa2e2eaf94a06201e9dfb4597cd3ab5dffb375ee4917f9b37eee5a}
+      - {member: "SIMD2020v2 - GIS files - glossary.xlsx", path: "data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx", sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c, role: documentation}
+
+# PHS population-weighted SIMD, one CSV per edition, keyed by data zone.
+# invert_bands: the 2004 and 2006 files publish bands with 1 = least deprived.
+phs_editions:
+  - {key: '2004',   file: PHS/simd2004_02042020.csv,   prefix: SIMD2004,   dz_vintage: 2001, rows: 6505, invert_bands: true}
+  - {key: '2006',   file: PHS/simd2006_02042020.csv,   prefix: SIMD2006,   dz_vintage: 2001, rows: 6505, invert_bands: true}
+  - {key: '2009v2', file: PHS/simd2009v2_23062019.csv, prefix: SIMD2009V2, dz_vintage: 2001, rows: 6505, invert_bands: false}
+  - {key: '2012',   file: PHS/simd2012_02042020.csv,   prefix: SIMD2012,   dz_vintage: 2001, rows: 6505, invert_bands: false}
+  - {key: '2016',   file: PHS/simd2016_18052020.csv,   prefix: SIMD2016,   dz_vintage: 2011, rows: 6976, invert_bands: false}
+  - {key: '2020v2', file: PHS/simd2020v2_22062020.csv, prefix: SIMD2020V2, dz_vintage: 2011, rows: 6976, invert_bands: false}
+
+# Scottish Government unweighted bands and population, one shapefile attribute table per
+# edition. Column names differ between layers, so each edition declares its own map.
+# The SIMD2009 layer holds the 2009v2 ranks; the SIMD2020 layer holds 2020v2.
+govscot_editions:
+  - {key: '2004',   file: data.gov.uk/SG_SIMD_2004/SG_SIMD_2004.dbf, dz_vintage: 2001, rows: 6505,
+     columns: {datazone: datazone, rank: rank,   quintile: quintile,   decile: decile,   vigintile: vigintile,  population: totpop2001}}
+  - {key: '2006',   file: data.gov.uk/SG_SIMD_2006/SG_SIMD_2006.dbf, dz_vintage: 2001, rows: 6505,
+     columns: {datazone: datazone, rank: rank,   quintile: quintile,   decile: decile,   vigintile: vigintile,  population: sape2004}}
+  - {key: '2009v2', file: data.gov.uk/SG_SIMD_2009/SG_SIMD_2009.dbf, dz_vintage: 2001, rows: 6505,
+     columns: {datazone: datazone, rank: rank,   quintile: quintile,   decile: decile,   vigintile: vigintile,  population: sape2007}}
+  - {key: '2012',   file: data.gov.uk/SG_SIMD_2012/SG_SIMD_2012.dbf, dz_vintage: 2001, rows: 6505,
+     columns: {datazone: datazone, rank: rank,   quintile: quintile,   decile: decile,   vigintile: vigintile,  population: sape2010}}
+  - {key: '2016',   file: data.gov.uk/SG_SIMD_2016/SG_SIMD_2016.dbf, dz_vintage: 2011, rows: 6976,
+     columns: {datazone: datazone, rank: rank,   quintile: quintile,   decile: decile,   vigintile: vigintile,  population: sape2014}}
+  - {key: '2020v2', file: data.gov.uk/SG_SIMD_2020/SG_SIMD_2020.dbf, dz_vintage: 2011, rows: 6976,
+     columns: {datazone: datazone, rank: rankv2, quintile: quintilev2, decile: decilev2, vigintile: vigintilv2, population: sape2017}}
+
+# Scottish Postcode Directory, cut edition. Counts are the published bulletin values.
+spd_files:
+  - {role: small_user, file: SPD/spd_postcodeindex_cut_26_2_csv/SmallUser.csv, columns: 64, rows: 196769, live: 157282}
+  - {role: large_user, file: SPD/spd_postcodeindex_cut_26_2_csv/LargeUser.csv, columns: 56, rows: 51004,  live: 4767}
+spd_published_totals: {all: 247773, live: 162049, deleted: 85724}

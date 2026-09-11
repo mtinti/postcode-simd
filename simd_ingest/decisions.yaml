@@ -1,0 +1,172 @@
+# Decision log. One entry per judgement that shapes the data. Loaded as an upstream of
+# every table, so a changed decision is a changed input. Status is one of
+# implemented, agreed_pending, deferred.
+version: 1
+decisions:
+  - id: bands-are-looked-up
+    date: 2026-09-10
+    status: implemented
+    decision: Every band in the output is copied from a published file. No band is calculated from a rank.
+    reason: The publisher's value is the auditable value. The two vintage-specific formulae are kept only as validation tools.
+    evidence: SIMD_Plan_Gap_Closure.md section 2; halfup rule for 2001 zones and ceil rule for 2011 zones each reproduce the published bands with zero mismatches.
+
+  - id: invert-2004-2006-phs-bands
+    date: 2026-09-09
+    status: implemented
+    decision: The eight PHS population-weighted bands for SIMD 2004 and 2006 are re-derived as 11 - decile and 6 - quintile so that 1 means most deprived in every edition. Ranks and the Most15pc and Least15pc flags are never inverted.
+    reason: PHS publishes those two editions with 1 = least deprived, the reverse of every later edition. The PHS deprivation guidance requires the reversal to be handled; handling it once upstream prevents every analyst handling it separately.
+    evidence: PHS 2004 rank 1 has published country decile 10 and official government decile 1. Reversal is exactly invertible; raw files are pinned.
+
+  - id: rank-direction-confirmed
+    date: 2026-09-10
+    status: implemented
+    decision: Rank 1 is the most deprived data zone in all six editions.
+    reason: The PHS rank is identical to the official Scottish Government rank on every zone in every edition, which contradicts the PHS documentation sentence about 2004 and 2006.
+    evidence: SIMD_Plan_Gap_Closure.md section 4.
+
+  - id: government-bands-from-shapefile-tables
+    date: 2026-09-10
+    status: implemented
+    decision: The Scottish Government unweighted quintile, decile and vigintile come from the six maps.gov.scot shapefile attribute tables, joined on data zone, one route for every edition.
+    reason: The tables carry every value the four earlier government pins supplied, plus population for every edition, from one publisher with one URL pattern.
+    evidence: Bands identical to the statistics.gov.scot extracts on every zone for 2004 to 2016; 2020 bands identical to the rank-to-band workbook; 2020 population identical to the ranks workbook. The SIMD2009 layer's rank equals the PHS 2009v2 rank on all 6,505 zones.
+    retired_pins:
+      - {file: gov.scot/92eb1022-dd78-48a7-8ea6-08283b6c9adf.csv, sha256: 99dd8f8adaf5a35bb933f98bbe27867347413fdc0e60c74c8302700c2d17bc30}
+      - {file: gov.scot/36465db2-8378-40e9-9bf8-fd016b0ee821.csv, sha256: 760636a8ff03b85bb8c4d6d589f43b52a8e15866acaab9123c17cd9486f44151}
+      - {file: "gov.scot/SIMD+rank+to+quintile,+decile,+vigintile.xlsx", sha256: a1adaff2e2056bfd9d638d9850cdd296d972370bd704e20c73659553aaf18e24}
+      - {file: gov.scot/SIMD+2020v2+-+ranks.xlsx, sha256: 9904aa957a8177853564415e848e08553c17491d1578ff631a5074cacc9fb296}
+
+  - id: percentile-omitted
+    date: 2026-09-10
+    status: implemented
+    decision: No percentile column in any edition.
+    reason: No source publishes a stable percentile for 2001 data zones. The shapefile tables carry one, but it follows neither band rule and differs between editions. Filling two editions and leaving four null would invite misuse.
+    evidence: SIMD_Source_API_Options.md.
+
+  - id: record-key
+    date: 2026-09-10
+    status: implemented
+    decision: The primary key is normalised postcode plus introduction date. Deletion date, user type and release are attributes.
+    reason: Unique across all 247,773 records in SPD 2026/2. Postcode alone repeats up to seven times.
+    evidence: SIMD_Plan_Gap_Closure.md section 6. Validated on every release; never silently deduplicated.
+
+  - id: postcode-normalisation
+    date: 2026-09-09
+    status: implemented
+    decision: pc_norm is the postcode uppercased with ASCII spaces removed, keeping any NRS split suffix. pc_base removes a validated A, B or C suffix only from a small-user record flagged as split. A large-user split flag never shortens its own postcode.
+    reason: The suffix attaches to bases of five to seven characters, so length alone cannot identify it. A large-user split flag describes its linked small-user postcode.
+    evidence: 458 current small-user split records, all ending in A, B or C; 226 ordinary postcodes with more than one current candidate.
+
+  - id: half-open-intervals
+    date: 2026-09-10
+    status: implemented
+    decision: A record is valid for introduced_on <= date < deleted_on, with null deletion open-ended. Same-day records are retained but never match an as-of query.
+    reason: Eight small-user records reuse 18 February 2026 as both a deletion and a reintroduction date, so a closed-interval rule would report overlaps that are not there.
+    evidence: SPD 2026/2 news bulletin, retrospective split correction for AB31 5AS, AB54 7NS, FK14 7JX and KA6 6EY.
+
+  - id: link-sentinels
+    date: 2026-09-10
+    status: implemented
+    decision: NO LINKP and NO LINK in the large-user linked-postcode field are kept as text and both classified as no link. The table is never joined through that field.
+    reason: NO LINKP is documented for PO boxes. NO LINK is undocumented and appears on six deleted records.
+    evidence: 31,725 NO LINKP, 6 NO LINK, 19,273 real links, all resolving.
+
+  - id: spd-cut-edition
+    date: 2026-09-10
+    status: implemented
+    decision: The cut edition of the postcode index is accepted. Three Royal Mail count fields present in the full edition are absent.
+    reason: The cut edition is the freely available one and carries every geography field the build needs.
+    evidence: spd-indexdatadictionary-2026-2.docx.
+
+  - id: large-user-geography-attached
+    date: 2026-09-10
+    status: implemented
+    decision: SIMD is attached to every large-user record, including PO boxes, because the directory assigns them a data zone. Consumers wanting PHS practice, which attaches no deprivation to PO boxes, filter on spd_user_type and the link sentinels.
+    reason: Source fidelity. The build attaches what the directory says; it does not decide which postcodes deserve a value.
+    evidence: PHS deprivation guidance v3.5, Appendix A.
+
+  - id: band-column-names-state-weighting
+    date: 2026-09-10
+    status: implemented
+    decision: PHS population-weighted bands are named simd{ed}_pw_*; Scottish Government unweighted bands are simd{ed}_uw_*.
+    reason: The PHS guidance says the two must never be mixed in one analysis and must always be identified. A column name is the label an analyst cannot lose.
+    evidence: PHS deprivation guidance v3.5, section 3.1.1 and checklist.
+
+  - id: phs-geography-columns
+    date: 2026-09-10
+    status: implemented
+    decision: Six columns carry the health board, HSCP and council area code PHS assigned to each data zone, one set per data-zone vintage.
+    reason: The within-geography bands are only valid against the geography PHS computed them in, which differs from the directory's 2019 code on a few records.
+    evidence: 8 records differ for 2011 zones; 35 (HB) and 86 (HSCP, CA) for 2001 zones. PHS codes are identical across editions of the same vintage.
+
+  - id: reconstruction-is-diagnostic
+    date: 2026-09-10
+    status: implemented
+    decision: Reconstructing the PHS population-weighted bands from ranks and population is a diagnostic that never blocks a build and never replaces a published value.
+    reason: The ingestion guarantee is source fidelity, not reproduction of the publisher's method.
+    evidence: The midpoint rule reproduces every Scotland-level decile and quintile in all six editions; three 15% flag cells and two Shetland sub-geography zones differ. Expected exceptions are pinned in acceptance_baselines.yaml.
+
+  - id: glossary-is-documentation
+    date: 2026-09-10
+    status: implemented
+    decision: The 2020 shapefile glossary and the two NRS guides are pinned as documentation. No table reads from them.
+    reason: They are the official definitions of the field names the column maps rely on, and they arrive inside archives that are downloaded anyway.
+
+  - id: single-combined-output
+    date: 2026-09-10
+    status: implemented
+    decision: One Parquet file holds both user types; a future release replaces it entirely.
+    reason: One import path for consumers. Records absent from a new release must not linger.
+
+  - id: patient-linkage-deferred
+    date: 2026-09-10
+    status: deferred
+    decision: The downstream resolver for ambiguous split postcodes, with its unique, split_consensus, split_conflict, incomplete and not_found statuses, is recorded in the plan and not implemented here.
+    reason: It belongs to the consumer of this table, not to its ingestion.
+
+  - id: asset-naming
+    date: 2026-09-10
+    status: implemented
+    decision: The two reference tables are named phs_bands and govscot_bands. The joined output is postcode_simd and the directory table is postcode_index.
+    reason: The pair of names states the one thing an analyst must not confuse, which publisher's weighting a band carries. Grain-based names distinguished nothing, since both tables are keyed by edition and data zone.
+    evidence: Step 2 review, 10 September 2026. Renamed before the first release so the instance record starts with the final keys.
+
+  - id: instance-location
+    date: 2026-09-10
+    status: agreed_pending
+    decision: The Dagster instance, which is the provenance record, lives at .dagster inside the project and is backed up together with results/. Intermediate tables are kept outside it under data/work.
+    reason: A record in a temporary path is not a record. Whether HIC wants it on a shared, backed-up path instead is an operational decision still to be taken; it is one environment variable either way.
+
+  - id: lookup-statuses
+    date: 2026-09-11
+    status: implemented
+    decision: simd_ingest.lookup resolves a postcode to one of five statuses, unique, split_consensus, split_conflict, deleted or not_found. Several valid records agree on the requested measure gives consensus with the value; disagreement gives conflict with a null value. A full NRS key selects its own split part. Never choose A, average or vote.
+    reason: The policy already agreed in the plan, made executable. Ambiguity is reported, not hidden.
+    evidence: On the 226 current ordinary postcodes with more than one record, rank gives 203 conflicts and 23 consensus; docs/EXAMPLES.md.
+
+  - id: recommended-edition-is-explicit
+    date: 2026-09-11
+    status: implemented
+    decision: lookup.recommended_edition implements the PHS guidance's table 4, years of health data to edition. Nothing calls it implicitly; the analyst passes an edition to every lookup.
+    reason: Which edition to use is the analyst's decision under the guidance. The helper makes the recommendation easy to follow and impossible to follow by accident.
+
+  - id: docker-image
+    date: 2026-09-11
+    status: implemented
+    decision: The pipeline ships as a Docker image built on python:3.12-slim pinned by digest, with no data, results or instance baked in; those are mounted from the host.
+    reason: A clean-machine reproduction on demand, and one artefact HIC can run without assembling a Python environment. Where the image is published is still to be decided.
+
+  - id: linkage-by-era
+    date: 2026-09-11
+    status: implemented
+    decision: Linking events to SIMD by era follows the guidance's table 4, each event taking the edition recommended for its year and the record valid on its date. Events before 1996 get status no_edition with every SIMD column null, including the matched key. The Python and SQL implementations are tested to agree row for row on a synthetic cohort.
+    reason: "One rule, two implementations that cannot drift. Withholding the key on no_edition keeps the output columns consistent: no edition, no answer."
+    evidence: tests/test_lookup.py ByEraPythonAndSqlAgree; docs/sql/link_by_era.sql; docs/LINKAGE_BY_ERA.md.
+
+  - id: lookups-exclude-po-boxes
+    date: 2026-09-11
+    status: implemented
+    decision: "Every lookup, in Python and in the SQL, excludes large-user records whose link field is NO LINKP or NO LINK by default. Both offer a switch to include them, and a second switch to exclude all large-user records. The table itself keeps every record with the SIMD the directory assigns."
+    reason: "The PHS guidance, Appendix A, attaches no deprivation to PO boxes because their location is a sorting office. An analyst reading the guidance expects the default to match it; the table stays source-faithful because the exclusion is applied at lookup time, not at build time."
+    evidence: "1,518 current PO box records among 4,767 current large-user records."
+

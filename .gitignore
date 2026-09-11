@@ -1,0 +1,16 @@
+# Pinned downloads and the workflow cache: reproducible from sources.yaml, never committed.
+manual_data/
+data/
+
+# Build output and the Dagster instance: the record lives beside the data, not in git.
+results/
+.dagster/*
+!.dagster/dagster.yaml
+
+# Output of the retired prototype, if still present locally.
+out/
+
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store

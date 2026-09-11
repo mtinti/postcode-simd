@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "simd-ingest"
+version = "1.1.0"
+description = "Every edition of the Scottish Index of Multiple Deprivation attached to every record of the Scottish Postcode Directory, built from hash-pinned public sources with the lineage recorded."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Michele Tinti" }]
+# Pinned to the versions the release was verified with; this is an application, not a library.
+dependencies = [
+    "pandas==3.0.3",
+    "numpy==2.4.6",
+    "pyarrow==24.0.0",
+    "PyYAML==6.0.3",
+    "dbfread==2.0.7",
+    "requests==2.32.4",
+    "dagster==1.13.21",
+    "dagster-webserver==1.13.21",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==9.1.1", "duckdb==1.5.5"]
+
+[project.scripts]
+simd-ingest = "simd_ingest.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["simd_ingest*"]
+
+[tool.setuptools.package-data]
+simd_ingest = ["*.yaml"]

@@ -1,0 +1,2 @@
+[console_scripts]
+simd-ingest = simd_ingest.cli:main

@@ -1,0 +1,419 @@
+# Independently reviewed on 2026-09-10 against the hashes in sources.yaml.
+# Fixed expectations: never regenerate these as part of an acceptance run.
+version: 1
+source_files: 14
+editions: ['2004', '2006', '2009v2', '2012', '2016', '2020v2']
+simd_rows: 39972
+fingerprint_encoding: sorted_DataZone_pipe_canonical_PHS_pipe_published_government_LF_no_trailing_LF_UTF8_SHA256
+divergence:
+  '2004':
+    Quintile: {count: 71, max_difference: 1, sha256: 72e0e7dd54809c3237a185c9cf45291737c890dcb3e5ed7bcdf93eec86a43f26}
+    Decile: {count: 173, max_difference: 1, sha256: bae0a5bcaa7872b5f63aa86123369b61be2607317756b7e495cb7bde184dd71e}
+  '2006':
+    Quintile: {count: 131, max_difference: 1, sha256: 89b76f1b9adc202d74ef7996e302b62b73add972dc9f5bfea99ee202442f05d1}
+    Decile: {count: 276, max_difference: 1, sha256: 8113af887dc16b5e9955ba5349535d6744ee613bf367c536ad0c56c892ff94d9}
+  '2009v2':
+    Quintile: {count: 231, max_difference: 1, sha256: 94dbdfd75ea0189d45b0df18d6e591dd91b49cc55189905fd925e0d5aa310fe1}
+    Decile: {count: 468, max_difference: 1, sha256: ee002c41013c0578f99b2783685c4edceb7bad0bc3219ad94e3c94c9d6908e9a}
+  '2012':
+    Quintile: {count: 292, max_difference: 1, sha256: d22f47be2fd493ff476599c0abab931a6657a41100ad2833811fca9ca6902f21}
+    Decile: {count: 589, max_difference: 1, sha256: 921e7a6dcf68858659ae94a50831e35a11855e7da1e9e16a115fb171d07fb3ec}
+  '2016':
+    Quintile: {count: 190, max_difference: 1, sha256: 65f8d692297c47f9ceff53227eda3a3a7c7bc32a11b592195ea1a64d89f9ea51}
+    Decile: {count: 395, max_difference: 1, sha256: c59dab4d589541870da045623b4f48624b10772eb0dc3ede86723684709920fd}
+  '2020v2':
+    Quintile: {count: 231, max_difference: 1, sha256: 2b3f1249e2ff590e6a9649ca8bf17910e4c92578b5f660eeda8a6541be878b6c}
+    Decile: {count: 481, max_difference: 1, sha256: b807713f26b511a54fea3fb2f0cb2332e8996f2540163e03f55aba4a1041e750}
+population:
+  total: 5424800
+  zero_zones: [S01010206, S01010226, S01010227]
+  flag_zones: {Most15pc: 1075, Least15pc: 1010}
+  # Values apply independently to each of HB, HSCP and CA: two zones, 12 cells.
+  subgeography_exceptions:
+    Decile:
+      S01012409: {published: 2, calculated: 3}
+      S01012387: {published: 4, calculated: 5}
+    Quintile:
+      S01012409: {published: 1, calculated: 2}
+      S01012387: {published: 2, calculated: 3}
+  exception_cause: unresolved
+postcode:
+  bridge_rows: 1486638
+  repeated_keys: {small_user: 7006, large_user: 4562}
+  max_records_per_key: 7
+  split_records: {small_user: 1263, large_user: 28}
+  normalised_length_counts:
+    small_user: {5: 3130, 6: 112782, 7: 80263, 8: 594}
+    large_user: {5: 4343, 6: 30151, 7: 16510}
+  same_day_records: {small_user: 27, large_user: 1}
+  touching_pairs: 818
+  touching_transitions: {small_user:small_user: 479, large_user:large_user: 12, small_user:large_user: 72, large_user:small_user: 255}
+  february_correction_date: '2026-02-18'
+  february_correction_keys: [AB315ASA, AB315ASB, AB547NSA, AB547NSB, FK147JXA, FK147JXB, KA66EYA, KA66EYB]
+  live_digitised_small_user: 156125
+  live_never_digitised_small_user: 1157
+  link_sentinels: {NO LINKP: 31725, NO LINK: 6}
+  real_links: 19273
+  unresolved_real_links: 0
+  live_base_keys: 161822
+  base_keys_with_multiple_candidates: 226
+  multiple_candidate_group_sizes: {2: 225, 3: 1}
+  base_keys_with_differing_2011_zones: 203
+  base_keys_with_differing_2020v2_ranks: 203
+  current_example:
+    base: AB123GQ
+    candidates: {AB123GQA: 5484, AB123GQB: 5522}
+schemas:
+  phs_geography_by_vintage:
+    2001: [DataZone, IntZone, CA, HSCP, HB]
+    2011: [DataZone, IntZone, HB, HSCP, CA]
+  historical: [GeographyCode, GeographyName, GeographyType, DateCode, Measurement, Units, Value, Simd Domain]
+  ranks_2020v2: [Data_Zone, Intermediate_Zone, Council_area, Total_population, Working_age_population, SIMD2020v2_Rank, SIMD2020v2_Income_Domain_Rank, SIMD2020_Employment_Domain_Rank, SIMD2020_Health_Domain_Rank, SIMD2020_Education_Domain_Rank, SIMD2020_Access_Domain_Rank, SIMD2020_Crime_Domain_Rank, SIMD2020_Housing_Domain_Rank]
+  small_user:
+    - Postcode
+    - PostcodeDistrict
+    - PostcodeSector
+    - DateOfIntroduction
+    - DateOfDeletion
+    - GridReferenceEasting
+    - GridReferenceNorthing
+    - Latitude
+    - Longitude
+    - SplitIndicator
+    - CouncilArea2019Code
+    - UKParliamentaryConstituency2024Code
+    - ScottishParliamentaryRegion2026Code
+    - ScottishParliamentaryConstituency2026Code
+    - ElectoralWard2022Code
+    - HealthBoardArea2019Code
+    - HealthBoardArea2006Code
+    - HealthBoardArea1995Code
+    - IntegrationAuthority2019Code
+    - OutputArea2022Code
+    - OutputArea2011Code
+    - OutputArea2001Code
+    - OutputArea1991Code
+    - DataZone2022Code
+    - DataZone2011Code
+    - DataZone2001Code
+    - IntermediateZone2022Code
+    - IntermediateZone2011Code
+    - IntermediateZone2001Code
+    - CensusHouseholdCount2022
+    - CensusPopulationCount2022
+    - CensusHouseholdCount2011
+    - CensusPopulationCount2011
+    - CensusHouseholdCount2001
+    - CensusPopulationCount2001
+    - CensusHouseholdCount1991
+    - CensusPopulationCount1991
+    - ScottishIndexOfMultipleDeprivation2020Rank
+    - LAU2025Level1Code
+    - ITL2025Level2Code
+    - ITL2025Level3Code
+    - Locality2020Code
+    - Locality2022Code
+    - Locality2001Code
+    - Locality1991Code
+    - Settlement2020Code
+    - Settlement2022Code
+    - Settlement2001Code
+    - CivilParish1930Code
+    - EnterpriseRegion2008Code
+    - IslandCode
+    - LocalGovernmentDistrict1995Code
+    - LocalGovernmentDistrict1991Code
+    - NationalPark2010Code
+    - RegistrationDistrict2007Code
+    - ROACommunityPlanningPartnership2006Code
+    - ROALocal2006Code
+    - StrategicDevelopmentPlanningArea2013Code
+    - TravelToWorkArea2011Code
+    - UrbanRural6Fold2022Code
+    - UrbanRural8Fold2022Code
+    - GridLinkIndicator
+    - GridLinkPositionalAccuracy
+    - NeverDigitised
+  large_user:
+    - Postcode
+    - PostcodeDistrict
+    - PostcodeSector
+    - DateOfIntroduction
+    - DateOfDeletion
+    - LinkedSmallUserPostcode
+    - GridReferenceEasting
+    - GridReferenceNorthing
+    - Latitude
+    - Longitude
+    - SplitIndicator
+    - CouncilArea2019Code
+    - UKParliamentaryConstituency2024Code
+    - ScottishParliamentaryRegion2026Code
+    - ScottishParliamentaryConstituency2026Code
+    - ElectoralWard2022Code
+    - HealthBoardArea2019Code
+    - HealthBoardArea2006Code
+    - HealthBoardArea1995Code
+    - IntegrationAuthority2019Code
+    - OutputArea2022Code
+    - OutputArea2011Code
+    - OutputArea2001Code
+    - OutputArea1991Code
+    - DataZone2022Code
+    - DataZone2011Code
+    - DataZone2001Code
+    - IntermediateZone2022Code
+    - IntermediateZone2011Code
+    - IntermediateZone2001Code
+    - ScottishIndexOfMultipleDeprivation2020Rank
+    - LAU2025Level1Code
+    - ITL2025Level2Code
+    - ITL2025Level3Code
+    - Locality2020Code
+    - Locality2022Code
+    - Locality2001Code
+    - Locality1991Code
+    - Settlement2020Code
+    - Settlement2022Code
+    - Settlement2001Code
+    - CivilParish1930Code
+    - EnterpriseRegion2008Code
+    - IslandCode
+    - LocalGovernmentDistrict1995Code
+    - LocalGovernmentDistrict1991Code
+    - NationalPark2010Code
+    - RegistrationDistrict2007Code
+    - ROACommunityPlanningPartnership2006Code
+    - ROALocal2006Code
+    - StrategicDevelopmentPlanningArea2013Code
+    - TravelToWorkArea2011Code
+    - UrbanRural6Fold2022Code
+    - UrbanRural8Fold2022Code
+    - GridLinkIndicator
+    - GridLinkPositionalAccuracy
+
+# Expected outcome of the non-blocking population reconstruction diagnostic on these pinned
+# inputs, pinned 2026-09-10 at the step 1 review. Zones where the midpoint rule on the published
+# population does not reproduce the PHS value. Scotland-level deciles and quintiles agree in
+# every edition; these are sub-geography cells and three 15% flag cells.
+reconstruction_expected:
+  '2004':
+    ca_decile:
+      S01001337:
+        published: 10
+        reconstructed: 9
+    hb_decile:
+      S01003934:
+        published: 4
+        reconstructed: 3
+    hscp_decile:
+      S01001337:
+        published: 10
+        reconstructed: 9
+  2009v2:
+    least15pc:
+      S01000858:
+        published: 1
+        reconstructed: 0
+    most15pc:
+      S01003793:
+        published: 0
+        reconstructed: 1
+  '2012':
+    ca_decile:
+      S01000859:
+        published: 9
+        reconstructed: 8
+    ca_quintile:
+      S01000859:
+        published: 5
+        reconstructed: 4
+    most15pc:
+      S01004930:
+        published: 0
+        reconstructed: 1
+  '2016':
+    ca_decile:
+      S01009015:
+        published: 6
+        reconstructed: 7
+      S01009022:
+        published: 5
+        reconstructed: 6
+      S01009023:
+        published: 3
+        reconstructed: 4
+      S01009029:
+        published: 1
+        reconstructed: 2
+      S01011811:
+        published: 7
+        reconstructed: 8
+      S01011812:
+        published: 5
+        reconstructed: 6
+      S01011828:
+        published: 4
+        reconstructed: 5
+      S01011830:
+        published: 3
+        reconstructed: 4
+      S01012389:
+        published: 9
+        reconstructed: 8
+      S01012390:
+        published: 5
+        reconstructed: 4
+      S01012396:
+        published: 6
+        reconstructed: 5
+    ca_quintile:
+      S01009015:
+        published: 3
+        reconstructed: 4
+      S01011828:
+        published: 2
+        reconstructed: 3
+      S01012389:
+        published: 5
+        reconstructed: 4
+      S01012390:
+        published: 3
+        reconstructed: 2
+    hb_decile:
+      S01009015:
+        published: 6
+        reconstructed: 7
+      S01009022:
+        published: 5
+        reconstructed: 6
+      S01009023:
+        published: 3
+        reconstructed: 4
+      S01009029:
+        published: 1
+        reconstructed: 2
+      S01011811:
+        published: 7
+        reconstructed: 8
+      S01011812:
+        published: 5
+        reconstructed: 6
+      S01011828:
+        published: 4
+        reconstructed: 5
+      S01011830:
+        published: 3
+        reconstructed: 4
+      S01012389:
+        published: 9
+        reconstructed: 8
+      S01012390:
+        published: 5
+        reconstructed: 4
+      S01012396:
+        published: 6
+        reconstructed: 5
+    hb_quintile:
+      S01009015:
+        published: 3
+        reconstructed: 4
+      S01011828:
+        published: 2
+        reconstructed: 3
+      S01012389:
+        published: 5
+        reconstructed: 4
+      S01012390:
+        published: 3
+        reconstructed: 2
+    hscp_decile:
+      S01009015:
+        published: 6
+        reconstructed: 7
+      S01009022:
+        published: 5
+        reconstructed: 6
+      S01009023:
+        published: 3
+        reconstructed: 4
+      S01009029:
+        published: 1
+        reconstructed: 2
+      S01011811:
+        published: 7
+        reconstructed: 8
+      S01011812:
+        published: 5
+        reconstructed: 6
+      S01011828:
+        published: 4
+        reconstructed: 5
+      S01011830:
+        published: 3
+        reconstructed: 4
+      S01012389:
+        published: 9
+        reconstructed: 8
+      S01012390:
+        published: 5
+        reconstructed: 4
+      S01012396:
+        published: 6
+        reconstructed: 5
+    hscp_quintile:
+      S01009015:
+        published: 3
+        reconstructed: 4
+      S01011828:
+        published: 2
+        reconstructed: 3
+      S01012389:
+        published: 5
+        reconstructed: 4
+      S01012390:
+        published: 3
+        reconstructed: 2
+  2020v2:
+    ca_decile:
+      S01012387:
+        published: 4
+        reconstructed: 5
+      S01012409:
+        published: 2
+        reconstructed: 3
+    ca_quintile:
+      S01012387:
+        published: 2
+        reconstructed: 3
+      S01012409:
+        published: 1
+        reconstructed: 2
+    hb_decile:
+      S01012387:
+        published: 4
+        reconstructed: 5
+      S01012409:
+        published: 2
+        reconstructed: 3
+    hb_quintile:
+      S01012387:
+        published: 2
+        reconstructed: 3
+      S01012409:
+        published: 1
+        reconstructed: 2
+    hscp_decile:
+      S01012387:
+        published: 4
+        reconstructed: 5
+      S01012409:
+        published: 2
+        reconstructed: 3
+    hscp_quintile:
+      S01012387:
+        published: 2
+        reconstructed: 3
+      S01012409:
+        published: 1
+        reconstructed: 2

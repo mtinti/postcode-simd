@@ -1,0 +1,13 @@
+# Runtime, pinned to the versions the v1.0 build was verified with.
+pandas==3.0.3
+numpy==2.4.6
+pyarrow==24.0.0
+PyYAML==6.0.3
+dbfread==2.0.7
+requests==2.32.4
+dagster==1.13.21
+dagster-webserver==1.13.21
+
+# Development and the query examples in the runbook.
+pytest==9.1.1
+duckdb==1.5.5
