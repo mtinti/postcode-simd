@@ -1,5 +1,12 @@
-"""postcode_index: both directory files with every original column kept as text, plus seven
-derived fields. One row per directory record. The key is pc_norm with introduced_on."""
+"""The postcode index in two visible steps.
+
+read_index_file     one directory file: every original column kept as text, the key and the
+                    dates derived, per-file checks against the published counts
+union_index         the two files stacked in source column order, spd_user_type added as
+                    provenance, and the checks that only make sense across both
+
+The key is pc_norm with introduced_on. One row per directory record.
+"""
 
 from __future__ import annotations
 
@@ -98,36 +105,39 @@ def current_candidates(current: pd.DataFrame, ordinary_postcode: str) -> dict:
     return {"selection_status": status, "candidate_count": len(candidates), "candidates": candidates}
 
 
-def build_postcode_index(registry: Registry, root: Path, report: Report, baselines: dict) -> pd.DataFrame:
+def read_index_file(spec: dict, registry: Registry, root: Path, report: Report, baselines: dict) -> pd.DataFrame:
+    """One directory file with its keys and dates derived and its own counts checked."""
     base = baselines["postcode"]
-    frames = {}
-    for spec in registry.spd_files:
-        role, label = spec["role"], f"spd.{spec['role']}"
-        d = pd.read_csv(Path(root) / spec["file"], dtype=str, keep_default_na=False, encoding="utf-8-sig")
-        report.equal(f"{label}.schema", list(d.columns), baselines["schemas"][role])
-        report.equal(f"{label}.rows", len(d), spec["rows"])
-        report.equal(f"{label}.identical_duplicates", int(d.duplicated().sum()), 0)
-        keys = postcode_keys(d, role)
-        dates = parse_dates(d)
-        d = pd.concat([d, keys, dates], axis=1)
-        d["spd_user_type"] = role
-        d["spd_release"] = registry.spd_release
-        d["is_current"] = d["deleted_on"].isna()
-        report.equal(f"{label}.live", int(d["is_current"].sum()), spec["live"])
-        report.equal(f"{label}.same_day", int(d["introduced_on"].eq(d["deleted_on"]).sum()), base["same_day_records"][role])
-        report.equal(f"{label}.split_records", int(d["SplitIndicator"].eq("Y").sum()), base["split_records"][role])
-        report.equal(f"{label}.key_lengths", d["pc_norm"].str.len().value_counts().to_dict(), base["normalised_length_counts"][role])
-        counts = d["pc_norm"].value_counts()
-        report.equal(f"{label}.repeated_keys", int(counts.gt(1).sum()), base["repeated_keys"][role])
-        report.equal(f"{label}.max_repeats", int(counts.max()), base["max_records_per_key"])
-        if role == "small_user":
-            report.equal(f"{label}.all_splits_suffixed", int(d["pc_norm"].ne(d["pc_base"]).sum()), base["split_records"][role])
-            report.equal(f"{label}.live_never_digitised", int((d["is_current"] & d["NeverDigitised"].eq("Y")).sum()), base["live_never_digitised_small_user"])
-        frames[role] = d
+    role, label = spec["role"], f"spd.{spec['role']}"
+    d = pd.read_csv(Path(root) / spec["file"], dtype=str, keep_default_na=False, encoding="utf-8-sig")
+    report.equal(f"{label}.schema", list(d.columns), baselines["schemas"][role])
+    report.equal(f"{label}.rows", len(d), spec["rows"])
+    report.equal(f"{label}.identical_duplicates", int(d.duplicated().sum()), 0)
+    keys = postcode_keys(d, role)
+    dates = parse_dates(d)
+    d = pd.concat([d, keys, dates], axis=1)
+    d["spd_user_type"] = role
+    d["spd_release"] = registry.spd_release
+    d["is_current"] = d["deleted_on"].isna()
+    report.equal(f"{label}.live", int(d["is_current"].sum()), spec["live"])
+    report.equal(f"{label}.same_day", int(d["introduced_on"].eq(d["deleted_on"]).sum()), base["same_day_records"][role])
+    report.equal(f"{label}.split_records", int(d["SplitIndicator"].eq("Y").sum()), base["split_records"][role])
+    report.equal(f"{label}.key_lengths", d["pc_norm"].str.len().value_counts().to_dict(), base["normalised_length_counts"][role])
+    counts = d["pc_norm"].value_counts()
+    report.equal(f"{label}.repeated_keys", int(counts.gt(1).sum()), base["repeated_keys"][role])
+    report.equal(f"{label}.max_repeats", int(counts.max()), base["max_records_per_key"])
+    if role == "small_user":
+        report.equal(f"{label}.all_splits_suffixed", int(d["pc_norm"].ne(d["pc_base"]).sum()), base["split_records"][role])
+        report.equal(f"{label}.live_never_digitised", int((d["is_current"] & d["NeverDigitised"].eq("Y")).sum()), base["live_never_digitised_small_user"])
+    return d
 
-    # Union of columns in source order: the small-user header, then the large-user-only field.
+
+def union_index(small: pd.DataFrame, large: pd.DataFrame, registry: Registry, report: Report, baselines: dict) -> pd.DataFrame:
+    """Both files as one table: the small-user header first, then the large-user-only column,
+    then the derived fields. spd_user_type on every row says which file it came from."""
+    base = baselines["postcode"]
     original = baselines["schemas"]["small_user"] + [c for c in baselines["schemas"]["large_user"] if c not in baselines["schemas"]["small_user"]]
-    d = pd.concat([frames["small_user"], frames["large_user"]], ignore_index=True)[original + DERIVED]
+    d = pd.concat([small, large], ignore_index=True)[original + DERIVED]
     d = d.sort_values(["pc_norm", "introduced_on"], kind="mergesort").reset_index(drop=True)
 
     report.equal("spd.columns", len(d.columns), len(original) + len(DERIVED))
@@ -143,7 +153,7 @@ def build_postcode_index(registry: Registry, root: Path, report: Report, baselin
     report.equal("spd.strict_overlaps", intervals["strict_overlaps"], 0)
     february = pairs[pairs["deleted_on_a"].eq(pd.Timestamp(base["february_correction_date"])) & pairs["spd_user_type_a"].eq("small_user") & pairs["spd_user_type_b"].eq("small_user")]
     report.equal("spd.february_corrections", sorted(february["pc_norm"]), base["february_correction_keys"])
-    links = classify_links(frames["large_user"]["LinkedSmallUserPostcode"], frames["small_user"]["pc_norm"])
+    links = classify_links(large["LinkedSmallUserPostcode"], small["pc_norm"])
     report.equal("spd.link_categories", links.value_counts().to_dict(), {**base["link_sentinels"], "linked": base["real_links"]})
     report.equal("spd.unresolved_real_links", int(links.eq("unresolved").sum()), base["unresolved_real_links"])
     current = d[d["is_current"]]
@@ -160,3 +170,8 @@ def build_postcode_index(registry: Registry, root: Path, report: Report, baselin
     for vintage in (2001, 2011, 2022):
         report.equal(f"spd.dz{vintage}.blanks", int(d[f"DataZone{vintage}Code"].eq("").sum()), 0)
     return d
+
+
+def build_postcode_index(registry: Registry, root: Path, report: Report, baselines: dict) -> pd.DataFrame:
+    frames = {spec["role"]: read_index_file(spec, registry, root, report, baselines) for spec in registry.spd_files}
+    return union_index(frames["small_user"], frames["large_user"], registry, report, baselines)

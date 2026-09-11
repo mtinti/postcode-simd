@@ -178,3 +178,11 @@ decisions:
     decision: "When several split parts of a postcode are valid, every lookup resolves to the A part by default and reports status a_part. A split=\"report\" rule returns split_consensus or split_conflict instead. The result's label records which rule was used. Python and SQL are tested to agree under both."
     reason: "NRS builds the Scottish Statistics Postcode Lookup by converting split postcodes to the A part, because A is the part with more addresses, so every official statistic uses that convention. Matching it by default means an analyst reconciling against official figures gets the same answer; the report rule keeps the ambiguity visible for anyone who wants it. Supersedes the never-choose-A rule of lookup-statuses."
     evidence: "NRS Scottish Statistics Postcode Lookup information note; SPD 2026/2 bulletin on suffix ordering; docs/NRS_GUIDANCE_CHECK.md. On the synthetic cohort, 56 events resolve as a_part."
+
+  - id: ladder-pipeline
+    date: 2026-09-11
+    status: implemented
+    decision: "The build is a ladder of small visible steps rather than a few large ones. Each directory file, each PHS file as published, each canonicalised PHS edition and each government edition is its own table with its own checks. The join is one rung per edition, a single merge on one data zone column, checked for unchanged row count and no empty column, with a failed rung stopping the ladder there. The CLI runs the same steps in the same order."
+    reason: "So that a reviewer can validate one step at a time and open any intermediate. The order of the rungs does not affect the result, since each join uses its own key; it is fixed for readability. The output is byte-identical to the previous structure, verified on the branch before merging."
+    evidence: "CLI and Dagster ladder builds on branch ladder both produced sha256 c685cd137652ec37, the same file as main under the same decision log. 51 assets, 63 checks, intermediates about 260 MB of Parquet per run."
+

@@ -11,7 +11,7 @@ SIMD edition from 2004 to 2020v2. The lookups that come with it follow the PHS d
 guidance for analysts, including the rule for choosing an edition by the year of the data and
 the handling of split postcodes.
 
-Status: v1.1.1, built from Scottish Postcode Directory 2026/2. The repository holds the means
+Status: v1.2.0, built from Scottish Postcode Directory 2026/2. The repository holds the means
 to reproduce the table and the record of how it was built. It holds no source data and no
 output; a clone that runs the build gets the same file, hash for hash.
 
@@ -31,7 +31,7 @@ pip install -e ".[dev]"
 ```
 
 This installs the package, the `simd-ingest` command and the test dependencies. Python 3.12
-and the versions pinned in `pyproject.toml` and `requirements.txt` are what v1.1.1 was verified
+and the versions pinned in `pyproject.toml` and `requirements.txt` are what v1.2.0 was verified
 with. Nothing needs a GIS library; the shapefile attribute tables are read with `dbfread`.
 
 ## Build
@@ -46,9 +46,9 @@ python -m simd_ingest.cli build
 python -m simd_ingest.cli build --source-mode download
 ```
 
-A build verifies every source hash, builds the three reference tables and the index, runs about
-450 checks, writes the table to a temporary file, reopens it, verifies it against the source
-lookups, renames it into place, then writes the manifest. A blocking failure stops before anything
+A build verifies every source hash, prepares the index and the twelve edition tables, joins them
+one edition at a time, runs about 480 checks, writes the table to a temporary file, reopens it,
+verifies it against the source lookups, renames it into place, then writes the manifest. A blocking failure stops before anything
 is written. The offline build takes about fifteen seconds.
 
 ```bash
@@ -63,11 +63,21 @@ export DAGSTER_HOME=$PWD/.dagster
 dagster dev -m simd_ingest.orchestration.definitions
 ```
 
-Open the URL it prints, select the `build_postcode_simd` job and materialise all. The graph has
-eighteen source assets, one per pinned file plus the decision log, and four table assets:
-`phs_bands`, `govscot_bands`, `postcode_index` and `postcode_simd`. Every check the CLI runs is
-attached to the asset it guards. Blocking checks fail the asset and nothing downstream runs. The
-population reconstruction is a warning and never blocks.
+Open the URL it prints, select the `build_postcode_simd` job and materialise all. The graph is a
+ladder in three groups. `sources`: eighteen assets, one per pinned file plus the decision log.
+`prepare`: `index_small` and `index_large` become `postcode_index`; each PHS file becomes
+`phs_<edition>_source` as published and then `phs_<edition>` with bands turned so that 1 means
+most deprived, which only 2004 and 2006 need; each shapefile table becomes `gov_<edition>`.
+`join`: starting from `postcode_index`, one rung per edition, `joined_phs_2004` through
+`joined_phs_2020v2` then `joined_gov_2004` onwards, each a single merge on one data zone column
+that adds that edition's columns, ending in `postcode_simd`, which also writes the file, reads
+it back and writes the manifest.
+
+Every rung carries a blocking check: the row count is unchanged and no new column is empty. A
+failed rung stops the ladder there and leaves the rungs above it materialised for inspection.
+The order of the rungs does not affect the result, since each join uses its own key; it is fixed
+so that a reader can follow it. Intermediate tables are written as Parquet under `data/work`,
+about 260 MB per run, and are disposable.
 
 The instance directory `.dagster` is the provenance record: every run, every materialisation with
 its metadata and data version, every check result. Back it up with `results/`. Intermediate tables
@@ -136,6 +146,12 @@ resolved to the A part as NRS does and cohort files handled, use `simd_ingest.lo
 worked cases with real output. For linking a cohort by era, each event taking the edition
 the guidance recommends for its year, see `docs/LINKAGE_BY_ERA.md`, which gives the same
 rule in Python and in one SQL query that runs on DuckDB and SQL Server.
+
+To inspect the join for one record rather than trust it, `python -m simd_ingest.trace "AB12 3GQA"`
+rebuilds the two reference tables from the pinned sources and prints, edition by edition, the
+data zone the record was joined through, the PHS and government source rows, and whether every
+attached value equals its source. Dagster's intermediate tables are also on disk under
+`data/work/` as pickled DataFrames, one per asset, for ad hoc inspection with pandas.
 
 Two rules from the PHS deprivation guidance are built into the column names. Columns named
 `simd{ed}_pw_*` are PHS population-weighted; `simd{ed}_uw_*` are Scottish Government unweighted.

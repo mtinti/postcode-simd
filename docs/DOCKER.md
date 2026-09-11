@@ -59,8 +59,9 @@ The suite finds the sources the build fetched. Expect every test to pass.
 docker compose up dagster
 ```
 
-Then open <http://localhost:3000>. The graph shows eighteen source assets, the decision log
-and the four tables. Select the job `build_postcode_simd` and materialise all. The run, its
+Then open <http://localhost:3000>. The graph shows the ladder: eighteen source assets, the
+prepare group with the index and the twelve edition tables, and the join group with one rung
+per edition ending in `postcode_simd`. Select the job `build_postcode_simd` and materialise all. The run, its
 materialisations with metadata and data versions, and every check result are written to
 `./.dagster` on your machine, which is the provenance record. Stop the server with Ctrl-C or
 `docker compose down`; the record stays.

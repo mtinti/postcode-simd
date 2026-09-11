@@ -18,17 +18,18 @@ import os
 import sys
 from pathlib import Path
 
+import pandas as pd
 import yaml
 
 from .core import output
 from .core.checks import BuildStopped, Report
 from .core.crosscheck import cross_check
 from .core.fetch import ensure_sources
-from .core.govscot import build_govscot_bands
+from .core.govscot import read_gov_edition
 from .core.join import build_postcode_simd
-from .core.phs import build_phs_bands
+from .core.phs import canonicalise_phs, read_phs_source
 from .core.sources import load_registry, sha256
-from .core.spd import build_postcode_index
+from .core.spd import read_index_file, union_index
 
 OUTPUT_NAME = "postcode_simd.parquet"
 
@@ -74,16 +75,19 @@ def prepare(cfg: dict, mode: str, report: Report):
     print(f"Sources ({mode})")
     ensure_sources(registry, mode, root, cfg["cache_root"], report)
     report.require()
-    print("Reference tables")
-    simd = build_phs_bands(registry, root, report)
-    gov = build_govscot_bands(registry, root, report)
+    print("Prepare: the index")
+    parts = {spec["role"]: read_index_file(spec, registry, root, report, baselines) for spec in registry.spd_files}
     report.require()
-    cross_check(simd, gov, baselines, report)
+    index = union_index(parts["small_user"], parts["large_user"], registry, report, baselines)
     report.require()
-    print("Postcode index")
-    index = build_postcode_index(registry, root, report, baselines)
+    print("Prepare: the editions")
+    phs_tables = {ed["key"]: canonicalise_phs(ed, read_phs_source(ed, root, report), report) for ed in registry.phs_editions}
+    gov_tables = {ed["key"]: read_gov_edition(ed, root, report) for ed in registry.govscot_editions}
     report.require()
-    return registry, baselines, simd, gov, index
+    for key in phs_tables:
+        cross_check(phs_tables[key], gov_tables[key], baselines, report)
+    report.require()
+    return registry, baselines, phs_tables, gov_tables, index
 
 
 def cmd_fetch(cfg: dict, mode: str) -> int:
@@ -96,11 +100,13 @@ def cmd_fetch(cfg: dict, mode: str) -> int:
 
 def cmd_build(cfg: dict, mode: str) -> int:
     report = Report()
-    registry, baselines, simd, gov, index = prepare(cfg, mode, report)
+    registry, baselines, phs_tables, gov_tables, index = prepare(cfg, mode, report)
     schema = output.load_schema(cfg["output_schema"])
-    print("Join")
-    table = build_postcode_simd(index, simd, gov, registry, [f["name"] for f in schema["fields"]], report)
+    print("Join: one edition at a time")
+    table = build_postcode_simd(index, phs_tables, gov_tables, registry, [f["name"] for f in schema["fields"]], report)
     report.require()
+    simd = pd.concat(phs_tables.values(), ignore_index=True)
+    gov = pd.concat(gov_tables.values(), ignore_index=True)
 
     decisions_sha = sha256(cfg["decisions"])
     results = cfg["results_root"]
@@ -128,7 +134,9 @@ def cmd_build(cfg: dict, mode: str) -> int:
 
 def cmd_audit(cfg: dict, mode: str) -> int:
     report = Report()
-    registry, baselines, simd, gov, index = prepare(cfg, mode, report)
+    registry, baselines, phs_tables, gov_tables, index = prepare(cfg, mode, report)
+    simd = pd.concat(phs_tables.values(), ignore_index=True)
+    gov = pd.concat(gov_tables.values(), ignore_index=True)
     schema = output.load_schema(cfg["output_schema"])
     final = cfg["results_root"] / OUTPUT_NAME
     if not final.is_file():

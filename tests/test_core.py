@@ -127,7 +127,9 @@ class SavedTableIntegrity(unittest.TestCase):
             raise unittest.SkipTest("no pinned sources or no build output")
         cls.temp = tempfile.mkdtemp(prefix="simd_core_")
         cls.cfg = load_config(write_config(Path(cls.temp), source, ROOT / "simd_ingest" / "decisions.yaml"))
-        cls.registry, cls.baselines, cls.simd, cls.gov, cls.index = prepare(cls.cfg, "offline", Report())
+        cls.registry, cls.baselines, phs_tables, gov_tables, cls.index = prepare(cls.cfg, "offline", Report())
+        cls.simd = pd.concat(phs_tables.values(), ignore_index=True)
+        cls.gov = pd.concat(gov_tables.values(), ignore_index=True)
         from simd_ingest.core import output
         cls.output = output
         cls.schema = output.load_schema(cls.cfg["output_schema"])
