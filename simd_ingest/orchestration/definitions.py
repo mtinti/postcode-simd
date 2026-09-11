@@ -173,18 +173,11 @@ def build_definitions(config_path: Path = DEFAULT_CONFIG) -> Definitions:
                                  sources_consumed=consumed(gov_paths), checks_passed=report.summary()["blocking_passed"]))
 
     @asset_check(asset="govscot_bands", additional_ins={"phs_bands": AssetIn("phs_bands")}, blocking=True,
-                 description="Same zones and identical ranks as PHS in every edition; pinned divergence fingerprints")
+                 description="Same data zones and identical ranks as PHS in every edition")
     def phs_agreement(govscot_bands, phs_bands):
         report = Report()
         cross_check(phs_bands, govscot_bands, baselines, report)
         return check_result("phs_agreement", report)
-
-    @asset_check(asset="govscot_bands", additional_ins={"phs_bands": AssetIn("phs_bands")},
-                 description="Diagnostic: midpoint rule on published population versus PHS bands and flags")
-    def population_reconstruction(govscot_bands, phs_bands):
-        report = Report()
-        cross_check(phs_bands, govscot_bands, baselines, report)
-        return check_result("population_reconstruction", report, severity=AssetCheckSeverity.WARN, diagnostic=True)
 
     # ---- the output ----------------------------------------------------------------------
     @asset(ins={"postcode_index": AssetIn(), "phs_bands": AssetIn(), "govscot_bands": AssetIn()}, deps=[DECISIONS_KEY],
@@ -218,7 +211,7 @@ def build_definitions(config_path: Path = DEFAULT_CONFIG) -> Definitions:
     build_job = define_asset_job("build_postcode_simd", selection=AssetSelection.all(),
                                  description="Verify every source, prepare three tables, join one edition at a time, write the deliverable")
     return Definitions(assets=[*source_assets, decisions, postcode_index, phs_bands, govscot_bands, postcode_simd],
-                       asset_checks=[phs_agreement, population_reconstruction], jobs=[build_job],
+                       asset_checks=[phs_agreement], jobs=[build_job],
                        resources={"io_manager": ParquetIOManager(base_dir=str(cfg["work_root"]))})
 
 

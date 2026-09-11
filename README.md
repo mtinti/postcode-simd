@@ -69,14 +69,13 @@ tables. `postcode_index` is both directory files with keys and dates derived. `p
 six PHS editions with the 2004 and 2006 bands turned so that 1 means most deprived. `govscot_bands`
 is the six government editions from the shapefile tables. `postcode_simd` joins them, one edition
 at a time in a fixed order, then writes the file, reads it back and writes the manifest. Every
-check is attached to the asset it guards; blocking checks fail the asset and nothing downstream
-runs; the population reconstruction is a warning.
+check is attached to the asset it guards; a failed check fails the asset and nothing downstream runs.
 
 **For a reviewer, the graph is not the place to start.** Every build writes
 `results/BUILD_REPORT.md`, a page that says what happened to the data in order with that run's
 numbers: the sources verified, the index assembled, each PHS edition and whether it was turned,
 each government edition and whether its ranks match, the twelve joins with rows before and
-after, the output and its readback, the diagnostics, and one postcode followed through. It is
+after, the output and its readback, and one postcode followed through. It is
 written by the CLI and by the Dagster job alike. `docs/HOW_IT_IS_BUILT.md` is the static
 companion: the six judgements in the pipeline, where each lives in the code, and which check
 guards it.

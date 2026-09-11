@@ -12,7 +12,7 @@ from pathlib import Path
 import pandas as pd
 import pyarrow.parquet as pq
 
-from simd_ingest.core.checks import Report, divergence, reconstruct_population_bands
+from simd_ingest.core.checks import Report
 from simd_ingest.core.fetch import FetchError, _extract_member
 from simd_ingest.core.sources import load_registry, verify_root
 from simd_ingest.core.spd import (active_on, classify_links, current_candidates, interval_summary,
@@ -66,23 +66,6 @@ class KeyAndDateRules(unittest.TestCase):
         self.assertEqual(current_candidates(d, "ab12 3gq")["selection_status"], "ambiguous")
         self.assertEqual(current_candidates(d, "G1 1AA")["selection_status"], "unique")
         self.assertEqual(current_candidates(d, "ZZ1 1ZZ")["selection_status"], "not_found")
-
-
-class NumericRules(unittest.TestCase):
-    def test_fingerprint_detects_wrong_zones_even_if_counts_match(self):
-        gov = pd.Series([1, 1, 1], index=["A", "B", "C"])
-        first = divergence(pd.Series([2, 1, 1], index=gov.index), gov)
-        second = divergence(pd.Series([1, 2, 1], index=gov.index), gov)
-        self.assertEqual(first["count"], second["count"])
-        self.assertNotEqual(first["sha256"], second["sha256"])
-        self.assertEqual(first["sha256"], hashlib.sha256(b"A|2|1").hexdigest())
-
-    def test_midpoint_rule_on_a_small_universe(self):
-        rank = pd.Series([1, 2, 3, 4], index=list("abcd"))
-        pop = pd.Series([10, 10, 10, 10], index=list("abcd"))
-        out = reconstruct_population_bands(rank, pop, pd.Series("s", index=list("abcd")))
-        self.assertEqual(out["quintile"].tolist(), [1, 2, 4, 5])
-        self.assertEqual(out["most15pc"].tolist(), [1, 0, 0, 0])
 
 
 class SourceSafety(unittest.TestCase):

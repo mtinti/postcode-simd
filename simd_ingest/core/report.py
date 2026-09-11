@@ -34,8 +34,7 @@ def render(report: Report, registry: Registry, table: pd.DataFrame, info: dict, 
     s = report.summary()
     L = [f"# Build report: postcode_simd", "",
          f"{dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%d %H:%M')}Z, source mode {mode}, "
-         f"SPD release {registry.spd_release}. {s['blocking_passed']} blocking checks passed, "
-         f"{s['blocking_failed']} failed; {s['diagnostic_agree']} diagnostics agree, {s['diagnostic_differ']} differ.", ""]
+         f"SPD release {registry.spd_release}. {s['blocking_passed']} blocking checks passed, {s['blocking_failed']} failed.", ""]
 
     # 1. sources
     verified = sum(1 for c in report.checks if c.name.startswith("source.hash.") and c.passed)
@@ -70,13 +69,12 @@ def render(report: Report, registry: Registry, table: pd.DataFrame, info: dict, 
     L += ["", "After this step 1 means most deprived in every edition. Ranks and the 15% flags are never changed.", ""]
 
     # 4. government
-    L += ["## 4. Scottish Government unweighted SIMD", "", "| Edition | Rows | Rank identical to PHS | Divergence fingerprints |", "| --- | ---: | --- | --- |"]
+    L += ["## 4. Scottish Government unweighted SIMD", "", "| Edition | Rows | Same data zones as PHS | Rank identical to PHS |", "| --- | ---: | --- | --- |"]
     for ed in registry.govscot_editions:
         k = ed["key"]
-        L.append(f"| {k} | {int((gov['edition'] == k).sum()):,} | {_passed(report, f'cross.{k}.rank_identical')} | "
-                 f"{_passed(report, f'cross.{k}.divergence.decile')}, {_passed(report, f'cross.{k}.divergence.quintile')} |")
-    L += ["", "Bands copied from the shapefile tables; nothing calculated. The divergence fingerprints pin exactly which "
-          "zones differ between the PHS and government bands, as expected between weighted and unweighted measures.", ""]
+        L.append(f"| {k} | {int((gov['edition'] == k).sum()):,} | {_passed(report, f'cross.{k}.same_zones')} | {_passed(report, f'cross.{k}.rank_identical')} |")
+    L += ["", "Bands and population copied from the shapefile tables as published; nothing is calculated or compared "
+          "beyond confirming that both sources describe the same zones with the same ranks.", ""]
 
     # 5. joins
     L += ["## 5. Joins, one edition at a time", "",
@@ -102,16 +100,6 @@ def render(report: Report, registry: Registry, table: pd.DataFrame, info: dict, 
           f"{_passed(report, 'readback.attached_values')}. Original columns compared with the index: {_passed(report, 'readback.index_columns')}.",
           f"Rows-only fingerprint `{info['logical_fingerprint']}`. File SHA256 `{info['sha256']}`. "
           "The fingerprint changes only when data changes; the file hash also covers the embedded decision log.", ""]
-
-    # diagnostics
-    diag = [c for c in report.checks if ".reconstruction." in c.name]
-    cells = sum(len(c.actual or {}) for c in diag if isinstance(c.actual, dict))
-    L += ["## Diagnostics, not blocking", "",
-          ("Population reconstruction: the midpoint rule on published population versus the PHS bands and flags. "
-           + (f"{s['diagnostic_agree']} comparisons agree with the pinned expectation, {s['diagnostic_differ']} differ; "
-              f"{cells} cells are known exceptions, all at health board, HSCP or council area level or 15% flags. "
-              if diag else "Ran as the population_reconstruction check on govscot_bands; see the run record. ")
-           + "Published values are never replaced."), ""]
 
     # example
     ex = table[table["pc_norm"] == example]

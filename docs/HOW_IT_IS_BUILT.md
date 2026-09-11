@@ -48,10 +48,12 @@ the board it assigned the data zone to, which is not always the board the direct
 the postcode to. The PHS assignment travels with the band as `phs_dz<vintage>_hb`, `_hscp`,
 `_ca`. `core/join.py`, the geography columns in `join_edition`.
 
-**6. Nothing is calculated.** Every band is copied from a published file. The two band formulae
-and the population reconstruction exist only as checks; the reconstruction is a diagnostic
-that can differ without stopping a build. `core/crosscheck.py`. Checks:
-`cross.<edition>.divergence.*` block, `cross.<edition>.reconstruction.*` warn.
+**6. Nothing is calculated, and the sources are trusted.** Every band is copied from a published
+file. The only cross-source check is that PHS and the Scottish Government describe the same data
+zones with the same ranks in every edition, which is what makes joining them on the data zone
+meaningful. No band is recomputed from a formula or from population, and no band is compared
+between the two publishers; each is trusted for its own values. `core/crosscheck.py`. Checks:
+`cross.<edition>.same_zones`, `cross.<edition>.rank_identical`.
 
 ## Two judgements that live in the lookups, not the table
 

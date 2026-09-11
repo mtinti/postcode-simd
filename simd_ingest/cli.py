@@ -63,8 +63,7 @@ def print_report(report: Report) -> None:
             tag = "FAIL" if c.severity == "blocking" else "WARN"
             print(f"  [{tag}] {c.name}: {c.detail}")
     s = report.summary()
-    print(f"  {s['blocking_passed']} blocking checks passed, {s['blocking_failed']} failed; "
-          f"{s['diagnostic_agree']} diagnostics agree, {s['diagnostic_differ']} differ")
+    print(f"  {s['blocking_passed']} checks passed, {s['blocking_failed']} failed")
 
 
 def prepare(cfg: dict, mode: str, report: Report):
