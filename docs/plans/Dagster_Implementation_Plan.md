@@ -1,5 +1,10 @@
 # Postcode-SIMD pipeline on Dagster: stepwise implementation plan
 
+> Historical proposal. The text below records the design at the time, not today's runtime.
+> Start a current review at [How it is built](../HOW_IT_IS_BUILT.md); current policy is in
+> [decisions.yaml](../../simd_ingest/decisions.yaml). Population diagnostics and split-lookup
+> defaults described here have since been superseded.
+
 Prepared and review-revised 10 September 2026. Seven steps, each reviewed and approved
 before the next begins. Status: plan only; no step is implemented or approved by this edit.
 
@@ -638,4 +643,3 @@ SG_SIMD_2020.zip  33f166949c0e8a54fe2601d63cd760fdd41b1f2aee54e7f3d411c82b7c38b9
   SIMD2020v2 - GIS files - glossary.xlsx  2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
 spd_postcodeindex_cut_26_2_csv.zip  4e93069ddb9c39c211cafdc56eeb16c4b0ed4872c9a95c20e23ec73c3b499057
 ```
-

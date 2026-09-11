@@ -32,6 +32,7 @@ jobs:
           name: build-record
           path: |
             results/manifest.json
+            results/BUILD_REPORT.md
             docs/DATA_DICTIONARY.md
       - if: ${{ inputs.publish_parquet }}
         uses: actions/upload-artifact@v4

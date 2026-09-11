@@ -23,6 +23,19 @@ output; a clone that runs the build gets the same file, hash for hash.
 | Dictionary | `docs/DATA_DICTIONARY.md`, generated from the frozen schema |
 | Orchestration | Dagster, with the CLI as an equivalent path through the same functions |
 
+## For a reviewer: start here
+
+Read [How it is built](docs/HOW_IT_IS_BUILT.md) first: the data flow, the decisions and
+the functions to inspect. Then read `results/BUILD_REPORT.md` from the build being reviewed:
+the same steps with actual check results and a worked postcode. Use the
+[data dictionary](docs/DATA_DICTIONARY.md) for field definitions and `results/manifest.json`
+for the complete machine-readable evidence.
+
+The [decision log](simd_ingest/decisions.yaml) records current policy and explicit supersessions.
+Documents in [docs/plans](docs/plans/README.md) are historical design records, not a second
+set of instructions for today's build. Analyst lookup choices are documented separately in
+[Examples](docs/EXAMPLES.md) and [Linkage by era](docs/LINKAGE_BY_ERA.md).
+
 ## Install
 
 ```bash
@@ -47,9 +60,11 @@ python -m simd_ingest.cli build --source-mode download
 ```
 
 A build verifies every source hash, prepares the index and the twelve edition tables, joins them
-one edition at a time, runs about 480 checks, writes the table to a temporary file, reopens it,
-verifies it against the source lookups, renames it into place, then writes the manifest. A blocking failure stops before anything
-is written. The offline build takes about fifteen seconds.
+one edition at a time, writes the table to a temporary file, reopens it, verifies it against
+the source lookups and provenance contract, renames it into place, then writes the manifest
+and build report. A failed validation prevents replacement of the published table. The exact
+check count is recorded by the run, not fixed in this README. The offline build takes about
+fifteen seconds on the development machine.
 
 ```bash
 python -m simd_ingest.cli audit     # re-verify the existing table against freshly verified sources
@@ -64,12 +79,14 @@ dagster dev -m simd_ingest.orchestration.definitions
 ```
 
 Open the URL it prints, select the `build_postcode_simd` job and materialise all. The graph has
-five things in it: eighteen source assets, one per pinned file plus the decision log, and four
-tables. `postcode_index` is both directory files with keys and dates derived. `phs_bands` is the
+five conceptual parts: the sources and four tables (22 assets in total: 17 pinned files,
+the decision log and four tables). `postcode_index` is both directory files with keys and
+dates derived. `phs_bands` is the
 six PHS editions with the 2004 and 2006 bands turned so that 1 means most deprived. `govscot_bands`
 is the six government editions from the shapefile tables. `postcode_simd` joins them, one edition
 at a time in a fixed order, then writes the file, reads it back and writes the manifest. Every
-check is attached to the asset it guards; a failed check fails the asset and nothing downstream runs.
+blocking check is attached to the asset it guards. The supported job runs every source and
+check before publishing; final-only materialisation without this run's upstream evidence is refused.
 
 **For a reviewer, the graph is not the place to start.** Every build writes
 `results/BUILD_REPORT.md`, a page that says what happened to the data in order with that run's
@@ -80,13 +97,18 @@ written by the CLI and by the Dagster job alike. `docs/HOW_IT_IS_BUILT.md` is th
 companion: the six judgements in the pipeline, where each lives in the code, and which check
 guards it.
 
+The CLI accumulates check records directly. Dagster stores those same records in its check
+events; the final asset collects them from the current run before writing the report and
+manifest. Missing records are never labelled as passed. Both paths call the same join sequence
+and saved-file validator, and a regression test compares their complete check records.
+
 The instance directory `.dagster` is the provenance record: every run, every materialisation with
 its metadata and data version, every check result. Back it up with `results/`. The three intermediate
 tables go to `data/work` as Parquet, about 16 MB, and are disposable.
 
 To see why the data is the way it is, open the `source/decisions` asset, or read
-`simd_ingest/decisions.yaml` directly. Each table's materialisation records the hash of the
-decision log it was built under, and the manifest records it as `decisions_sha256`.
+`simd_ingest/decisions.yaml` directly. Every table depends on that versioned asset, and the
+output metadata and manifest record its hash as `decisions_sha256`.
 
 ## Run it in Docker
 
@@ -151,8 +173,8 @@ rule in Python and in one SQL query that runs on DuckDB and SQL Server.
 To inspect the join for one record rather than trust it, `python -m simd_ingest.trace "AB12 3GQA"`
 rebuilds the two reference tables from the pinned sources and prints, edition by edition, the
 data zone the record was joined through, the PHS and government source rows, and whether every
-attached value equals its source. Dagster's intermediate tables are also on disk under
-`data/work/` as pickled DataFrames, one per asset, for ad hoc inspection with pandas.
+attached value equals its source. The three prepared Dagster tables are also on disk under
+`data/work/` as Parquet, one per asset, for ad hoc inspection with pandas.
 
 Two rules from the PHS deprivation guidance are built into the column names. Columns named
 `simd{ed}_pw_*` are PHS population-weighted; `simd{ed}_uw_*` are Scottish Government unweighted.
@@ -168,9 +190,11 @@ python -m pytest tests -q
 
 Unit tests on the core rules and the lookup statuses run without any data. With the pinned
 sources and a build present, the integration tests also run: a modified-cell readback failure,
-the Dagster job reproducing the CLI's fingerprint with repeated data versions, a corrupted source
+the Dagster job reproducing the CLI's file hash and complete check evidence with repeated data versions, a corrupted source
 blocking downstream, an edited decision log changing its version, and the Python and SQL era
 linkage agreeing on a synthetic cohort. Without data those tests report themselves as skipped.
+Small saved-file fixtures test null versus supplied text, metadata-value corruption and failed
+publication without needing downloaded data. Missing or failed upstream evidence is tested too.
 
 ## Layout
 

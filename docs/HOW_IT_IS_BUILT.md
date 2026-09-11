@@ -1,9 +1,12 @@
 # How the table is built
 
-One page for a reviewer. Six things carry judgement; everything else is copying values across
-on a key. Each one names the file and function where it lives, and the check that guards it.
+A reviewer starts here. Six decisions explain how the table is made. Each one names the
+file and function where it lives, and the check that guards it.
 
-Every build also writes `results/BUILD_REPORT.md`, the same steps with that run's numbers.
+Next read `results/BUILD_REPORT.md`, the same steps with that run's numbers, then use
+[the data dictionary](DATA_DICTIONARY.md) for individual fields. `results/manifest.json`
+holds all check records. The [decision log](../simd_ingest/decisions.yaml) is authoritative
+for current choices and their supersessions; [old plans](plans/README.md) are background only.
 
 ## The data flow
 
@@ -48,12 +51,38 @@ the board it assigned the data zone to, which is not always the board the direct
 the postcode to. The PHS assignment travels with the band as `phs_dz<vintage>_hb`, `_hscp`,
 `_ca`. `core/join.py`, the geography columns in `join_edition`.
 
-**6. Nothing is calculated, and the sources are trusted.** Every band is copied from a published
-file. The only cross-source check is that PHS and the Scottish Government describe the same data
-zones with the same ranks in every edition, which is what makes joining them on the data zone
-meaningful. No band is recomputed from a formula or from population, and no band is compared
-between the two publishers; each is trusted for its own values. `core/crosscheck.py`. Checks:
+**6. Published bands are authoritative.** Apart from the explicit early-edition reversal above,
+every band is copied from its publisher. No band is reconstructed from rank or population,
+and population-weighted bands are not compared with unweighted bands. The population
+reconstruction diagnostic was removed on 11 September 2026; the earlier diagnostic-only
+policy is historical. PHS and government ranks must agree on the same data zones in every
+edition, and the directory's 2020 rank must agree with the attached rank.
+`core/crosscheck.py` and `core/join.py`. Checks:
 `cross.<edition>.same_zones`, `cross.<edition>.rank_identical`.
+
+## What the saved-file check proves
+
+`core/output.py`, `readback`, reopens the Parquet before replacement. Original and derived
+postcode fields must equal the accepted index; null must not replace a supplied value or
+source blank. Each attached value is looked up again through the saved data-zone code.
+The embedded band convention, schema version, release, source pins and decision hash must
+also equal the build contract. The source hashes and schema alone do not prove this.
+
+The CLI and Dagster call the same `core/join.py`, `build_postcode_simd`, for the twelve
+joins. Dagster's stages record their checks in its event log; the final stage collects the
+records from **that run**, including all 17 source verifications. Missing evidence prevents
+publication. Neither the narrative report nor the manifest invents an upstream pass.
+
+For example, the current `AB12 3GQA` record illustrates the direction change without hiding
+the source value. These values were checked against the pinned files and saved SPD 2026/2 build:
+
+| Edition | Data-zone key | Published PHS Scotland quintile | Transformation | Saved quintile |
+| --- | --- | ---: | --- | ---: |
+| 2004 | `S01000336` (2001 vintage) | 2 | `6 - 2` | 4 |
+| 2020v2 | `S01006848` (2011 vintage) | 4 | None | 4 |
+
+This example explains the operation; `readback.attached_values` checks every attached value
+across the whole table, not just the example postcode.
 
 ## Two judgements that live in the lookups, not the table
 
@@ -73,4 +102,7 @@ time, in `simd_ingest/lookup.py` and `docs/sql/link_by_era.sql`:
 | A join lost or gained rows | `join.<kind>.<edition>.rows_unchanged` |
 | A postcode got no value for an edition | `join.<kind>.<edition>.every_record_matched`; its data zone is not in that edition |
 | A band looks reversed | `phs.<edition>.rank1_in_band1` |
+| A supplied value became null | `readback.index.<column>` or `readback.attached_values` |
+| The file describes the wrong convention or sources | `readback.metadata.<field>` |
+| A Dagster report lacks upstream evidence | `orchestration/evidence.py`; the final stage refuses publication |
 | One record, end to end | `python -m simd_ingest.trace "<postcode>"` |
