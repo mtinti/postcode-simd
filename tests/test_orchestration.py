@@ -67,12 +67,29 @@ class DagsterJob(unittest.TestCase):
 
     def test_job_reproduces_cli_hash_and_versions_repeat(self):
         cfg = write_config(self.temp, MANUAL, ROOT / "simd_ingest" / "decisions.yaml")
+        # Build a fresh CLI reference in its own temporary output, not an old local manifest.
+        from simd_ingest.cli import cmd_build, load_config
+        cli_cfg = load_config(cfg)
+        cli_cfg["results_root"] = self.temp / "cli_results"
+        self.assertEqual(cmd_build(cli_cfg, "offline"), 0)
+        cli_manifest = json.loads((cli_cfg["results_root"] / "manifest.json").read_text())
         defs, instance, result = self.run_job(cfg)
         self.assertTrue(result.success)
         manifest = json.loads((self.temp / "results" / "manifest.json").read_text())
-        cli_manifest = json.loads((ROOT / "results" / "manifest.json").read_text())
         self.assertEqual(manifest["output"]["logical_fingerprint"], cli_manifest["output"]["logical_fingerprint"])
+        self.assertEqual(manifest["output"]["sha256"], cli_manifest["output"]["sha256"])
         self.assertEqual(manifest["output"]["rows"], 247773)
+        # Same core evidence, irrespective of which independent asset completed first.
+        records = lambda m: sorted(m["checks"], key=lambda c: c["name"])
+        self.assertEqual(records(manifest), records(cli_manifest))
+        self.assertEqual(manifest["summary"], cli_manifest["summary"])
+        self.assertEqual(sum(c["name"].startswith("source.hash.") for c in manifest["checks"]), 17)
+        report = (self.temp / "results/BUILD_REPORT.md").read_text()
+        self.assertIn("17 of 17 files present with the pinned hash. All match.", report)
+        self.assertNotIn("upstream", report)
+        self.assertNotIn("NOT RECORDED", report)
+        cli_report = (cli_cfg["results_root"] / "BUILD_REPORT.md").read_text()
+        self.assertEqual(report.splitlines()[3:], cli_report.splitlines()[3:])  # Ignore build time.
         evaluations = result.get_asset_check_evaluations()
         self.assertTrue(all(e.passed for e in evaluations), [e.check_name for e in evaluations if not e.passed])
         keys = [k for k in defs.resolve_asset_graph().get_all_asset_keys()]
@@ -82,6 +99,17 @@ class DagsterJob(unittest.TestCase):
         self.assertTrue(result.success)
         second = data_versions(instance, keys)
         self.assertEqual(first, second)
+
+        # A new final-only run must not treat this run's successful upstream checks as its own.
+        previous_output = (self.temp / "results/postcode_simd.parquet").read_bytes()
+        previous_manifest = (self.temp / "results/manifest.json").read_bytes()
+        partial = defs.resolve_job_def("build_postcode_simd").execute_in_process(
+            instance=instance, asset_selection=[AssetKey("postcode_simd")], raise_on_error=False)
+        self.assertFalse(partial.success)
+        self.assertTrue(any("Missing upstream check evidence" in e.event_specific_data.error.message
+                            for e in partial.get_step_failure_events()))
+        self.assertEqual((self.temp / "results/postcode_simd.parquet").read_bytes(), previous_output)
+        self.assertEqual((self.temp / "results/manifest.json").read_bytes(), previous_manifest)
 
     def test_corrupted_source_fails_its_check_and_blocks_downstream(self):
         bad = "PHS/simd2004_02042020.csv"

@@ -1,7 +1,7 @@
 """Parquet storage for intermediate tables, one file per asset under the work directory.
 
-The ladder produces twelve wide intermediate tables per run. As pickles they would be about
-two gigabytes; as Parquet they are a few hundred megabytes and can be opened by anything.
+The three prepared tables are disposable intermediates. The twelve joins run inside the
+final asset and do not create twelve extra files.
 """
 
 from __future__ import annotations

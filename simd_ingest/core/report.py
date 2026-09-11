@@ -19,10 +19,9 @@ def _actual(report: Report, name: str, default=None):
 
 
 def _passed(report: Report, name: str) -> str:
-    """Under Dagster a check may have run in an upstream asset; it must have passed for this
-    step to run at all, so it is reported as passed upstream rather than as missing."""
+    """Describe recorded evidence only. Absence is not evidence of a passing check."""
     c = next((c for c in report.checks if c.name == name), None)
-    return "ok" if c is not None and c.passed else "FAILED" if c is not None else "ok, upstream"
+    return "ok" if c is not None and c.passed else "FAILED" if c is not None else "NOT RECORDED"
 
 
 def _detail(report: Report, name: str) -> str:
@@ -41,7 +40,7 @@ def render(report: Report, registry: Registry, table: pd.DataFrame, info: dict, 
     L += ["## 1. Sources", "",
           f"{len(registry.objects)} remote objects, {len(registry.files)} pinned files. "
           f"{verified} of {len(registry.files)} files present with the pinned hash."
-          + (" All match." if verified == len(registry.files) else " **Some do not.**"), ""]
+          + (" All match." if verified == len(registry.files) else " **Verification evidence is missing or failed.**"), ""]
 
     # 2. index
     by_type = index["spd_user_type"].value_counts()
@@ -55,9 +54,9 @@ def render(report: Report, registry: Registry, table: pd.DataFrame, info: dict, 
           f"SmallUser {small:,} records + LargeUser {large:,} = {len(index):,}, "
           f"of which {current:,} current and {len(index) - current:,} deleted. "
           f"Every original column kept as text; `pc_norm` (uppercase, no spaces, NRS suffix kept), `pc_base`, "
-          f"`introduced_on`, `deleted_on`, `is_current` and `spd_user_type` added.",
+          f"`introduced_on`, `deleted_on`, `is_current`, `spd_user_type` and `spd_release` added.",
           f"Key `pc_norm` + `introduced_on` unique: {_passed(report, 'spd.primary_key_unique')}. "
-          f"{touching} records touch on a date, {overlaps} overlap. "
+          f"{touching} touching record pairs, {overlaps} overlapping pairs. "
           f"Ordinary postcodes with more than one current record: {multi}.", ""]
 
     # 3. PHS
@@ -87,10 +86,11 @@ def render(report: Report, registry: Registry, table: pd.DataFrame, info: dict, 
         for ed in editions:
             n += 1
             k = ed["key"]
-            rows = _actual(report, f"join.{kind}.{k}.rows_unchanged", len(table))
+            rows = _actual(report, f"join.{kind}.{k}.rows_unchanged")
+            rows_label = f"{rows:,}" if rows is not None else "NOT RECORDED"
             added = _detail(report, f"join.{kind}.{k}.every_record_matched").split(" ")[0]
             L.append(f"| {n}. {'PHS' if kind == 'phs' else 'Government'} {k} | DataZone{ed['dz_vintage']}Code | "
-                     f"{rows:,} | {added} | {_passed(report, f'join.{kind}.{k}.every_record_matched')} |")
+                     f"{rows_label} | {added or 'NOT RECORDED'} | {_passed(report, f'join.{kind}.{k}.every_record_matched')} |")
     L += [""]
 
     # 6. output
@@ -98,8 +98,10 @@ def render(report: Report, registry: Registry, table: pd.DataFrame, info: dict, 
           f"{info['rows']:,} rows by {info['columns']} columns. Written to a temporary file, reopened, and every attached "
           f"value re-looked-up from the reference tables through the saved file's own data zone codes: "
           f"{_passed(report, 'readback.attached_values')}. Original columns compared with the index: {_passed(report, 'readback.index_columns')}.",
+          "Null and source blank are distinct. Embedded convention, schema version, release, source pins and decision hash "
+          "are checked against the build inputs, not just for the presence of metadata keys.",
           f"Rows-only fingerprint `{info['logical_fingerprint']}`. File SHA256 `{info['sha256']}`. "
-          "The fingerprint changes only when data changes; the file hash also covers the embedded decision log.", ""]
+          "The fingerprint changes only when data changes; the file hash also covers the embedded decision-log hash.", ""]
 
     # example
     ex = table[table["pc_norm"] == example]

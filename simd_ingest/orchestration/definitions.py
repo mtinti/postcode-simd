@@ -3,7 +3,7 @@
 Five things a person can hold in their head: the pinned sources, three prepared tables,
 one output.
 
-    sources          eighteen pinned files and the decision log, each verified against its hash
+    sources          seventeen pinned files, plus the versioned decision log
     postcode_index   both directory files, keys and dates derived
     phs_bands        six PHS editions, bands turned so 1 = most deprived
     govscot_bands    six government editions from the shapefile tables
@@ -37,11 +37,12 @@ from ..core.checks import Report
 from ..core.crosscheck import cross_check
 from ..core.fetch import ensure_file
 from ..core.govscot import read_gov_edition
-from ..core.join import finish, join_edition
+from ..core.join import build_postcode_simd
 from ..core.phs import canonicalise_phs, read_phs_source
 from ..core.sources import load_registry, sha256
 from ..core.spd import read_index_file, union_index
 from .io import ParquetIOManager
+from .evidence import upstream_report
 
 CORE = Path(__file__).resolve().parents[1] / "core"
 DEFAULT_CONFIG = Path("config/workflow.yaml")
@@ -65,8 +66,9 @@ def md(**values) -> dict:
 def check_result(name: str, report: Report, severity=AssetCheckSeverity.ERROR, diagnostic=False) -> AssetCheckResult:
     selected = [c for c in report.checks if (c.severity == "diagnostic") == diagnostic]
     failed = [c for c in selected if not c.passed]
-    return AssetCheckResult(check_name=name, passed=not failed, severity=severity,
+    return AssetCheckResult(check_name=name, passed=bool(selected) and not failed, severity=severity,
                             metadata=md(checks=len(selected), failed=len(failed),
+                                        check_records=Report(checks=selected).to_records(),
                                         failures=[{"check": c.name, "detail": c.detail} for c in failed[:50]]))
 
 
@@ -180,25 +182,30 @@ def build_definitions(config_path: Path = DEFAULT_CONFIG) -> Definitions:
         return check_result("phs_agreement", report)
 
     # ---- the output ----------------------------------------------------------------------
-    @asset(ins={"postcode_index": AssetIn(), "phs_bands": AssetIn(), "govscot_bands": AssetIn()}, deps=[DECISIONS_KEY],
+    required_evidence = {(key, "pin_verified") for key in source_keys.values()} | {
+        (AssetKey(name), "blocking_checks") for name in ("postcode_index", "phs_bands", "govscot_bands")
+    } | {(AssetKey("govscot_bands"), "phs_agreement")}
+
+    # The documentation pins must finish too, not just the sources supplying table values.
+    @asset(ins={"postcode_index": AssetIn(), "phs_bands": AssetIn(), "govscot_bands": AssetIn()},
+           deps=[DECISIONS_KEY, *source_keys.values()],
            group_name="tables", code_version=code_version("join", "output", "report"),
            description=f"Twelve joins on the data zone, one edition at a time; then results/{OUTPUT_NAME}, read back, manifest and build report",
            check_specs=[AssetCheckSpec("join_checks", asset="postcode_simd", blocking=True),
                         AssetCheckSpec("readback", asset="postcode_simd", blocking=True)])
     def postcode_simd(context, postcode_index, phs_bands, govscot_bands):
-        report = Report()
-        table = postcode_index
-        for ed in registry.phs_editions:
-            table = join_edition(table, phs_bands[phs_bands["edition"] == ed["key"]], ed, "phs", registry, report)
-        for ed in registry.govscot_editions:
-            table = join_edition(table, govscot_bands[govscot_bands["edition"] == ed["key"]], ed, "gov", registry, report)
-        table = finish(table, postcode_index, registry, [f["name"] for f in schema["fields"]], report)
-        yield check_result("join_checks", report)
+        report = upstream_report(context.instance, context.run.run_id, required_evidence)
+        phs_tables = {ed["key"]: phs_bands[phs_bands["edition"] == ed["key"]] for ed in registry.phs_editions}
+        gov_tables = {ed["key"]: govscot_bands[govscot_bands["edition"] == ed["key"]] for ed in registry.govscot_editions}
+        before = len(report.checks)
+        table = build_postcode_simd(postcode_index, phs_tables, gov_tables, registry,
+                                    [f["name"] for f in schema["fields"]], report)
+        yield check_result("join_checks", Report(checks=report.checks[before:]))
         report.require()
         before = len(report.checks)
         try:
             info = write_output(cfg, registry, schema, mode, table, postcode_index, phs_bands, govscot_bands, report,
-                                {"dagster_run_id": context.run_id})
+                                {"dagster_run_id": context.run.run_id})
         finally:
             yield check_result("readback", Report(checks=report.checks[before:]))
         context.log.info(f"wrote {info['path']} {info['rows']:,} rows x {info['columns']} columns {info['sha256'][:16]}")
