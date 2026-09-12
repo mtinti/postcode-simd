@@ -21,20 +21,25 @@ jobs:
         run: |
           python3 - <<'EOF'
           import json
-          m = json.load(open("results/manifest.json")); o = m["output"]
-          print(f"rows {o['rows']:,} columns {o['columns']}")
-          print(f"rows-only fingerprint {o['logical_fingerprint']}")
-          print(f"file sha256 {o['sha256']}")
+          m = json.load(open("results/manifest.json"))
+          for name, o in m["tables"].items():
+              print(f"{name}: {o['table']} rows {o['rows']:,} columns {o['columns']} index {o['index_source']} {o['index_release']}")
+              print(f"  rows-only fingerprint {o['logical_fingerprint']}")
+              print(f"  file sha256 {o['sha256']}")
           print(f"decisions {m['decisions_sha256']}  checks {m['summary']}")
           EOF
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: build-record
           path: |
             results/manifest.json
-            docs/DATA_DICTIONARY.md
+            results/BUILD_REPORT.md
+            results/runs/
       - if: ${{ inputs.publish_parquet }}
         uses: actions/upload-artifact@v4
         with:
           name: postcode-simd-parquet
-          path: results/postcode_simd.parquet
+          path: |
+            results/postcode_simd.parquet
+            results/postcode_simd_history.parquet

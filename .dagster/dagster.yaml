@@ -1,7 +1,0 @@
-# Dagster instance for this project. Run history, event log and asset materialisations live
-# in this directory, so it is the provenance record. Point DAGSTER_HOME at it:
-#     export DAGSTER_HOME=$PWD/.dagster
-# Storage defaults to SQLite files beside this file. Intermediate tables are kept out of
-# here, under the work_root in config/workflow.yaml. Back this directory up with the results.
-telemetry:
-  enabled: false

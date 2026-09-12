@@ -43,26 +43,6 @@ def ensure_sources(registry: Registry, mode: str, root: Path, cache: Path, repor
     return verify_root(registry, root, report)
 
 
-def ensure_file(registry: Registry, path: str, mode: str, root: Path, cache: Path, report: Report, log=print) -> str:
-    """Make one logical file available under root and verify it. Returns its actual hash.
-
-    In download mode the file's remote object is fetched if the cache lacks it, and every
-    declared member of that object is placed, so sibling files arrive together.
-    """
-    f = registry.file(path)
-    if mode == "download":
-        obj = next(o for o in registry.objects if o.key == f.object_key)
-        _place_files(obj, _fetch_object(obj, cache, log), root, log)
-    elif mode != "offline":
-        raise ValueError(f"unknown source_mode {mode!r}")
-    target = Path(root) / f.path
-    if not target.is_file():
-        report.add(f"source.present.{f.path}", False, f"missing at {target}")
-        return ""
-    actual = sha256(target)
-    report.equal(f"source.hash.{f.path}", actual, f.sha256,
-                 detail=("hash matches" if actual == f.sha256 else f"expected {f.sha256[:12]}, got {actual[:12]}"))
-    return actual
 
 
 def _fetch_object(obj: RemoteObject, cache: Path, log) -> Path:

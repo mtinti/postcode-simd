@@ -36,9 +36,34 @@ def logical_fingerprint(table: pd.DataFrame) -> str:
     return hashlib.sha256(pd.util.hash_pandas_object(table, index=False).values.tobytes()).hexdigest()
 
 
+INDEX_SOURCES = ("spd", "sspl")
+
+
 def load_schema(path: Path) -> dict:
+    """An output schema names its table, its natural key, which NRS product supplies the
+    postcodes and how that product allocates geography."""
     raw = yaml.safe_load(Path(path).read_text())
-    return {"version": raw["version"], "fields": raw["fields"], "sha256": sha256(path)}
+    if raw["index_source"] not in INDEX_SOURCES or not isinstance(raw["key"], list) or not raw["key"]:
+        raise ValueError(f"{path}: index_source must be one of {INDEX_SOURCES} and key a non-empty list")
+    return {"version": raw["version"], "table": raw["table"], "index_source": raw["index_source"],
+            "allocation": raw["allocation"], "key": list(raw["key"]), "fields": raw["fields"], "sha256": sha256(path)}
+
+
+def index_release(registry: Registry, schema: dict) -> str:
+    return registry.sspl_release if schema["index_source"] == "sspl" else registry.spd_release
+
+
+def table_metadata(registry: Registry, schema: dict, decisions_sha256: str) -> dict:
+    """The provenance contract, supplied by the caller, never inferred from a saved file."""
+    return {"band_convention": BAND_CONVENTION, "schema_version": schema["version"],
+            "index_source": schema["index_source"], "index_release": index_release(registry, schema),
+            "allocation": schema["allocation"], "key": schema["key"], "decisions_sha256": decisions_sha256,
+            "sources": [{"key": o.key, "sha256": o.sha256} for o in registry.objects]}
+
+
+def same_values(a: pd.Series, b: pd.Series) -> pd.Series:
+    """Null equals null, but never a supplied value (including an empty string)."""
+    return a.eq(b).fillna(False) | (a.isna() & b.isna())
 
 
 def arrow_schema(schema: dict, metadata: dict) -> pa.Schema:
@@ -52,7 +77,7 @@ def _column(series: pd.Series, field: dict) -> pa.Array:
         values = [None if pd.isna(v) else v.date() for v in series]
         return pa.array(values, type=pa.date32())
     if kind == "string":
-        values = [None if (v is None or (isinstance(v, float) and pd.isna(v))) else str(v) for v in series]
+        values = [None if pd.isna(v) else str(v) for v in series]
         return pa.array(values, type=pa.string())
     if kind == "bool":
         return pa.array(series.astype(bool).tolist(), type=pa.bool_())
@@ -73,7 +98,7 @@ def write_table(table: pd.DataFrame, schema: dict, path: Path, metadata: dict) -
 
 
 def readback(path: Path, schema: dict, index: pd.DataFrame, simd: pd.DataFrame, gov: pd.DataFrame,
-             registry: Registry, report: Report) -> dict:
+             registry: Registry, report: Report, *, decisions_sha256: str, label: str = "readback") -> dict:
     """Reopen the saved file and compare it with the accepted sources, not with memory.
 
     Original columns are compared with the index built from the source files. SIMD and
@@ -83,18 +108,29 @@ def readback(path: Path, schema: dict, index: pd.DataFrame, simd: pd.DataFrame, 
     file = pq.ParquetFile(path)
     saved_schema = file.schema_arrow
     expected_names = [f["name"] for f in schema["fields"]]
-    report.equal("readback.column_names", saved_schema.names, expected_names)
-    report.equal("readback.column_types", [str(t) for t in saved_schema.types], [str(ARROW[f["type"]]) for f in schema["fields"]])
-    report.equal("readback.nullability", [f.nullable for f in saved_schema], [bool(f["nullable"]) for f in schema["fields"]])
+    report.equal(f"{label}.column_names", saved_schema.names, expected_names)
+    report.equal(f"{label}.column_types", [str(t) for t in saved_schema.types], [str(ARROW[f["type"]]) for f in schema["fields"]])
+    report.equal(f"{label}.nullability", [f.nullable for f in saved_schema], [bool(f["nullable"]) for f in schema["fields"]])
+    report.require()  # Invalid structure cannot safely be compared column by column.
     meta = saved_schema.metadata or {}
-    report.equal("readback.metadata_present", sorted(k.decode() for k in meta), sorted(["band_convention", "schema_version", "spd_release", "sources", "decisions_sha256"]))
+    expected_meta = arrow_schema(schema, table_metadata(registry, schema, decisions_sha256)).metadata
+    report.equal(f"{label}.metadata_present", sorted(k.decode() for k in meta), sorted(k.decode() for k in expected_meta))
+    for key, expected in expected_meta.items():
+        actual = meta.get(key)
+        report.equal(f"{label}.metadata.{key.decode()}",
+                     actual.decode("utf-8", errors="replace") if actual is not None else None, expected.decode())
 
     saved = file.read().to_pandas(date_as_object=False)
-    report.equal("readback.rows", len(saved), len(index))
-    report.equal("readback.primary_key_unique", int(saved.duplicated(["pc_norm", "introduced_on"]).sum()), 0)
+    report.equal(f"{label}.rows", len(saved), len(index))
+    nulls = {f["name"]: int(saved[f["name"]].isna().sum()) for f in schema["fields"] if not f["nullable"]}
+    report.equal(f"{label}.required_values_nonnull", {c: n for c, n in nulls.items() if n}, {})
+    report.equal(f"{label}.primary_key_unique", int(saved.duplicated(schema["key"]).sum()), 0)
+    if len(saved) != len(index):
+        report.require()
 
     # Source fidelity for the original and derived index columns.
     idx = index.reset_index(drop=True)
+    index_differences = {}
     for column in idx.columns:
         a, b = saved[column], idx[column]
         if column in ("introduced_on", "deleted_on"):
@@ -103,39 +139,47 @@ def readback(path: Path, schema: dict, index: pd.DataFrame, simd: pd.DataFrame, 
             a, b = a.astype(bool), b.astype(bool)
         else:
             a, b = a.astype("string"), b.astype("string")
-        same = (a.eq(b) | (a.isna() & b.isna()))
+        same = same_values(a, b)
         if not same.all():
-            report.add(f"readback.index.{column}", False, f"{int((~same).sum())} value(s) differ from source")
-    report.add("readback.index_columns", not report.blocking_failures, f"{len(idx.columns)} index columns compared")
+            index_differences[column] = int((~same).sum())
+            report.add(f"{label}.index.{column}", False, f"{index_differences[column]} value(s) differ from source")
+    report.equal(f"{label}.index_columns", index_differences, {}, detail=f"{len(idx.columns)} index columns compared")
 
     # Re-lookup every attached value from the saved file's own data-zone codes.
     expected = attach(saved, simd, gov, registry)
-    differing = {c: int(saved[c].astype("int64" if not c.startswith("phs_dz") else "string").ne(expected[c].astype("int64" if not c.startswith("phs_dz") else "string")).sum()) for c in expected.columns}
-    bad = {c: n for c, n in differing.items() if n}
-    report.equal("readback.attached_values", bad, {}, detail=f"{len(expected.columns)} attached columns re-looked-up" if not bad else f"differ: {bad}")
-    return {"rows": len(saved), "columns": len(saved.columns), "sha256": sha256(path),
+    bad = {}
+    for column in expected.columns:
+        kind = "string" if column.startswith("phs_dz") else "Int64"
+        same = same_values(saved[column].astype(kind), expected[column].astype(kind))
+        if not same.all():
+            bad[column] = int((~same).sum())
+    report.equal(f"{label}.attached_values", bad, {}, detail=f"{len(expected.columns)} attached columns re-looked-up" if not bad else f"differ: {bad}")
+    return {"table": schema["table"], "schema_version": schema["version"], "schema_sha256": schema["sha256"],
+            "index_source": schema["index_source"], "index_release": index_release(registry, schema),
+            "allocation": schema["allocation"], "key": schema["key"],
+            "rows": len(saved), "columns": len(saved.columns), "sha256": sha256(path),
             "logical_fingerprint": logical_fingerprint(saved),
             "note": "sha256 covers the file including embedded provenance metadata; logical_fingerprint covers the rows only"}
 
 
-def manifest(registry: Registry, schema: dict, decisions_sha256: str, baselines_sha256: str, mode: str,
-             output: dict, report: Report, extra: dict) -> dict:
+def manifest(registry: Registry, decisions_sha256: str, contract_sha256: dict, mode: str,
+             tables: dict, report: Report, extra: dict) -> dict:
+    """`tables` maps each table name to its readback result; `contract_sha256` the header contracts."""
     return {
         "built_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "spd_release": registry.spd_release,
+        "sspl_release": registry.sspl_release,
         "source_mode": mode,
-        "schema_version": schema["version"],
-        "schema_sha256": schema["sha256"],
+        "tables": tables,
         "registry_sha256": registry.sha256,
         "decisions_sha256": decisions_sha256,
-        "baselines_sha256": baselines_sha256,
+        **contract_sha256,
         "band_convention": BAND_CONVENTION,
         "licences": registry.licences,
         "sources": [{"key": o.key, "publisher": o.publisher, "url": o.url, "sha256": o.sha256,
                      "files": [{"path": f.path, "sha256": f.sha256, "role": f.role} for f in o.files]} for o in registry.objects],
-        "output": output,
         "summary": report.summary(),
-        "diagnostic_differences": [c.name for c in report.diagnostic_differences],
         "checks": report.to_records(),
+        "observations": report.observations,
         **extra,
     }

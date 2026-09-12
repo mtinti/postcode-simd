@@ -1,8 +1,9 @@
-"""Generate docs/DATA_DICTIONARY.md from output_schema.yaml and the registry.
+"""Generate the data dictionaries from the two output schemas and the registry.
 
-    python -m simd_ingest.dictionary
+    python -m simd_ingest.dictionary [results/manifest.json]
 
-The dictionary is generated, not hand-written, so it cannot drift from the schema.
+docs/DATA_DICTIONARY.md describes the main table (SSPL), docs/DATA_DICTIONARY_HISTORY.md the
+history table (SPD). Generated, not hand-written, so they cannot drift from the schemas.
 """
 
 from __future__ import annotations
@@ -30,40 +31,75 @@ GUIDANCE_TABLE_4 = [
 ]
 
 
-def render(schema: dict, registry, manifest: dict | None) -> str:
+TABLES = {
+    "main": dict(schema="output_schema.yaml", out="docs/DATA_DICTIONARY.md", product="Scottish Statistics Postcode Lookup (SSPL)",
+                 release="sspl_release", other="DATA_DICTIONARY_HISTORY.md"),
+    "history": dict(schema="output_schema_history.yaml", out="docs/DATA_DICTIONARY_HISTORY.md", product="Scottish Postcode Directory (SPD)",
+                    release="spd_release", other="DATA_DICTIONARY.md"),
+}
+
+
+def render(schema: dict, registry, manifest: dict | None, name: str = "history") -> str:
     fields = schema["fields"]
     by_source = Counter(f["source"] for f in fields)
     editions = [e["key"] for e in registry.phs_editions]
-    lines = [f"# Data dictionary: postcode_simd, schema `{schema['version']}`", ""]
-    lines += ["One row per Scottish Postcode Directory record, both user types, current and deleted, with all",
-              "six SIMD editions attached. Generated from `simd_ingest/output_schema.yaml`; do not edit by hand.", ""]
+    spec = TABLES[name]
+    lines = [f"# Data dictionary: {schema['table']}, schema `{schema['version']}`", ""]
+    if name == "main":
+        lines += ["The **main table**: one row per whole postcode from the " + spec["product"] + ", both user types, the",
+                  f"latest life of each postcode (deleted ones included), with all {len(editions)} SIMD editions attached.",
+                  "Every geography, including both data-zone vintages, is the one containing the centroid of the postcode's",
+                  "2022 output area, as NRS allocates it in the SSPL. For postcode history and the directory's own",
+                  f"postcode-in-zone allocation see the history table, [{spec['other']}]({spec['other']}).",
+                  f"Generated from `simd_ingest/{spec['schema']}`; do not edit by hand.", ""]
+    else:
+        lines += ["The **history table**: one row per " + spec["product"] + " record, both user types, current and deleted,",
+                  f"every life of every postcode, with all {len(editions)} SIMD editions attached. Data zones are the ones",
+                  "containing the postcode's own grid reference. For one row per whole postcode see the main table,",
+                  f"[{spec['other']}]({spec['other']}). Generated from `simd_ingest/{spec['schema']}`; do not edit by hand.", ""]
     if manifest:
-        o = manifest["output"]
-        lines += [f"Current build: {o['rows']:,} rows by {o['columns']} columns, SPD release {manifest['spd_release']}, ",
-                  f"built {manifest['built_at'][:19]}Z. Parquet SHA256 `{o['sha256']}`; rows-only fingerprint ",
+        o = manifest["tables"][name]
+        lines += [f"Current build: {o['rows']:,} rows by {o['columns']} columns, {name} index release {o['index_release']}, ",
+                  f"allocation `{o['allocation']}`, built {manifest['built_at'][:19]}Z. Parquet SHA256 `{o['sha256']}`; rows-only fingerprint ",
                   f"`{o.get('logical_fingerprint', '')}`. The file hash also covers the embedded provenance metadata, ",
-                  "so it changes when the decision log changes; the fingerprint changes only when the data does.", ""]
-    lines += ["## Key", "",
-              "Primary key: `pc_norm` with `introduced_on`. Unique across both user types. A postcode alone repeats",
-              "up to seven times across its history, so never join on `pc_norm` without the date.", "",
-              "Validity of a record is the half-open interval `introduced_on <= day < deleted_on`, with a null",
-              "`deleted_on` meaning current. A record whose two dates are equal is retained but is never valid",
-              "on any day.", ""]
+                  "so it changes when the decision log changes; compare fingerprints under the same pinned runtime.", ""]
+    if name == "main":
+        lines += ["## Key", "",
+                  "Primary key: `pc_norm`, the postcode uppercased without spaces. One row per postcode; no split suffix",
+                  "exists because NRS resolved split postcodes to the A part before publishing. `is_current` says whether",
+                  "the latest life is live; `introduced_on` and `deleted_on` describe that latest life only. This table",
+                  "cannot answer a question about a past date: use the history table for that.", ""]
+    else:
+        lines += ["## Key", "",
+                  "Primary key: `pc_norm` with `introduced_on`. Unique across both user types. A postcode alone repeats",
+                  "across its history, so use the date or explicitly select current records.", "",
+                  "Validity of a record is the half-open interval `introduced_on <= day < deleted_on`, with a null",
+                  "`deleted_on` meaning current. A record whose two dates are equal is retained but is never valid",
+                  "on any day.", ""]
     lines += ["## Band convention", "", BAND_CONVENTION, ""]
     lines += ["## Which edition to use", "",
               "From the PHS deprivation guidance for analysts, version 3.5, table 4. The file carries every",
               "edition on every row; choosing one is the analyst's decision.", "",
               "| Edition | Data zones | Population year | Use with health data for |", "| --- | --- | --- | --- |"]
     lines += [f"| {a} | {b} | {c} | {d} |" for a, b, c, d in GUIDANCE_TABLE_4]
-    lines += ["", "Editions on 2001 data zones cannot be used with 2011 data zones and vice versa; the join here",
+    lines += ["", "Data-zone vintages are not interchangeable; the join here",
               "already uses the right vintage for each edition. The file carries SIMD only; the Carstairs index",
               "the same guidance describes for pre-1996 data is not included.", ""]
-    lines += ["## Things that will catch you out", "",
-              "- **Split postcodes.** NRS splits a postcode that straddles a boundary into A, B or C parts, each its",
-              "  own record with its own data zone. `pc_base` is the postcode as a person writes it. Filter current",
-              "  records on `pc_base` and you may get more than one row with different SIMD values. The lookups",
-              "  in `simd_ingest.lookup` resolve that to the A part by default, as NRS does, and say so; a report",
-              "  rule shows the ambiguity instead. Never average or vote.",
+    lines += ["## Things that will catch you out", ""]
+    if name == "main":
+        lines += ["- **Allocation.** The SSPL assigns every higher geography from the 2022 output-area centroid. Its 2011",
+                  "  and 2001 data zones therefore differ from the directory's on a few percent of postcodes, and so do",
+                  "  the SIMD values attached through them. The build report counts the differences. PHS builds its own",
+                  "  lookups from the directory; use the history table where agreement with PHS practice matters.",
+                  "- **Split postcodes** are already whole here. `SplitIndicator` Y marks a postcode the directory holds",
+                  "  as A/B/C parts; the SSPL keeps the A part's geography and sums the counts."]
+    else:
+        lines += ["- **Split postcodes.** NRS splits a postcode that straddles a boundary into A, B or C parts, each its",
+                  "  own record with its own data zone. `pc_base` is the postcode as a person writes it. Filter current",
+                  "  records on `pc_base` and you may get more than one row with different SIMD values. The lookups",
+                  "  in `simd_ingest.lookup` resolve that to the A part by default, as NRS does, and say so; a report",
+                  "  rule shows the ambiguity instead. Never average or vote."]
+    lines += [
               "- **Large-user postcodes and PO boxes.** The directory assigns them a data zone, so SIMD is attached.",
               "  PHS practice attaches no deprivation to PO boxes. Filter on `spd_user_type` and on",
               "  `LinkedSmallUserPostcode` in (`NO LINKP`, `NO LINK`) if you want that behaviour.",
@@ -75,7 +111,8 @@ def render(schema: dict, registry, manifest: dict | None) -> str:
     lines += ["## Sources", "", "| Publisher | Object | SHA256 |", "| --- | --- | --- |"]
     lines += [f"| {o.publisher} | {o.url.rsplit('/', 1)[-1]} | `{o.sha256[:16]}…` |" for o in registry.objects]
     lines += ["", f"Licences: " + "; ".join(f"{k}: {v}" for k, v in registry.licences.items()), ""]
-    lines += ["## Columns", "", f"{len(fields)} columns: {by_source['directory']} from the directory, {by_source['derived']} derived, ",
+    origin = "lookup" if name == "main" else "directory"
+    lines += ["## Columns", "", f"{len(fields)} columns: {by_source[origin]} from the {origin}, {by_source['derived']} derived, ",
               f"{sum(1 for f in fields if f['name'].startswith('phs_dz'))} PHS geography, and 14 per edition for {len(editions)} editions.", "",
               "### Per-edition SIMD columns", "", "`{ed}` is one of " + ", ".join(editions) + ".", "",
               "| Column | Type | Meaning |", "| --- | --- | --- |"]
@@ -92,15 +129,17 @@ def render(schema: dict, registry, manifest: dict | None) -> str:
     return "\n".join(lines) + "\n"
 
 
-def main() -> int:
-    schema = yaml.safe_load((PACKAGE / "output_schema.yaml").read_text())
+def main(argv=None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
     registry = load_registry(PACKAGE / "sources.yaml")
-    man_path = Path("results/manifest.json")  # relative to the working directory
+    man_path = Path(argv[0] if argv else "results/manifest.json")  # relative to the working directory
     manifest = json.loads(man_path.read_text()) if man_path.is_file() else None
-    out = Path("docs/DATA_DICTIONARY.md")
-    out.parent.mkdir(exist_ok=True)
-    out.write_text(render(schema, registry, manifest))
-    print(f"wrote {out}")
+    for name, spec in TABLES.items():
+        schema = yaml.safe_load((PACKAGE / spec["schema"]).read_text())
+        out = Path(spec["out"])
+        out.parent.mkdir(exist_ok=True)
+        out.write_text(render(schema, registry, manifest, name))
+        print(f"wrote {out}")
     return 0
 
 

@@ -1,10 +1,10 @@
 """Trace one output record back through the join to the PHS and government rows it came from.
 
-    python -m simd_ingest.trace "AB12 3GQA"                 # the current record
-    python -m simd_ingest.trace "AB10 1BF" --introduced 2003-04-15
+    python -m simd_ingest.trace "AB12 3GQ"                            # main table, latest life
+    python -m simd_ingest.trace "AB10 1BF" --table history --introduced 2003-04-15
 
 Rebuilds the two reference tables from the pinned sources, so the trace is independent of
-whatever Dagster or the CLI produced, and reports for every edition whether the value in
+the builder's intermediate tables, and reports for every edition whether the value in
 the saved table equals the value in the source row. Row-level lineage, for one record.
 """
 
@@ -17,11 +17,11 @@ from pathlib import Path
 
 import pandas as pd
 
-from .cli import load_config
+from .config import load_config
 from .core.checks import Report
 from .core.govscot import build_govscot_bands
 from .core.phs import BANDS, FLAGS, build_phs_bands
-from .core.sources import load_registry
+from .core.sources import load_registry, verify_root
 from .core.spd import normalise_postcode
 
 
@@ -40,10 +40,8 @@ def trace(table: pd.DataFrame, phs: pd.DataFrame, gov: pd.DataFrame, registry, p
     row = rows.iloc[0]
     lines = [f"record   {row['Postcode']!r} ({row['spd_user_type']}), introduced {row['introduced_on']}, "
              f"deleted {row['deleted_on'] if pd.notna(row['deleted_on']) else 'not deleted'}",
-             f"zones    2001 {row['DataZone2001Code']}   2011 {row['DataZone2011Code']}   2022 {row['DataZone2022Code']} (unused)",
-             f"geography 2001 hb {row['phs_dz2001_hb']} hscp {row['phs_dz2001_hscp']} ca {row['phs_dz2001_ca']}   "
-             f"2011 hb {row['phs_dz2011_hb']} hscp {row['phs_dz2011_hscp']} ca {row['phs_dz2011_ca']}   "
-             f"directory hb {row['HealthBoardArea2019Code']}", ""]
+             "zones    " + "   ".join(f"{v}: {row[f'DataZone{v}Code']}" for v in
+                                      sorted({e["dz_vintage"] for e in registry.phs_editions})), ""]
     ok = True
     for ed in registry.phs_editions:
         key_, vintage = ed["key"], int(ed["dz_vintage"])
@@ -67,7 +65,7 @@ def trace(table: pd.DataFrame, phs: pd.DataFrame, gov: pd.DataFrame, registry, p
         lines.append(f"  output      {shown}")
         lines.append(f"  agreement   {'all 14 values equal the source rows' if not bad else 'DIFFER: ' + str(bad)}")
         lines.append("")
-    lines.append("result   " + ("every attached value traces to its source row" if ok else "MISMATCH FOUND"))
+    lines.append("result   " + ("every SIMD value traces to its source row" if ok else "MISMATCH FOUND"))
     return lines
 
 
@@ -76,18 +74,24 @@ def main(argv=None) -> int:
     ap.add_argument("postcode")
     ap.add_argument("--introduced", help="introduction date, YYYY-MM-DD, to pick one life of a postcode")
     ap.add_argument("--config", default=os.environ.get("SIMD_WORKFLOW_CONFIG", "config/workflow.yaml"))
-    ap.add_argument("--table", default="results/postcode_simd.parquet")
+    ap.add_argument("--table", choices=["main", "history"], default="main",
+                    help="main: the SSPL latest-postcode table (default); history: the SPD table of every life")
+    ap.add_argument("--file", help="a Parquet file to trace instead of the configured results directory")
     args = ap.parse_args(argv)
     cfg = load_config(args.config)
     registry = load_registry(cfg["source_manifest"])
     root = cfg["source_roots"][cfg["source_mode"]]
     report = Report()
+    verify_root(registry, root, report)
+    report.require()
     phs = build_phs_bands(registry, root, report)
     gov = build_govscot_bands(registry, root, report)
     report.require()
-    table = pd.read_parquet(args.table)
-    print("\n".join(trace(table, phs, gov, registry, args.postcode, args.introduced)))
-    return 0
+    from .pipeline import TABLES
+    table = pd.read_parquet(args.file or cfg["results_root"] / TABLES[args.table]["file"])
+    lines = trace(table, phs, gov, registry, args.postcode, args.introduced)
+    print("\n".join(lines))
+    return int(lines[-1].endswith("MISMATCH FOUND"))
 
 
 if __name__ == "__main__":

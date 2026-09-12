@@ -1,7 +1,8 @@
 """The build report: what happened to the data, in order, with this run's numbers.
 
 Written beside the manifest as BUILD_REPORT.md by every build. The manifest holds every check
-for the machine; this holds the story for a person.
+for the machine; this holds the story for a person. Two tables come out of a build, so the
+report says where each starts, what they share, and where they differ.
 """
 
 from __future__ import annotations
@@ -19,99 +20,203 @@ def _actual(report: Report, name: str, default=None):
 
 
 def _passed(report: Report, name: str) -> str:
-    """Under Dagster a check may have run in an upstream asset; it must have passed for this
-    step to run at all, so it is reported as passed upstream rather than as missing."""
+    """Describe recorded evidence only. Absence is not evidence of a passing check."""
     c = next((c for c in report.checks if c.name == name), None)
-    return "ok" if c is not None and c.passed else "FAILED" if c is not None else "ok, upstream"
+    return "ok" if c is not None and c.passed else "FAILED" if c is not None else "NOT RECORDED"
 
 
 def _detail(report: Report, name: str) -> str:
     return next((c.detail for c in report.checks if c.name == name), "")
 
 
-def render(report: Report, registry: Registry, table: pd.DataFrame, info: dict, mode: str,
-           index: pd.DataFrame, phs: pd.DataFrame, gov: pd.DataFrame, example: str = "AB123GQA") -> str:
+def _snapshot_change(changes: dict, product: str) -> list:
+    if changes.get("status") != "compared":
+        return [f"Comparison unavailable: {changes.get('reason', 'not recorded')}.", ""]
+    L = [f"Compared with hash-verified {product} release {changes['previous_release']}. "
+         f"{changes['added_records']:,} records added, {changes['removed_records']:,} removed from the snapshot, "
+         f"{changes['changed_records']:,} changed among {changes['common_records']:,} shared natural keys. "
+         f"{changes['newly_deleted_records']:,} retained records became deleted. "
+         "The release label alone is not counted as a record change.", "",
+         f"Columns added: {', '.join(changes['added_columns']) or 'none'}. "
+         f"Columns removed: {', '.join(changes['removed_columns']) or 'none'}.", ""]
+    if changes["changed_fields"]:
+        L += ["| Changed field | Shared records affected |", "| --- | ---: |"]
+        L += [f"| {col} | {count:,} |" for col, count in changes["changed_fields"].items()]
+    else:
+        L += ["No shared field values changed."]
+    return L + [""]
+
+
+def render(report: Report, registry: Registry, tables: dict, info: dict, mode: str,
+           indices: dict, phs: pd.DataFrame, gov: pd.DataFrame, example: str = "AB123GQ") -> str:
+    """`tables` and `info` are keyed by table name (main, history); `indices` by index source."""
     s = report.summary()
-    L = [f"# Build report: postcode_simd", "",
+    main, history = indices["sspl"], indices["spd"]
+    changes = report.observations.get("snapshot_changes", {})
+    L = [f"# Build report: postcode_simd and postcode_simd_history", "",
          f"{dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%d %H:%M')}Z, source mode {mode}, "
-         f"SPD release {registry.spd_release}. {s['blocking_passed']} blocking checks passed, {s['blocking_failed']} failed.", ""]
+         f"SSPL release {registry.sspl_release}, SPD release {registry.spd_release}. "
+         f"{s['blocking_passed']} blocking checks passed, {s['blocking_failed']} failed.", "",
+         "Two tables are built from the same SIMD sources. The **main table** starts from the Scottish Statistics "
+         "Postcode Lookup: the latest life of every whole postcode, with each geography taken from the centroid of "
+         "the postcode's 2022 output area. The **history table** starts from the Scottish Postcode Directory: "
+         "every postcode life, with the geography containing the postcode's own grid reference. "
+         "Same joins, same checks, different postcode grain and different data-zone allocation.", ""]
 
     # 1. sources
     verified = sum(1 for c in report.checks if c.name.startswith("source.hash.") and c.passed)
     L += ["## 1. Sources", "",
           f"{len(registry.objects)} remote objects, {len(registry.files)} pinned files. "
           f"{verified} of {len(registry.files)} files present with the pinned hash."
-          + (" All match." if verified == len(registry.files) else " **Some do not.**"), ""]
+          + (" All match." if verified == len(registry.files) else " **Verification evidence is missing or failed.**"), ""]
 
-    # 2. index
-    by_type = index["spd_user_type"].value_counts()
+    # 2. main index
+    by_type = main["spd_user_type"].value_counts()
+    current = int(main["is_current"].sum())
+    links = report.observations.get("sspl.links", {})
+    profile = report.observations.get("sspl.profile", {})
+    L += ["## 2. Main table index: Scottish Statistics Postcode Lookup", "",
+          f"{len(main):,} whole postcodes: {int(by_type.get('small_user', 0)):,} small user and "
+          f"{int(by_type.get('large_user', 0)):,} large user, of which {current:,} current and {len(main) - current:,} "
+          f"deleted (the latest life of a deleted postcode is kept). Totals are {registry.sspl_file.get('totals_basis', 'counted')} "
+          "from the pinned file, since NRS publishes none. Every original column kept as text; `pc_norm` (uppercase, no "
+          "spaces), `introduced_on`, `deleted_on`, `is_current`, `spd_user_type` and `sspl_release` added. "
+          f"Key `pc_norm` unique: {_passed(report, 'sspl.primary_key_unique')}. No split suffix exists: NRS made split "
+          f"postcodes whole on the A part ({profile.get('split_indicator_y', {}).get('small_user', 'NOT RECORDED')} small-user "
+          "records carry `SplitIndicator` Y).",
+          f"Large-user links: {links.get('linked', 0):,} to a small-user postcode in the file, "
+          f"{links.get('NO LINKP', 0):,} PO boxes (`NO LINKP`), {links.get('NO LINK', 0):,} `NO LINK`, "
+          f"{links.get('target_not_in_file', 0):,} pointing at a postcode not in the file; "
+          f"{links.get('with_split_suffix', 0):,} links keep an A suffix.", "",
+          "### Change from previous snapshot", "", *_snapshot_change(changes.get("main", {}), "SSPL")]
+
+    # 3. history index
+    by_type = history["spd_user_type"].value_counts()
     small, large = int(by_type.get("small_user", 0)), int(by_type.get("large_user", 0))
-    current = int(index["is_current"].sum())
+    current = int(history["is_current"].sum())
     from .spd import interval_summary
-    intervals, _ = interval_summary(index)
+    intervals, _ = interval_summary(history)
     touching, overlaps = intervals["touching_pairs"], intervals["strict_overlaps"]
-    multi = int(index.loc[index["is_current"], "pc_base"].value_counts().gt(1).sum())
-    L += ["## 2. Postcode index", "",
-          f"SmallUser {small:,} records + LargeUser {large:,} = {len(index):,}, "
-          f"of which {current:,} current and {len(index) - current:,} deleted. "
+    multi = int(history.loc[history["is_current"], "pc_base"].value_counts().gt(1).sum())
+    L += ["## 3. History table index: Scottish Postcode Directory", "",
+          f"SmallUser {small:,} records + LargeUser {large:,} = {len(history):,}, "
+          f"of which {current:,} current and {len(history) - current:,} deleted. "
           f"Every original column kept as text; `pc_norm` (uppercase, no spaces, NRS suffix kept), `pc_base`, "
-          f"`introduced_on`, `deleted_on`, `is_current` and `spd_user_type` added.",
+          f"`introduced_on`, `deleted_on`, `is_current`, `spd_user_type` and `spd_release` added.",
           f"Key `pc_norm` + `introduced_on` unique: {_passed(report, 'spd.primary_key_unique')}. "
-          f"{touching} records touch on a date, {overlaps} overlap. "
+          f"{touching} touching record pairs, {overlaps} overlapping pairs. "
           f"Ordinary postcodes with more than one current record: {multi}.", ""]
+    L += ["### Release profile (information, not acceptance gates)", "",
+          "| File | Split records | Repeated keys | Same-day records |",
+          "| --- | ---: | ---: | ---: |"]
+    for role in ("small_user", "large_user"):
+        p = report.observations.get(f"spd.{role}", {})
+        values = [p.get(k, "NOT RECORDED") for k in ("split_records", "repeated_keys", "same_day")]
+        L.append(f"| {role} | " + " | ".join(str(v) for v in values) + " |")
+    L += ["", "Other profile details (key lengths, link categories and ambiguity by vintage) are in the manifest.", "",
+          "### Change from previous snapshot", "", *_snapshot_change(changes.get("history", {}), "SPD")]
 
-    # 3. PHS
-    L += ["## 3. PHS population-weighted SIMD", "", "| Edition | Rows | Data zones | Bands | Rank 1 in band 1 |", "| --- | ---: | --- | --- | --- |"]
+    # 4. agreement
+    a = report.observations.get("table_agreement")
+    L += ["## 4. Agreement between the two tables (information, not acceptance gates)", ""]
+    if a:
+        cut = a["cut_differences"]
+        L += [f"The history table reduced to its newest life per whole postcode (A part for splits) has "
+              f"{a['history_whole_postcodes']:,} postcodes; the main table has {a['main_rows']:,}; {a['shared']:,} are shared, "
+              f"{a['only_in_main']:,} exist only in the main table and {a['only_in_history']:,} only in the history table. "
+              f"Among shared postcodes the introduction date differs on {cut['introduced_on']:,}, the live/deleted state on "
+              f"{cut['is_current']:,} and the user type on {cut['spd_user_type']:,}. These come from the two products being "
+              "different cuts of the Royal Mail file.", "",
+              "Geography differences come from the allocation method: the lookup takes the zone containing the 2022 "
+              "output-area centroid, the directory the zone containing the postcode.", "",
+              "| Column | Shared postcodes that differ | Of which current in both |", "| --- | ---: | ---: |"]
+        L += [f"| {col} | {v['all']:,} | {v['current']:,} |" for col, v in a["geography_differences"].items()]
+        L += ["", f"Effect on the attached SIMD for the {a['shared_and_current_in_both']:,} postcodes current in both tables:", "",
+              "| Edition | PHS Scotland quintile differs | PHS Scotland decile differs | Most-deprived 15% flag differs | Government quintile differs |",
+              "| --- | ---: | ---: | ---: | ---: |"]
+        L += [f"| {k} | {v['pw_scotland_quintile']:,} | {v['pw_scotland_decile']:,} | {v['most15pc']:,} | {v['uw_scotland_quintile']:,} |"
+              for k, v in a["band_differences_among_current"].items()]
+        L += [""]
+    else:
+        L += ["NOT RECORDED.", ""]
+
+    # 5. PHS
+    L += ["## 5. PHS population-weighted SIMD", "", "| Edition | Rows | Data zones | Bands | Rank 1 in band 1 |", "| --- | ---: | --- | --- | --- |"]
     for ed in registry.phs_editions:
         k = ed["key"]
         L.append(f"| {k} | {int((phs['edition'] == k).sum()):,} | {ed['dz_vintage']} | "
                  f"{'inverted: 11 - decile, 6 - quintile' if ed['invert_bands'] else 'as published'} | {_passed(report, f'phs.{k}.rank1_in_band1')} |")
     L += ["", "After this step 1 means most deprived in every edition. Ranks and the 15% flags are never changed.", ""]
 
-    # 4. government
-    L += ["## 4. Scottish Government unweighted SIMD", "", "| Edition | Rows | Same data zones as PHS | Rank identical to PHS |", "| --- | ---: | --- | --- |"]
+    # 6. government
+    L += ["## 6. Scottish Government unweighted SIMD", "", "| Edition | Rows | Same data zones as PHS | Rank identical to PHS |", "| --- | ---: | --- | --- |"]
     for ed in registry.govscot_editions:
         k = ed["key"]
         L.append(f"| {k} | {int((gov['edition'] == k).sum()):,} | {_passed(report, f'cross.{k}.same_zones')} | {_passed(report, f'cross.{k}.rank_identical')} |")
     L += ["", "Bands and population copied from the shapefile tables as published; nothing is calculated or compared "
           "beyond confirming that both sources describe the same zones with the same ranks.", ""]
 
-    # 5. joins
-    L += ["## 5. Joins, one edition at a time", "",
+    # 7. joins
+    L += ["## 7. Joins, one edition at a time, for each table", "",
           "Each join looks up the record's data zone in one edition table and copies that edition's values on. "
-          "2001 data zones for 2004 to 2012, 2011 data zones for 2016 and 2020v2. The order is fixed for reading; "
-          "it does not affect the result.", "",
-          "| Step | Key | Rows before and after | Columns added | Empty cells |", "| --- | --- | ---: | ---: | --- |"]
-    n = 0
-    for kind, editions in (("phs", registry.phs_editions), ("gov", registry.govscot_editions)):
-        for ed in editions:
-            n += 1
-            k = ed["key"]
-            rows = _actual(report, f"join.{kind}.{k}.rows_unchanged", len(table))
-            added = _detail(report, f"join.{kind}.{k}.every_record_matched").split(" ")[0]
-            L.append(f"| {n}. {'PHS' if kind == 'phs' else 'Government'} {k} | DataZone{ed['dz_vintage']}Code | "
-                     f"{rows:,} | {added} | {_passed(report, f'join.{kind}.{k}.every_record_matched')} |")
-    L += [""]
+          "The source registry declares the data-zone vintage for each edition. The order is fixed for reading; "
+          "it does not affect the result.", ""]
+    for name in tables:
+        L += [f"### {name} table", "",
+              "| Step | Key | Rows before and after | Columns added | Empty cells |", "| --- | --- | ---: | ---: | --- |"]
+        n = 0
+        for kind, editions in (("phs", registry.phs_editions), ("gov", registry.govscot_editions)):
+            for ed in editions:
+                n += 1
+                k = ed["key"]
+                rows = _actual(report, f"join.{name}.{kind}.{k}.rows_unchanged")
+                rows_label = f"{rows:,}" if rows is not None else "NOT RECORDED"
+                added = _detail(report, f"join.{name}.{kind}.{k}.every_record_matched").split(" ")[0]
+                L.append(f"| {n}. {'PHS' if kind == 'phs' else 'Government'} {k} | DataZone{ed['dz_vintage']}Code | "
+                         f"{rows_label} | {added or 'NOT RECORDED'} | {_passed(report, f'join.{name}.{kind}.{k}.every_record_matched')} |")
+        L += [""]
 
-    # 6. output
-    L += ["## 6. Output", "",
-          f"{info['rows']:,} rows by {info['columns']} columns. Written to a temporary file, reopened, and every attached "
-          f"value re-looked-up from the reference tables through the saved file's own data zone codes: "
-          f"{_passed(report, 'readback.attached_values')}. Original columns compared with the index: {_passed(report, 'readback.index_columns')}.",
-          f"Rows-only fingerprint `{info['logical_fingerprint']}`. File SHA256 `{info['sha256']}`. "
-          "The fingerprint changes only when data changes; the file hash also covers the embedded decision log.", ""]
+    # 8. output
+    L += ["## 8. Output", ""]
+    for name, i in info.items():
+        L += [f"**{name}**: `{i['table']}`, {i['rows']:,} rows by {i['columns']} columns, key {i['key']}, "
+              f"index {i['index_source']} release {i['index_release']}, allocation {i['allocation']}. "
+              f"Written to a temporary file, reopened, and every attached value re-looked-up from the reference tables "
+              f"through the saved file's own data zone codes: {_passed(report, f'readback.{name}.attached_values')}. "
+              f"Original columns compared with the index: {_passed(report, f'readback.{name}.index_columns')}. "
+              f"Rows-only fingerprint `{i['logical_fingerprint']}`. File SHA256 `{i['sha256']}`.", ""]
+    L += ["Null and source blank are distinct. Embedded convention, schema version, index source and release, allocation, "
+          "key, source pins and decision hash are checked against the build inputs, not just for the presence of "
+          "metadata keys. With the same pinned runtime, identical rows have the same fingerprint; the file hash also "
+          "covers metadata.", ""]
 
-    # example
-    ex = table[table["pc_norm"] == example]
-    if len(ex):
-        ex = ex[ex["is_current"]].iloc[0] if ex["is_current"].any() else ex.iloc[0]
+    # example, from the main table, with the history table's answer beside it
+    table = tables.get("main")
+    if table is not None and len(table):
+        ex = table[table["pc_norm"] == example]
+        ex = (ex if len(ex) else table.iloc[:1]).iloc[0]
+        hist = tables.get("history")
+        hrow = None
+        if hist is not None:
+            cand = hist[hist["pc_base"].eq(ex["pc_norm"]) & hist["is_current"]]
+            if len(cand):
+                a_part = cand[cand["pc_norm"].str.endswith("A") & cand["pc_norm"].ne(cand["pc_base"])]
+                hrow = (a_part if len(a_part) else cand).iloc[0]
+        vintages = sorted({e["dz_vintage"] for e in registry.phs_editions})
         L += [f"## Example: {ex['Postcode']}", "",
-              f"{ex['spd_user_type']}, introduced {pd.Timestamp(ex['introduced_on']).date()}, "
+              f"Main table: {ex['spd_user_type']}, introduced {pd.Timestamp(ex['introduced_on']).date()}, "
               f"{'current' if ex['is_current'] else 'deleted ' + str(pd.Timestamp(ex['deleted_on']).date())}. "
-              f"2001 zone {ex['DataZone2001Code']}, 2011 zone {ex['DataZone2011Code']}.", "",
-              "| Edition | Via | Rank | PHS Scotland quintile | Government quintile |", "| --- | --- | ---: | ---: | ---: |"]
+              "Zones: " + ", ".join(f"{v}: {ex[f'DataZone{v}Code']}" for v in vintages) + "."]
+        if hrow is not None:
+            L += [f"History table, current record `{hrow['pc_norm']}`: zones "
+                  + ", ".join(f"{v}: {hrow[f'DataZone{v}Code']}" for v in vintages) + "."]
+        L += ["", "| Edition | Main via | Rank | PHS Scotland quintile | Government quintile | History via | Rank | PHS Scotland quintile |",
+              "| --- | --- | ---: | ---: | ---: | --- | ---: | ---: |"]
         for ed in registry.phs_editions:
             k, v = ed["key"], ed["dz_vintage"]
-            L.append(f"| {k} | {ex[f'DataZone{v}Code']} | {ex[f'simd{k}_rank']} | {ex[f'simd{k}_pw_scotland_quintile']} | {ex[f'simd{k}_uw_scotland_quintile']} |")
+            h = (f"{hrow[f'DataZone{v}Code']} | {hrow[f'simd{k}_rank']} | {hrow[f'simd{k}_pw_scotland_quintile']}"
+                 if hrow is not None else "not current | | ")
+            L.append(f"| {k} | {ex[f'DataZone{v}Code']} | {ex[f'simd{k}_rank']} | {ex[f'simd{k}_pw_scotland_quintile']} | "
+                     f"{ex[f'simd{k}_uw_scotland_quintile']} | {h} |")
         L += ["", f"To see the source rows behind these numbers: `python -m simd_ingest.trace \"{ex['Postcode']}\"`.", ""]
     return "\n".join(L)

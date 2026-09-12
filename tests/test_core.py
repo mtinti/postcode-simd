@@ -14,7 +14,7 @@ import pyarrow.parquet as pq
 
 from simd_ingest.core.checks import Report
 from simd_ingest.core.fetch import FetchError, _extract_member
-from simd_ingest.core.sources import load_registry, verify_root
+from simd_ingest.core.sources import load_registry, sha256, verify_root
 from simd_ingest.core.spd import (active_on, classify_links, current_candidates, interval_summary,
                                   parse_dates, postcode_keys)
 
@@ -30,6 +30,15 @@ class KeyAndDateRules(unittest.TestCase):
         large = pd.DataFrame({"Postcode": ["G46 8DB"], "SplitIndicator": ["Y"]})
         r = postcode_keys(large, "large_user")
         self.assertEqual(r["pc_norm"].tolist(), r["pc_base"].tolist())
+
+    def test_lookup_role_allows_no_suffix_and_dates_without_time(self):
+        r = postcode_keys(pd.DataFrame({"Postcode": ["AB12 3GQ"], "SplitIndicator": ["Y"]}), "sspl")
+        self.assertEqual(r["pc_norm"].tolist(), r["pc_base"].tolist())
+        with self.assertRaises(ValueError):
+            postcode_keys(pd.DataFrame({"Postcode": ["AB12 3GQA"], "SplitIndicator": ["Y"]}), "sspl")
+        parsed = parse_dates(pd.DataFrame({"DateOfIntroduction": ["01/01/1980", "1/6/1996 00:00:00"], "DateOfDeletion": ["01/06/1996", ""]}))
+        self.assertEqual([str(d.date()) for d in parsed["introduced_on"]], ["1980-01-01", "1996-06-01"])
+        self.assertEqual(str(parsed["deleted_on"].iloc[0].date()), "1996-06-01")
 
     def test_malformed_and_false_split_postcodes_fail(self):
         for postcode, split in [("AB12\t3GQ", "N"), ("AB12  3GQ", "N"), ("AB12 3GQ", "Y"), ("AB12 3GQD", "Y"), ("AB12 3GQA", "N")]:
@@ -71,8 +80,8 @@ class KeyAndDateRules(unittest.TestCase):
 class SourceSafety(unittest.TestCase):
     def test_registry_loads_and_wrong_bytes_fail_verification(self):
         reg = load_registry(ROOT / "simd_ingest" / "sources.yaml")
-        self.assertEqual(len(reg.objects), 13)
-        self.assertEqual(len(reg.files), 17)
+        self.assertEqual(len(reg.objects), 14)
+        self.assertEqual(len(reg.files), 20)
         with tempfile.TemporaryDirectory() as temp:
             f = reg.files[0]
             path = Path(temp) / f.path
@@ -103,24 +112,35 @@ class SavedTableIntegrity(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        from simd_ingest.cli import load_config, prepare
+        from simd_ingest.config import load_config
+        from simd_ingest.pipeline import prepare
         from support import source_root, write_config
         source = source_root()
-        if source is None or not (ROOT / "results" / "postcode_simd.parquet").is_file():
+        if source is None or not (ROOT / "results" / "postcode_simd_history.parquet").is_file():
             raise unittest.SkipTest("no pinned sources or no build output")
         cls.temp = tempfile.mkdtemp(prefix="simd_core_")
         cls.cfg = load_config(write_config(Path(cls.temp), source, ROOT / "simd_ingest" / "decisions.yaml"))
-        cls.registry, cls.baselines, phs_tables, gov_tables, cls.index = prepare(cls.cfg, "offline", Report())
+        cls.registry, phs_tables, gov_tables, indices = prepare(cls.cfg, "offline", Report())
+        cls.index = indices["spd"]
         cls.simd = pd.concat(phs_tables.values(), ignore_index=True)
         cls.gov = pd.concat(gov_tables.values(), ignore_index=True)
         from simd_ingest.core import output
         cls.output = output
-        cls.schema = output.load_schema(cls.cfg["output_schema"])
+        cls.schema = output.load_schema(cls.cfg["output_schema_history"])
+        # This optional test audits an older local artifact, using its retained manifest,
+        # not today's decision log. Fresh builds are tested separately.
+        import json
+        manifest = json.loads((ROOT / "results/manifest.json").read_text())
+        if (manifest["tables"]["history"]["schema_sha256"] != cls.schema["sha256"]
+                or sorted(o["sha256"] for o in manifest["sources"]) != sorted(o.sha256 for o in cls.registry.objects)):
+            raise unittest.SkipTest("saved artifact belongs to another source/schema contract")
+        cls.decisions_sha = manifest["decisions_sha256"]
 
     def test_good_file_passes_and_modified_cell_fails(self):
-        path = ROOT / "results" / "postcode_simd.parquet"
+        path = ROOT / "results" / "postcode_simd_history.parquet"
         report = Report()
-        self.output.readback(path, self.schema, self.index, self.simd, self.gov, self.registry, report)
+        self.output.readback(path, self.schema, self.index, self.simd, self.gov, self.registry, report,
+                             decisions_sha256=self.decisions_sha)
         self.assertEqual([c.name for c in report.blocking_failures], [])
         table = pq.read_table(path)
         with tempfile.TemporaryDirectory() as temp:
@@ -132,5 +152,6 @@ class SavedTableIntegrity(unittest.TestCase):
             table2 = table.set_column(col, table.schema.field(col), pa.array(values, type=table.schema.field(col).type))
             pq.write_table(table2, bad)
             report = Report()
-            self.output.readback(bad, self.schema, self.index, self.simd, self.gov, self.registry, report)
+            self.output.readback(bad, self.schema, self.index, self.simd, self.gov, self.registry, report,
+                                 decisions_sha256=self.decisions_sha)
             self.assertIn("readback.attached_values", [c.name for c in report.blocking_failures])

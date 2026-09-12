@@ -1,9 +1,15 @@
-# Getting SIMD for a postcode, the way the PHS guidance describes
+# Python current and historical record lookups
 
 The PHS deprivation guidance for analysts, version 3.5, gives a four-step method: choose the
 index, choose the edition for the years of your data, choose the category and level, then
-match by postcode. `simd_ingest.lookup` does the matching. The choices stay with you and are
-passed explicitly as `edition` and `measure`.
+match by postcode. `simd_ingest.lookup` offers current-only or event-date-valid record
+matching. The choices stay with you and are passed explicitly as `edition` and `measure`.
+
+This is a separate API from the [latest-postcode SQL examples](LINKAGE_BY_ERA.md). Python
+uses the selected record's own attached geography, including for large users; it does not
+follow the linked-small-user route now used by SQL. Historical postcode selection is a
+project policy, not the PHS postcode file's latest-version policy. Do not treat the two
+interfaces as interchangeable or this helper as verified PHS postcode-lookup equivalence.
 
 Every result carries the label the guidance's checklist asks you to state: edition, whether
 the category is population-weighted, the level, which end is most deprived, and how split
@@ -13,10 +19,10 @@ All output below was produced against the v1.1 file.
 
 ```python
 from simd_ingest import lookup
-t = lookup.load("results/postcode_simd.parquet")
+t = lookup.load("results/postcode_simd_history.parquet")  # every life; dated questions need this table
 ```
 
-## 1. The most recent SIMD for a postcode as a person writes it
+## 1. A current postcode, using a chosen SIMD edition
 
 ```python
 print(lookup.lookup(t, "AB10 1BF", edition="2020v2"))
@@ -57,7 +63,7 @@ print(lookup.lookup(t, "G71 8BQ", edition="2020v2", split="report"))
 G71 8BQ currently: split_conflict, SIMD 2020v2, PHS population-weighted, within-Scotland quintile, 1 = most deprived, split postcodes reported = None
 ```
 
-## 2. SIMD at the date of an event, edition chosen by the guidance
+## 2. Historical postcode record, edition chosen using Table 4
 
 Table 4 of the guidance maps years of health data to the edition to use. It is available as
 a function, and nothing calls it for you.
@@ -158,8 +164,10 @@ Pass `date_col=None` to use the current record for every event instead, and `spl
 to see `split_consensus` and `split_conflict` instead of `a_part`.
 
 When a cohort spans years, the guidance's first approach is one edition per period.
-`attach_by_era` does that in one call; see `LINKAGE_BY_ERA.md`. The guidance's second
-approach, one edition throughout, is a single `attach` call.
+`attach_by_era` applies that edition mapping and this helper's historical postcode policy
+in one call. The guidance's second approach, one edition throughout, is a single `attach`
+call. Neither changes Python's own-record large-user geography. For latest-postcode linkage
+and linked-small-user geography, use the [SQL guide](LINKAGE_BY_ERA.md).
 
 ## The statuses
 
@@ -180,10 +188,11 @@ new ones. And when several parts are valid, the default takes the A part, as NRS
 builds the Scottish Statistics Postcode Lookup, because A is the part with more addresses. The
 report rule refuses instead. Neither rule averages or votes.
 
-One more default to know about. Following the guidance's Appendix A, PO boxes and other
-large-user postcodes with no linked small-user postcode are excluded from every lookup, so
-they come back `not_found`. Pass `include_po_boxes=True` to attach the SIMD the directory
-assigns them, or `include_large_users=False` to exclude every large-user record.
+One more Python default to know about. Records with `NO LINKP` or `NO LINK` in the linked
+postcode field are excluded, so they come back `not_found`. Appendix A explains why PO boxes
+lack usable residential geography. Pass `include_po_boxes=True` to attach the SIMD the
+directory assigns them, or `include_large_users=False` to exclude every large-user record.
+Other large users still use their own attached SIMD here, not their linked small user's.
 
 ## What to state in your analysis
 

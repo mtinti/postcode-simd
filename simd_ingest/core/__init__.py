@@ -1,1 +1,1 @@
-"""Plain Python data logic. Nothing in this package imports Dagster."""
+"""Source verification, data rules and saved-file evidence."""

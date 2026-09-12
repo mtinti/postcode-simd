@@ -1,136 +1,176 @@
-# Linking a cohort to SIMD by era
+# Two SQL postcode-to-SIMD lookups
 
-The PHS deprivation guidance for analysts, version 3.5, gives two ways to handle data that
-spans years. The first, "the most appropriate release for each period", re-assigns each event
-to the edition recommended for its year, so the deprivation categories are the best available
-picture at each point in time. The second uses one edition throughout. This document is the
-first approach, in Python and in SQL, and shows that the two give the same answer.
+Both examples use the latest postcode geography, resolve ordinary split postcodes to A,
+and use the linked small-user record for a large user. Only the SIMD edition choice differs.
+The imported table is unchanged: it still holds every directory life and each record's own
+source geography and attached SIMD.
 
-## The rule
+| Question | Query | Edition choice |
+| --- | --- | --- |
+| One edition for the whole cohort | [link_latest.sql](sql/link_latest.sql) | Explicit choice; defaults to 2020v2, the newest configured edition |
+| Appropriate edition for each event year | [link_by_era.sql](sql/link_by_era.sql) | PHS guidance v3.5, Table 4 |
 
-For each event:
+"Latest" does not mean reconstructing the patient's address at the event date. A reused
+postcode uses its latest geography even for an old event. The date in the second query
+selects an **index edition**, not an older postcode life.
 
-1. **Edition from the year.** Table 4 of the guidance maps years of health data to an edition.
-   1996 to 2003 use SIMD 2004; 2004 to 2006 use 2006; 2007 to 2009 use 2009v2; 2010 to 2013
-   use 2012; 2014 to 2016 use 2016; 2017 onwards use 2020v2. Before 1996 there is no SIMD
-   edition, and the guidance points to the Carstairs index instead.
-2. **Record from the date.** The directory record valid on the event date, by the half-open
-   rule `introduced_on <= date < deleted_on`. A postcode as written matches every record whose
-   base it is, which includes an old unsplit life and the current split parts. A full NRS key
-   with its suffix matches its own part only.
-3. **Value from the edition's column.** The measure is the PHS population-weighted
-   within-Scotland quintile unless you choose another.
-4. **Resolve.** One valid record gives `unique`. Several valid split parts give `a_part`:
-   the A part is used, as NRS does when it builds the Scottish Statistics Postcode Lookup,
-   because A is the part with more addresses. A known postcode with no valid record on that
-   day gives `deleted`. An unknown or missing postcode gives `not_found`. An event before 1996
-   gives `no_edition`, with every SIMD column null including the matched key.
+## Run the examples
 
-   Under the report rule, `split="report"` in Python or the three marked lines deleted in the
-   SQL, several parts that agree give `split_consensus` with the shared value and parts that
-   disagree give `split_conflict` with a null value. Neither rule averages or votes.
+First expose the history table (`postcode_simd_history.parquet`, every postcode life) as `postcode_simd`, then run
+[create_latest_postcode_lookup.sql](sql/create_latest_postcode_lookup.sql). This creates
+`simd_postcode_latest`, a view with one row per ordinary postcode. The postcode selection
+rules live there once, rather than being copied into both queries.
 
-## In Python
+For DuckDB, from the repository root:
 
 ```python
+from pathlib import Path
+import duckdb
 import pandas as pd
-from simd_ingest import lookup
 
-t = lookup.load("results/postcode_simd.parquet")
-cohort = pd.read_csv("my_cohort.csv")        # id, postcode, event_date
+sql = Path("docs/sql")
+events = pd.read_csv("my_cohort.csv", dtype={"postcode": "string"})
+# Required only for link_by_era.sql. Reject invalid text; do not silently coerce it.
+events["event_date"] = pd.to_datetime(events["event_date"], errors="raise")
 
-out = lookup.attach_by_era(cohort, t, "postcode", "event_date")
-out[["id", "postcode", "event_date", "simd_edition", "simd_status", "simd_value", "simd_pc_norm", "simd_label"]]
+with duckdb.connect() as con:
+    con.execute("CREATE VIEW postcode_simd AS SELECT * FROM 'results/postcode_simd_history.parquet'")
+    con.execute((sql / "create_latest_postcode_lookup.sql").read_text())
+    con.register("events", events)
+    latest = con.execute((sql / "link_latest.sql").read_text()).df()
+    by_era = con.execute((sql / "link_by_era.sql").read_text()).df()
 ```
 
-Five columns are added and no row is dropped or duplicated. `simd_label` is per row, since
-the edition varies: for example `SIMD 2012, PHS population-weighted, within-Scotland quintile,
-1 = most deprived, split postcodes resolved to the A part`. Pass `measure="pw_hb_decile"` or
-any other SIMD column suffix to change the measure for every row, and `split="report"` to
-refuse split postcodes instead of taking the A part.
+The fixed-edition query only needs `events(id, postcode)`. The era query additionally needs
+`event_date` typed as a date or timestamp, not unvalidated text; establish the study's time
+zone before deriving event years. Both retain repeated/null IDs and identical input rows.
+They return the explicitly listed columns, not every cohort column. SQL row order is not
+guaranteed; include your own event identifier and `ORDER BY` if order matters.
 
-## In SQL
+For SQL Server, import `postcode_simd` with its natural key `(pc_norm, introduced_on)`,
+date-typed introduction dates and a bit/boolean `is_current`. Provide the `events` relation,
+and execute the shared `CREATE VIEW` in its own batch before either query. The files use
+common T-SQL/DuckDB constructs, but automated execution is currently tested only on DuckDB.
+The separate-batch requirement is documented by
+[Microsoft](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-view-transact-sql?view=sql-server-ver17).
 
-`docs/sql/link_by_era.sql` is the same rule as one query. It reads two relations, `events`
-with `id`, `postcode` and `event_date`, and `postcode_simd`, and returns one row per event
-with `simd_edition`, `simd_status`, `simd_value` and `simd_pc_norm`. It uses nothing beyond
-common table expressions, a window function, `CASE` and `COUNT(DISTINCT)`, so it runs
-unchanged on DuckDB and SQL Server. The one line that differs is how `postcode_simd` is
-exposed.
+A view reflects changes to its underlying table; it does not need rebuilding for each
+cohort. If importing a new snapshot drops/recreates the table, recreate the view afterwards.
+For an existing view definition, use your database's normal reviewed view-update procedure.
 
-DuckDB, straight from the Parquet file:
+## What comes from PHS, and what we chose
 
-```python
-import duckdb, pandas as pd
-con = duckdb.connect()
-con.execute("CREATE VIEW postcode_simd AS SELECT * FROM 'results/postcode_simd.parquet'")
-con.register("events", pd.read_csv("my_cohort.csv"))
-out = con.execute(open("docs/sql/link_by_era.sql").read()).df()
-```
+References are the downloaded
+[PHS deprivation guidance v3.5](../manual_data/2023-12-phs-deprivation-guidance-v35.pdf)
+and PHS's [postcode-file documentation](https://publichealthscotland.scot/resources-and-tools/health-intelligence-and-data-management/geography-population-and-deprivation-support/geography/postcode-file/).
+Page numbers below are printed page numbers, not PDF viewer numbers.
 
-SQL Server, once the table has been loaded through RDMP or otherwise: create `events` as a
-table or temporary table, make sure `postcode_simd` resolves to the loaded table, and run the
-file as it is. Both date columns are `DATE`, so the comparisons need no conversion.
+1. **Postcode version and splits.** The PHS postcode page describes latest versions,
+   including some deleted records, and using only the A part of split postcodes. The view
+   first takes the newest introduction for each complete NRS key, across both user types.
+   It then prefers live records, whole/A records, and newest introduction, in that order.
+   That ordering is our explicit implementation policy. A newer B part never displaces a
+   live A part. If only B/C is live, no older deleted whole/A record is substituted.
+   No B/C fallback or averaging is used for an ordinary postcode.
+2. **Large users.** Appendix A, pp. 28–30, explains that usable geography is required and
+   large users may be linked to small users. As agreed for this project, the SQL follows
+   `LinkedSmallUserPostcode` and takes the latest small-user life of that exact named key.
+   A specific link to B remains B: the A convention applies to ordinary postcode inputs,
+   not to rewriting a supplied link. Missing links and `NO LINKP`/`NO LINK` give no SIMD;
+   neither the large user's own data zone nor an older life is a fallback. If the linked
+   key's newest record is now a large user, it is not accepted as a small-user target.
+3. **Edition.** Sections 3.2.1.1 and 3.2.1.2 describe respectively using an appropriate
+   edition per period and using one edition throughout. Neither approach is universally
+   preferable: choose for the study. In `link_latest.sql`, change the two lines marked
+   `EDIT EDITION` together to select another edition.
+4. **Measure and direction.** Sections 3.1.1–3.1.2 distinguish PHS population-weighted
+   categories and band direction. Both queries use PHS population-weighted within-Scotland
+   quintiles, with 1 most deprived. The CLI already standardises the reversed 2004/2006
+   bands and joins each edition through its correct data-zone vintage. SQL copies those
+   values; it does not reverse them again or substitute Government unweighted bands.
 
-To change the measure, edit the six lines of the `CASE` that picks the column. To report
-split postcodes instead of taking the A part, delete the three lines marked `-- A part`.
+Limits of the interpretation: Appendix A does not settle every case where a large user's
+own and linked geography disagree. The linked route is a documented project choice, not
+proof of exact equivalence to PHS's published postcode lookup. The view also keeps the last
+known version for every ordinary postcode in our snapshot, including wholly deleted ones;
+PHS's exact deleted-record retention criteria have not been reproduced. Equal-priority
+representatives are flagged and receive no SIMD. A retained deleted link target is visible
+through `simd_source_is_current`, rather than silently treated as live.
 
-## The two agree
+The joins normalise the supplied postcode by uppercasing and removing ASCII spaces;
+the original input stays in the output. Input must be an ordinary postcode, not a full
+NRS key with an A/B/C suffix. Normalisation does not repair invalid postcodes. The imported
+`pc_base` is already derived from validated directory records, not guessed from patient text.
 
-`tests/test_lookup.py` builds a synthetic cohort of 1,940 events from the real directory:
-current and deleted postcodes, split parts by full key and by base, unknown and missing
-postcodes, written with a space and in mixed case, with dates from 1994 to 2026. It runs
-both implementations under both rules and asserts the same status, value, matched key and
-edition for every event. No patient data is involved; the postcodes come from the directory
-itself.
+## Edition by event year
 
-| Status | Default rule | Report rule |
-| --- | ---: | ---: |
-| `unique` | 1,194 | 1,194 |
-| `deleted` | 396 | 396 |
-| `not_found` | 175 | 175 |
-| `no_edition` | 119 | 119 |
-| `a_part` | 56 | |
-| `split_consensus` | | 29 |
-| `split_conflict` | | 27 |
+The six rows in `link_by_era.sql` transcribe Table 4 (p. 17):
 
-The high `deleted` share is a property of the synthetic cohort, which deliberately samples
-deleted postcodes and pairs them with random dates. A real cohort, where the postcode was
-recorded at the time of the event, should see far fewer, and each one is worth a look: it
-means the address on the record was not a live postcode on that date.
+| Years of health data | SIMD edition |
+| --- | --- |
+| 1996–2003 | 2004 |
+| 2004–2006 | 2006 |
+| 2007–2009 | 2009v2 |
+| 2010–2013 | 2012 |
+| 2014–2016 | 2016 |
+| 2017 onwards | 2020v2 |
 
-## PO boxes are excluded by default
+Before 1996 the query returns `no_edition`; it does not invent a SIMD or calculate Carstairs.
+A missing date returns `missing_date`. Edition and value are null in both cases, but postcode
+provenance can still be present. These date statuses take precedence over postcode problems.
 
-The guidance's Appendix A attaches no deprivation to PO boxes and other large-user postcodes
-with no linked small-user postcode, because their location is a sorting office rather than a
-home. The directory nonetheless assigns them a data zone, and the table keeps it. Both
-implementations therefore exclude those records at lookup time by default, and an event
-whose postcode is a PO box comes back `not_found`. In the synthetic cohort 137 events change
-status under this rule, almost all from `deleted` or `unique` to `not_found`.
+A postcode refresh changes the underlying snapshot, not this year mapping. To add a new
+SIMD edition, first extend and validate ingestion, then expose its column in the shared view.
+Change the fixed-edition default only by a deliberate analyst decision. Change the era rows
+and edition-selection `CASE` only after reviewing the new recommendation; installing a new
+edition must not silently reclassify old events.
 
-To attach whatever the directory assigns, pass `include_po_boxes=True` in Python, or delete
-the one predicate line marked in the SQL. To go the other way and exclude every large-user
-record, pass `include_large_users=False`, or add `AND p.spd_user_type = 'small_user'` beside
-that predicate.
+## Read the result
 
-## Things to keep in mind
+`simd_edition` and `simd_measure` identify the requested index, weighting, scope and direction.
+`simd_status` records the linkage route or why no value was assigned:
 
-- **This is the first of the guidance's two approaches.** Its strength is that each period
-  gets the best available categories; its cost is that the data zones inside a quintile change
-  between editions, so a trend across an edition boundary mixes a real change with a change
-  in the index. For tracking fixed areas over time, use one edition throughout, which is a
-  single `attach` call or a fixed `edition` in the SQL.
-- **Rates need matching denominators.** The guidance recommends rates over counts by
-  deprivation category, and the population year of each edition is in the data dictionary.
-  Denominators are not in this table.
-- **Within-board bands are for within-board analyses.** The example uses the within-Scotland
-  quintile. If you switch to `pw_hb_*`, report against the board in `phs_dz{vintage}_hb`, and
-  do not compare boards with each other.
-- **Splits are rare and real.** In this cohort 56 of 1,940 events hit a split postcode. Under
-  the default they take the A part, which is what every official statistic built from the
-  SSPL does. Under the report rule about half agree anyway and the rest conflict, where the
-  two parts of one postcode sit in different quintiles. Only more precise address data can
-  decide those; the A part is the majority-address convention, not a measurement.
-- **Pre-1996 events are not an error.** `no_edition` says the guidance has no SIMD for that
-  year. The postcode record may well exist; a plain as-of `lookup` without an edition will
-  find it if you need the data zone.
+| Status | Meaning |
+| --- | --- |
+| `matched` | The ordinary small-user record supplied its own SIMD |
+| `a_part` | The A part supplied SIMD for an ordinary split postcode |
+| `linked_small_user` | The large user's named small-user link supplied SIMD |
+| `missing_postcode` / `not_found` | Blank/null input / no matching ordinary postcode |
+| `unlinked_large_user` | Link absent, blank or a no-link sentinel |
+| `linked_small_user_not_found` | Named link is absent or its latest record is not small-user |
+| `split_a_missing` | No eligible whole/A representative; B/C is not substituted |
+| `ambiguous_postcode` | Equally preferred representatives; no arbitrary value chosen |
+| `missing_simd` | Geography resolved, but the selected edition's value is null |
+| `missing_date` / `no_edition` | Era query only: no date / no SIMD recommendation for the year |
+
+All failure statuses have null `simd_value`. Matched and source natural keys are separate:
+`(matched_pc_norm, matched_introduced_on)` identifies the postcode representative;
+`(simd_source_pc_norm, simd_source_introduced_on)` identifies the record supplying SIMD.
+For an ambiguous postcode the matched key is only one diagnostic candidate, not an accepted
+match. Current flags and `spd_release` make deleted records and snapshot provenance visible.
+The shared view also exposes both source data-zone vintages for a manual trace.
+
+For SPD 2026/2, `AB11 6GN` illustrates why this matters: its own attached 2020v2 quintile is
+2, but the linked `AB11 6BE` supplies 3. The SQL returns 3 and both keys. All 3,249 current
+large-user records with real links resolve through a small user in this snapshot; 96 get a
+different 2020v2 quintile from their own-record value. One retained deleted large user,
+`EH3 9RW`, names `EH3 9PE`, whose latest life is now large-user. Its result is
+`linked_small_user_not_found`, with no fallback or further link chasing. These are downloaded-data
+regression examples, not expectations for every future postcode release.
+
+For rates, use appropriate population denominators with matching definitions; this lookup
+does not supply denominators or turn a quintile into an individual deprivation measurement.
+
+## Verification and the existing Python helper
+
+[tests/test_sql.py](../tests/test_sql.py) executes the SQL against small, hand-specified
+cases and the downloaded snapshot. It covers Table 4 boundaries, postcode reuse, split A/B
+disagreement, missing A, user-type changes, linked versus own SIMD, link failures, deleted
+records and repeated events. It checks one lookup row per base across the real snapshot.
+These are checks of the documented policy, not comparison with a PHS postcode-level oracle.
+
+The existing [Python examples](EXAMPLES.md) remain a separate historical/record-level API.
+`lookup.py` uses current-only or event-date-valid records and the selected record's own
+attached geography, including for large users. It also accepts explicit NRS suffixes and
+offers a split consensus/conflict mode. It has **not** been changed to implement the new
+SQL policy, and Python/SQL output parity is no longer claimed.

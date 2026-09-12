@@ -42,16 +42,13 @@ class Registry:
     govscot_editions: tuple
     spd_files: tuple
     spd_published_totals: dict
+    directory_rank: dict | None
+    sspl_release: str
+    sspl_file: dict
 
     @property
     def files(self) -> tuple:
         return tuple(f for o in self.objects for f in o.files)
-
-    def file(self, path: str) -> LogicalFile:
-        for f in self.files:
-            if f.path == path:
-                return f
-        raise KeyError(path)
 
 
 def sha256(path: Path) -> str:
@@ -85,12 +82,43 @@ def load_registry(path: Path) -> Registry:
     reg = Registry(path=path, sha256=sha256(path), spd_release=str(raw["spd_release"]),
                    licences=raw.get("licences", {}), objects=tuple(objects),
                    phs_editions=tuple(raw["phs_editions"]), govscot_editions=tuple(raw["govscot_editions"]),
-                   spd_files=tuple(raw["spd_files"]), spd_published_totals=raw["spd_published_totals"])
+                   spd_files=tuple(raw["spd_files"]), spd_published_totals=raw["spd_published_totals"],
+                   directory_rank=raw.get("directory_rank"),
+                   sspl_release=str(raw["sspl_release"]), sspl_file=raw["sspl_file"])
     known = set(paths)
-    for section in (reg.phs_editions, reg.govscot_editions, reg.spd_files):
+    for section in (reg.phs_editions, reg.govscot_editions, reg.spd_files, (reg.sspl_file,)):
         for entry in section:
             if entry["file"] not in known:
                 raise ValueError(f"{entry['file']} is referenced but not pinned as a logical file")
+    if len({o.key for o in objects}) != len(objects):
+        raise ValueError("Duplicate remote object key")
+    phs = {e["key"]: e for e in reg.phs_editions}
+    gov = {e["key"]: e for e in reg.govscot_editions}
+    if not phs or len(phs) != len(reg.phs_editions) or len(gov) != len(reg.govscot_editions):
+        raise ValueError("Edition keys must be nonempty and unique within each publisher")
+    if phs.keys() != gov.keys():
+        raise ValueError("PHS and Government must declare the same edition keys")
+    for key, ed in phs.items():
+        if (ed["dz_vintage"], ed["rows"]) != (gov[key]["dz_vintage"], gov[key]["rows"]):
+            raise ValueError(f"{key}: publishers disagree on declared vintage or zone count")
+        if ed["rows"] < 2 or not isinstance(ed["invert_bands"], bool):
+            raise ValueError(f"{key}: invalid row count or band-direction declaration")
+        geo = ed["geography_columns"]
+        if set(geo) != {"DataZone", "IntZone", "HB", "HSCP", "CA"} or len(geo) != 5:
+            raise ValueError(f"{key}: declare the five PHS geography columns in source order")
+    if sorted(s["role"] for s in reg.spd_files) != ["large_user", "small_user"]:
+        raise ValueError("Declare exactly one small-user and one large-user file")
+    totals = reg.spd_published_totals
+    if (sum(s["rows"] for s in reg.spd_files) != totals["all"]
+            or sum(s["live"] for s in reg.spd_files) != totals["live"]
+            or totals["all"] - totals["live"] != totals["deleted"]):
+        raise ValueError("Published postcode counts are inconsistent")
+    if reg.directory_rank and reg.directory_rank["edition"] not in phs:
+        raise ValueError("Directory rank must reference a configured SIMD edition")
+    lookup = reg.sspl_file
+    if (lookup["small_user"] + lookup["large_user"] != lookup["rows"] or not 0 <= lookup["live"] <= lookup["rows"]
+            or lookup.get("totals_basis") not in ("counted", "published")):
+        raise ValueError("Lookup counts are inconsistent or their basis is not declared")
     return reg
 
 

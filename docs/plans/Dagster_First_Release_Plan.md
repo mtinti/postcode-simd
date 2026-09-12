@@ -1,7 +1,11 @@
 # Postcode-SIMD on Dagster: first release in three steps
 
+> Historical v1.0 delivery record. Statements below about policies "remaining in force"
+> describe that release, not later decisions. See [How it is built](../HOW_IT_IS_BUILT.md)
+> and the [current decision log](../../simd_ingest/decisions.yaml) for today's behaviour.
+
 Proposed 10 September 2026. Replaces the seven-step sequence in
-[the full plan](SIMD_Dagster_Implementation_Plan.md). Two sections of that plan stay in
+[the full plan](Dagster_Implementation_Plan.md). Two sections of that plan stay in
 force unchanged and are not repeated here: **Frozen target contract** and **Validation
 decision: source fidelity blocks; population reconstruction does not**. Everything else in
 it becomes the post-release backlog at the end of this document.

@@ -1,4 +1,8 @@
-"""Look up SIMD for a postcode the way the PHS deprivation guidance describes.
+"""Current/as-of record-level SIMD lookups, with explicit analyst choices.
+
+This API keeps its historical postcode policy and own-record large-user geography.
+It is not equivalent to the latest-postcode, linked-small-user SQL examples; see
+docs/LINKAGE_BY_ERA.md. No runtime behaviour is changed by that SQL policy.
 
 The guidance's method: choose the edition for the years of your data, choose the category
 and level, then match by postcode. This module does the matching and leaves the choices to
@@ -6,7 +10,7 @@ the analyst, who passes an edition and a measure explicitly.
 
     from simd_ingest import lookup
     t = lookup.load("results/postcode_simd.parquet")
-    lookup.lookup(t, "G71 8BQ", edition="2020v2")                      # most recent
+    lookup.lookup(t, "G71 8BQ", edition="2020v2")                      # current only
     lookup.lookup(t, "AB10 1BF", edition="2012", on="2012-06-01")      # at a date
     lookup.attach(cohort, t, "postcode", "event_date", edition="2020v2")  # a whole frame
 
@@ -46,7 +50,7 @@ PO_BOX_SENTINELS = ("NO LINKP", "NO LINK")
 
 
 def scope(table: pd.DataFrame, include_po_boxes: bool = False, include_large_users: bool = True) -> pd.DataFrame:
-    """The records a lookup may match. Defaults follow the PHS guidance, Appendix A."""
+    """Python's scope: exclude no-link sentinels by default; keep own-record geography."""
     keep = pd.Series(True, index=table.index)
     if not include_large_users and "spd_user_type" in table:
         keep &= table["spd_user_type"] != "large_user"
@@ -86,11 +90,26 @@ def _measure_label(col: str) -> str:
 
 
 def load(path: str) -> pd.DataFrame:
-    """The table with its two date columns as timestamps, ready for comparisons."""
+    """The table with its two date columns as timestamps, ready for comparisons. The table's
+    own metadata says which NRS product it came from; the date-based lookups need history."""
+    import pyarrow.parquet as pq
+    meta = pq.read_schema(path).metadata or {}
     t = pd.read_parquet(path)
     for c in ("introduced_on", "deleted_on"):
         t[c] = pd.to_datetime(t[c])
+    t.attrs["index_source"] = meta.get(b"index_source", b"").decode() or None
     return t
+
+
+def _prepare(table: pd.DataFrame, dated: bool) -> pd.DataFrame:
+    """Refuse a dated question against a latest-life table; give a whole-postcode table the
+    pc_base column the resolution rules expect (every record is its own whole postcode)."""
+    if dated and table.attrs.get("index_source") == "sspl":
+        raise ValueError("This is the latest-postcode table (SSPL): it holds one life per postcode and cannot "
+                         "answer a question about a date. Use the history table, postcode_simd_history.parquet.")
+    if "pc_base" not in table:
+        table = table.assign(pc_base=table["pc_norm"])
+    return table
 
 
 @dataclass
@@ -134,7 +153,7 @@ def lookup(table: pd.DataFrame, postcode: str, edition: str, measure: str = "pw_
     postcode or a full NRS key with its split suffix. PO boxes are excluded unless asked for.
     Split postcodes resolve to the A part unless split="report"."""
     _check_split(split)
-    table = scope(table, include_po_boxes, include_large_users)
+    table = scope(_prepare(table, on is not None), include_po_boxes, include_large_users)
     col = column(edition, measure)
     key = normalise_postcode(pd.Series([postcode])).iloc[0]
     when = None if on is None else pd.Timestamp(on)
@@ -166,7 +185,7 @@ def attach(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, date_co
     Split postcodes resolve to the A part unless split="report".
     """
     _check_split(split)
-    table = scope(table, include_po_boxes, include_large_users)
+    table = scope(_prepare(table, date_col is not None), include_po_boxes, include_large_users)
     col = column(edition, measure)
     ev = pd.DataFrame({"_row": range(len(events)),
                        "_key": normalise_postcode(events[postcode_col].astype("string").fillna("")).replace("", pd.NA)},
@@ -229,8 +248,9 @@ def edition_for(dates: pd.Series) -> pd.Series:
 def attach_by_era(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, date_col: str,
                   measure: str = "pw_scotland_quintile", prefix: str = "simd",
                   include_po_boxes: bool = False, include_large_users: bool = True, split: str = "a_part") -> pd.DataFrame:
-    """The guidance's first approach: each event takes the edition recommended for its year,
-    and the record valid on its date. Adds an edition column and a per-row label.
+    """Table 4 edition per event year, plus this API's historical postcode policy.
+    Takes the record valid on the event date; adds an edition and per-row label.
+    This is not the latest-postcode policy of docs/sql/link_by_era.sql.
 
     Events before 1996 get status `no_edition`; the guidance points to Carstairs for them.
     """

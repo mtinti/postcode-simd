@@ -1,13 +1,12 @@
-# Decision log. One entry per judgement that shapes the data. Loaded as an upstream of
-# every table, so a changed decision is a changed input. Status is one of
-# implemented, agreed_pending, deferred.
+# Decision log. Hashed into the table and copied into each build's retained run record.
+# Superseded entries are history, not instructions for the current build.
 version: 1
 decisions:
   - id: bands-are-looked-up
     date: 2026-09-10
     status: implemented
     decision: Every band in the output is copied from a published file. No band is calculated from a rank.
-    reason: The publisher's value is the auditable value. The two vintage-specific formulae are kept only as validation tools.
+    reason: The publisher's value is the auditable value. Earlier formula-based validation was later removed by trust-the-sources.
     evidence: SIMD_Plan_Gap_Closure.md section 2; halfup rule for 2001 zones and ceil rule for 2011 zones each reproduce the published bands with zero mismatches.
 
   - id: invert-2004-2006-phs-bands
@@ -67,7 +66,7 @@ decisions:
   - id: link-sentinels
     date: 2026-09-10
     status: implemented
-    decision: NO LINKP and NO LINK in the large-user linked-postcode field are kept as text and both classified as no link. The table is never joined through that field.
+    decision: NO LINKP and NO LINK in the large-user linked-postcode field are kept as text and both classified as no link. Ingestion attaches SIMD through each record's own data zone, not through this field. Consumer SQL may follow real links; see sql-latest-linked-postcodes.
     reason: NO LINKP is documented for PO boxes. NO LINK is undocumented and appears on six deleted records.
     evidence: 31,725 NO LINKP, 6 NO LINK, 19,273 real links, all resolving.
 
@@ -81,7 +80,7 @@ decisions:
   - id: large-user-geography-attached
     date: 2026-09-10
     status: implemented
-    decision: SIMD is attached to every large-user record, including PO boxes, because the directory assigns them a data zone. Consumers wanting PHS practice, which attaches no deprivation to PO boxes, filter on spd_user_type and the link sentinels.
+    decision: SIMD is attached to every large-user record, including PO boxes, because the directory assigns them a data zone. This is ingestion source fidelity, not a claim about the appropriate consumer linkage. Consumer SQL uses linked-small-user geography and withholds values for missing links; see sql-latest-linked-postcodes. Python keeps its own-record geography and sentinel exclusion.
     reason: Source fidelity. The build attaches what the directory says; it does not decide which postcodes deserve a value.
     evidence: PHS deprivation guidance v3.5, Appendix A.
 
@@ -120,7 +119,7 @@ decisions:
 
   - id: patient-linkage-deferred
     date: 2026-09-10
-    status: deferred
+    status: superseded   # consumer helpers implemented; see split-resolution-a-part
     decision: The downstream resolver for ambiguous split postcodes, with its unique, split_consensus, split_conflict, incomplete and not_found statuses, is recorded in the plan and not implemented here.
     reason: It belongs to the consumer of this table, not to its ingestion.
 
@@ -133,7 +132,7 @@ decisions:
 
   - id: instance-location
     date: 2026-09-10
-    status: agreed_pending
+    status: superseded   # CLI-first retains run records beside results instead
     decision: The Dagster instance, which is the provenance record, lives at .dagster inside the project and is backed up together with results/. Intermediate tables are kept outside it under data/work.
     reason: A record in a temporary path is not a record. Whether HIC wants it on a shared, backed-up path instead is an operational decision still to be taken; it is one environment variable either way.
 
@@ -158,14 +157,14 @@ decisions:
 
   - id: linkage-by-era
     date: 2026-09-11
-    status: implemented
+    status: superseded   # SQL replaced by sql-latest-linked-postcodes; Python remains historical
     decision: Linking events to SIMD by era follows the guidance's table 4, each event taking the edition recommended for its year and the record valid on its date. Events before 1996 get status no_edition with every SIMD column null, including the matched key. The Python and SQL implementations are tested to agree row for row on a synthetic cohort.
     reason: "One rule, two implementations that cannot drift. Withholding the key on no_edition keeps the output columns consistent: no edition, no answer."
     evidence: tests/test_lookup.py ByEraPythonAndSqlAgree; docs/sql/link_by_era.sql; docs/LINKAGE_BY_ERA.md.
 
   - id: lookups-exclude-po-boxes
     date: 2026-09-11
-    status: implemented
+    status: superseded   # SQL now has explicit failure statuses, no include switch; Python unchanged
     decision: "Every lookup, in Python and in the SQL, excludes large-user records whose link field is NO LINKP or NO LINK by default. Both offer a switch to include them, and a second switch to exclude all large-user records. The table itself keeps every record with the SIMD the directory assigns."
     reason: "The PHS guidance, Appendix A, attaches no deprivation to PO boxes because their location is a sorting office. An analyst reading the guidance expects the default to match it; the table stays source-faithful because the exclusion is applied at lookup time, not at build time."
     evidence: "1,518 current PO box records among 4,767 current large-user records."
@@ -174,14 +173,14 @@ decisions:
 
   - id: split-resolution-a-part
     date: 2026-09-11
-    status: implemented
+    status: superseded   # SQL now has one A-only policy; Python retains its report alternative
     decision: "When several split parts of a postcode are valid, every lookup resolves to the A part by default and reports status a_part. A split=\"report\" rule returns split_consensus or split_conflict instead. The result's label records which rule was used. Python and SQL are tested to agree under both."
     reason: "NRS builds the Scottish Statistics Postcode Lookup by converting split postcodes to the A part, because A is the part with more addresses, so every official statistic uses that convention. Matching it by default means an analyst reconciling against official figures gets the same answer; the report rule keeps the ambiguity visible for anyone who wants it. Supersedes the never-choose-A rule of lookup-statuses."
     evidence: "NRS Scottish Statistics Postcode Lookup information note; SPD 2026/2 bulletin on suffix ordering; docs/NRS_GUIDANCE_CHECK.md. On the synthetic cohort, 56 events resolve as a_part."
 
   - id: visible-steps-and-build-report
     date: 2026-09-11
-    status: implemented
+    status: superseded   # visible code/report retained; orchestration removed by cli-first
     decision: "The build is written as small named steps in code: one function per directory file, per PHS file as published, per canonicalised PHS edition, per government edition, and one join per edition, each with its own checks. The Dagster graph stays at five things, sources plus four tables, and the steps appear as rows in a build report, results/BUILD_REPORT.md, written by every build in plain language with that run's numbers. docs/HOW_IT_IS_BUILT.md is the static one-page companion."
     reason: "A first attempt exposed every step as a graph node, fifty-one in all, and a reviewer could not read it. A graph is a machine's view; a reviewer needs a narrative with numbers. The steps stay visible where they help, in the code and the report, and out of the graph where they do not."
     evidence: "CLI and Dagster builds on branch ladder both produced sha256 c685cd137652ec37 under main's decision log, byte-identical to main. Twenty-two assets, twenty-four checks, intermediates about 16 MB of Parquet."
@@ -193,3 +192,81 @@ decisions:
     reason: "The pipeline's guarantee is that the published values reach the table unchanged, which the hash pins, the per-step checks and the readback establish. Recomputing bands to see whether the publisher's method can be reproduced answered a different question and made the build harder to read. The rank check stays because it is what justifies joining the two sources on the data zone."
     evidence: "Removing these checks changes no value; the output remains byte-identical."
 
+  - id: cli-first
+    date: 2026-09-12
+    status: implemented
+    decision: "The CLI is the only build path. Remove the Dagster runtime, web server, asset wrappers, instance configuration and persisted intermediates. Keep one visible verify/prepare/cross-check/join/readback/publish sequence, a human build report and small retained run records."
+    reason: "Routine maintenance is a postcode-directory refresh; SIMD editions arrive less frequently. A full deterministic rebuild from pinned sources is cheap. Source/configuration snapshots, runtime/code hashes and saved-file checks provide lineage without a second execution model."
+    evidence: "tests/test_pipeline.py tests postcode refresh, full replacement, failure evidence, read-only audit and a synthetic seventh edition on a new data-zone vintage."
+
+  - id: release-facts-not-fixed-gates
+    date: 2026-09-12
+    status: implemented
+    decision: "Published file/all/live/deleted counts remain blocking inputs in sources.yaml. Header contracts remain explicit. Split/repeated-key/key-length/touching-date/link-category/ambiguity profiles are recorded observations, not fixed 2026/2 acceptance constants. Compare each new snapshot with the previous hash-verified snapshot by natural key, excluding the release label from record changes."
+    reason: "Normal release changes should be visible to a reviewer without requiring changes to pipeline code or weakening correctness checks. An unavailable comparison is reported explicitly and does not block a source-faithful build."
+
+  - id: edition-extension
+    date: 2026-09-12
+    status: implemented
+    decision: "PHS header order, data-zone vintage, band direction and Government column maps are declared per edition. Both publishers must declare the same edition keys, vintage and zone count. Add explicit output fields for each new edition, and PHS geography fields for new vintages; shared-vintage geography must agree. Analyst edition-by-year recommendations are reviewed separately."
+    reason: "New editions using the supported CSV/DBF layout need registry and schema changes, not a new build path. Unknown formats or incomplete historical geography coverage require deliberate review."
+
+  - id: simple-publication
+    date: 2026-09-12
+    status: implemented
+    decision: "Use one writer per results directory. Validate the saved candidate and prepare evidence before individually replacing the current table and sidecars. Keep run records, not old Parquet copies. No restart/concurrency state machine: after interruption, audit and rebuild if needed. Audit never downloads or repairs sources."
+    reason: "Atomic replacement protects the table from validation failures. It is not a transaction across the table and sidecars; their hash agreement must be checked before import."
+
+  - id: sql-latest-linked-postcodes
+    date: 2026-09-12
+    status: implemented
+    decision: "Two SQL examples share one latest-postcode view. One uses a chosen SIMD edition (default 2020v2); one uses PHS v3.5 Table 4 by event year. Both use PHS population-weighted Scotland quintiles, 1 most deprived. The date selects the edition, not a historical postcode life. Ordinary split postcodes use A; large users use the latest record of the exact named small-user link, including an explicit split suffix. Missing/unusable links have null SIMD, never an own-geography fallback. Keep every event row and expose both matched and source natural keys."
+    reason: "The user chose the linked-small-user route. Keep edition choice separate from postcode selection and put shared rules in one reviewable place. PHS's postcode page describes latest versions and A parts; Appendix A describes large-user links but does not fully specify own-versus-linked disagreement. Exact equivalence to a published PHS postcode lookup remains unverified."
+    evidence: "docs/LINKAGE_BY_ERA.md maps code to guidance and labels project choices; tests/test_sql.py uses explicit fixtures and downloaded-data checks. SPD 2026/2 example AB11 6GN has own 2020v2 quintile 2 but linked AB11 6BE supplies 3."
+
+  - id: sql-representative-and-interface-boundary
+    date: 2026-09-12
+    status: implemented
+    decision: "After selecting the newest life per full key across both user types, prefer live records, then whole/A, then newest introduction per ordinary postcode. Ties and missing A receive no geography. Retain last-known deleted records, including named small-user link targets, and expose their current flags. Missing event dates and years without an edition have distinct statuses; postcode provenance may still be present. Accept ordinary input postcodes only. The imported snapshot and Python current/as-of, own-record geography API are unchanged. Python/SQL parity is no longer claimed."
+    reason: "This ordering and complete deleted-record retention are explicit project policies, not a claim to reproduce PHS's unpublished selection details. Do not silently change existing Python consumers or revive an older small-user record when the newest life is an unlinked large user. New SIMD editions and year mappings require separate review."
+
+  - id: sspl-main-table
+    date: 2026-09-12
+    status: implemented
+    decision: "Two tables from two NRS products. The main table, postcode_simd.parquet, is built from the Scottish Statistics Postcode Lookup (SSPL): one row per whole postcode, both user types, latest life including deleted postcodes, key pc_norm. The history table, postcode_simd_history.parquet, is the existing SPD build: every postcode life, key (pc_norm, introduced_on), rows unchanged. Neither table is derived from the other."
+    reason: "NRS recommends the SSPL for statistical production and the project's latest-postcode SQL already links on the latest postcode, which is what the SSPL publishes. History is still needed for as-of and era linkage, so the SPD table stays."
+    evidence: "docs/plans/SSPL_Main_Table_Plan.md section 1: SSPL 2026/1 has 229,708 unique whole postcodes, both data-zone vintages, no blank geography, PO-box sentinels, and deletion dates."
+
+  - id: sspl-allocation-is-part-of-the-contract
+    date: 2026-09-12
+    status: implemented
+    decision: "The main table's data zones are the SSPL's: every higher geography is the one containing the centroid of the postcode's 2022 output area. The history table's data zones are the SPD's: the zone containing the postcode's own grid reference. Each table's metadata names its method (allocation: oa2022_centroid or postcode_grid_reference), the data dictionary states it, and every build reports how many current postcodes differ between the two tables and how many SIMD bands change as a result. The difference is an observation, never a gate, and never reconciled by editing either table."
+    reason: "In SSPL 2026/1 the 2011 data zone differs from the SPD's on 10,695 postcodes (6,234 current) and the 2001 data zone on 15,338 (9,312 current), because the SSPL nests everything through 2022 output areas. That changes the 2020v2 Scotland quintile of 3,839 current postcodes. PHS builds its own lookups from the SPD, so a user must be able to see which method a table follows."
+    evidence: "In the SSPL each 2022 output area maps to exactly one 2011 and one 2001 data zone while 2,344 of its 2011 output areas map to more than one 2011 data zone; in the SPD every 2011 output area maps to one 2011 data zone. docs/plans/SSPL_Main_Table_Plan.md section 1."
+
+  - id: which-table-answers-which-question
+    date: 2026-09-12
+    status: implemented
+    decision: "Lookups that need a date (lookup with on=, attach with a date column, attach_by_era) read the history table. Latest-postcode lookups and the SQL examples read the main table. lookup.load reads index_source from the table metadata; an as-of question against the main table is refused with a message, never answered from its single latest life. The main table has no pc_base distinction and no split option: NRS already resolved splits to the A part and summed the counts. PO boxes and unlinked large users are kept in both tables and excluded at lookup time, as now."
+    reason: "One latest life per postcode cannot say whether a postcode existed at a date or which zone it was in then. Making the refusal explicit prevents a silent wrong answer. The split and PO-box defaults are unchanged so existing consumers see the same policy."
+    evidence: "SSPL dictionary: no small-user split postcodes; A part used; counts added. SSPL 2026/1 links: NO LINKP on 27,162 large users, NO LINK on 5, 15,368 real links of which 9 keep an A suffix."
+
+  - id: sspl-totals-are-counted-not-published
+    date: 2026-09-12
+    status: implemented
+    decision: "NRS publishes no record counts for the SSPL. The registry pins the counted totals of the pinned file (all, live, small user, large user) and marks them counted. They are blocking gates like the SPD's published totals, because they detect a changed or truncated file, but they are not independent evidence from the publisher."
+    reason: "The pipeline's rule is that a count gate is an input a reviewer can check against something outside the build. For the SSPL the only external check is the file hash, so the totals must be labelled for what they are."
+    evidence: "SSPL 2026/1 bulletin and data dictionary carry no totals. Counted: 229,708 all; 161,565 live; 187,173 small user; 42,535 large user."
+
+  - id: two-nrs-cuts
+    date: 2026-09-12
+    status: implemented
+    decision: "The SSPL and the SPD pinned together need not be the same PAF cut; each table records its own release label. Cross-table differences in postcode presence, introduction date, live status and user type are reported as observations. A pin is chosen by hand for each product."
+    reason: "SSPL 2026/1 is built from the January 2026 PAF and SPD 2026/2 includes introductions to July 2026. Waiting for aligned cuts would delay every refresh; reporting the differences keeps them visible."
+    evidence: "395 SPD postcodes absent from the SSPL, all introduced from January 2026; 233 live in the SSPL but deleted in the SPD; 92 the reverse; 37 changed user type."
+
+  - id: version-2
+    date: 2026-09-12
+    status: implemented
+    decision: "The change ships as 2.0.0. The main table's file keeps its name but its key and row grain change, and the previous table moves to postcode_simd_history.parquet."
+    reason: "A consumer reading postcode_simd.parquet will get one row per postcode instead of one per life. That is a breaking change and the version must say so."

@@ -1,8 +1,17 @@
 # Planning record
 
-The documents that shaped the pipeline, kept as written. Later ones supersede earlier ones;
-the decision log in `simd_ingest/decisions.yaml` is the authoritative summary of what was
-decided.
+These are historical design and review records, not the instructions for the current build.
+Start with [How it is built](../HOW_IT_IS_BUILT.md) and the current run's `BUILD_REPORT.md`.
+The [decision log](../../simd_ingest/decisions.yaml) is authoritative for current policy and
+explicit supersessions; the implemented schema lives in `simd_ingest/output_schema.yaml`.
+
+In particular, the population diagnostic was removed by `trust-the-sources` on 11 September
+2026, and the default split lookup changed to the A part with an explicit report option.
+Earlier policies below explain the history; they do not override those decisions.
+
+On 12 September 2026, CLI-first replaced the orchestration delivery plan. The current
+maintenance instructions are [Updating the sources](../UPDATING.md); no Dagster runtime
+or intermediate-table cache is required.
 
 | Document | Date | Status |
 | --- | --- | --- |
@@ -10,7 +19,8 @@ decided.
 | `Plan_Gap_Closure.md` | 9 to 10 September | Evidence from profiling the downloaded sources; corrected the band formula and pinned the postcode contract. Still the reference for the source facts. |
 | `Source_API_Options.md` | 10 September | Which publishers expose the data through an API, with every claim verified live. |
 | `Snakemake_Implementation_Plan.md` | 10 September | A Snakemake delivery plan. Reviewed and set aside in favour of Dagster. |
-| `Dagster_Implementation_Plan.md` | 10 September | The seven-step Dagster plan with the frozen output contract and the validation decision. Those two sections remain in force. |
+| `Dagster_Implementation_Plan.md` | 10 September | Historical seven-step proposal. Consult the implemented schema and current decision log, not this plan, for today's contract. |
 | `Dagster_First_Release_Plan.md` | 10 September | The three-step cut that produced v1.0, with the hardening backlog. |
 | `v1_1_Plan.md` | 11 September | CSV output, the guidance-following lookup, and Docker. Steps 2 and 3 delivered; step 1 pending. |
 | `GitHub_Plan.md` | 11 September | Publishing this repository. |
+| `SSPL_Main_Table_Plan.md` | 12 September | SSPL 2026/1 checked against the SPD table; options and steps for making it the main table. Not implemented. |

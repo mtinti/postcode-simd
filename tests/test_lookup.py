@@ -1,4 +1,4 @@
-"""Fixtures for every lookup status, and the documented examples against the real file."""
+"""Python historical/record-level lookup tests; the latest-postcode SQL is tested separately."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import pandas as pd
 from simd_ingest import lookup
 
 ROOT = Path(__file__).resolve().parent.parent
-FILE = ROOT / "results" / "postcode_simd.parquet"
+FILE = ROOT / "results" / "postcode_simd_history.parquet"  # dated questions need every life
 
 
 def fixture() -> pd.DataFrame:
@@ -69,6 +69,17 @@ class Statuses(unittest.TestCase):
         current = lookup.attach(cohort, self.t, "postcode", None, edition="2020v2")
         self.assertEqual(current["simd_status"].tolist()[1:3], [lookup.UNIQUE, lookup.UNIQUE])
 
+    def test_latest_life_table_refuses_dates_and_needs_no_pc_base(self):
+        latest = self.t[self.t["is_current"] & self.t["pc_norm"].eq(self.t["pc_base"])].drop(columns="pc_base")
+        latest.attrs["index_source"] = "sspl"
+        self.assertEqual(lookup.lookup(latest, "AB10 1BF", edition="2020v2").value, 3)
+        with self.assertRaises(ValueError):
+            lookup.lookup(latest, "AB10 1BF", edition="2020v2", on="2020-01-01")
+        events = pd.DataFrame({"postcode": ["AB10 1BF"], "day": ["2020-01-01"]})
+        with self.assertRaises(ValueError):
+            lookup.attach(events, latest, "postcode", "day", edition="2020v2")
+        self.assertEqual(lookup.attach(events, latest, "postcode", None, edition="2020v2")["simd_value"].tolist(), [3])
+
     def test_recommended_edition_and_labels(self):
         self.assertEqual([lookup.recommended_edition(y) for y in (1996, 2003, 2004, 2007, 2010, 2014, 2017, 2026)],
                          ["2004", "2004", "2006", "2009v2", "2012", "2016", "2020v2", "2020v2"])
@@ -78,11 +89,30 @@ class Statuses(unittest.TestCase):
         self.assertEqual(lookup.label("simd2016_pw_hb_quintile"), "SIMD 2016, PHS population-weighted, within-NHS-Board quintile, 1 = most deprived, split postcodes resolved to the A part")
         self.assertEqual(lookup.label("simd2012_rank", "report"), "SIMD 2012 rank, 1 = most deprived, split postcodes reported")
 
+    def test_by_era_keeps_python_historical_policy(self):
+        # Changing SQL policy must not silently change existing Python consumers.
+        for edition in ("2004", "2006", "2009v2", "2012", "2016"):
+            self.t[f"simd{edition}_pw_scotland_quintile"] = self.t["simd2020v2_pw_scotland_quintile"]
+        events = pd.DataFrame({
+            "id": [1, 1, 2, 3], "postcode": ["AB10 1BF"] * 4,
+            "event_date": ["2004-06-01", "2008-01-01", "2020-01-01", "1995-12-31"],
+        })
+        out = lookup.attach_by_era(events, self.t, "postcode", "event_date")
+        self.assertEqual(out.id.tolist(), [1, 1, 2, 3])
+        self.assertEqual(out.simd_edition.tolist(), ["2006", "2009v2", "2020v2", None])
+        self.assertEqual(out.simd_status.tolist(), [lookup.UNIQUE, lookup.DELETED, lookup.UNIQUE, lookup.NO_EDITION])
+        self.assertEqual([None if pd.isna(v) else int(v) for v in out.simd_value], [2, None, 3, None])
+
 
 @unittest.skipUnless(FILE.is_file(), "no build output")
 class RealFile(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        import json
+        from support import known_snapshot
+        manifest = json.loads((ROOT / "results/manifest.json").read_text())
+        if known_snapshot(manifest) is None:
+            raise unittest.SkipTest("documented 2026/2 examples do not apply to this snapshot")
         cls.t = lookup.load(FILE)
 
     def test_documented_examples(self):
@@ -110,58 +140,6 @@ class RealFile(unittest.TestCase):
         self.assertEqual(reported.count(lookup.SPLIT_CONFLICT), 203)
         self.assertEqual(reported.count(lookup.SPLIT_CONSENSUS), 23)
 
-
-
-@unittest.skipUnless(FILE.is_file(), "no build output")
-class ByEraPythonAndSqlAgree(unittest.TestCase):
-    """The SQL in docs/sql/link_by_era.sql and lookup.attach_by_era give the same answer on a
-    synthetic cohort drawn from the real directory: current and deleted postcodes, split parts,
-    full NRS keys, unknown and missing postcodes, and dates from before SIMD to today."""
-
-    @classmethod
-    def setUpClass(cls):
-        import duckdb
-        import numpy as np
-        cls.t = lookup.load(FILE)
-        rng = np.random.default_rng(20260911)
-        t = cls.t
-        bases = pd.concat([t.loc[t["is_current"], "pc_base"].drop_duplicates().sample(1200, random_state=1),
-                           t.loc[~t["is_current"], "pc_base"].drop_duplicates().sample(400, random_state=2),
-                           t.loc[t["pc_norm"] != t["pc_base"], "pc_norm"].drop_duplicates().sample(150, random_state=3),
-                           t.loc[t["pc_norm"] != t["pc_base"], "pc_base"].drop_duplicates().sample(150, random_state=4)])
-        keys = bases.tolist() + ["ZZ1 1ZZ"] * 20 + [None] * 20
-        dates = pd.to_datetime("1994-01-01") + pd.to_timedelta(rng.integers(0, 365 * 32, len(keys)), unit="D")
-        # Write postcodes the way people do: a space before the inward code, mixed case.
-        written = [None if k is None else (k[:-3].lower() + " " + k[-3:]) if len(k) <= 7 else (k[:-4] + " " + k[-4:]) for k in keys]
-        cls.events = pd.DataFrame({"id": range(1, len(keys) + 1), "postcode": written, "event_date": dates}).sample(frac=1, random_state=5).reset_index(drop=True)
-        cls.con = duckdb.connect()
-        cls.con.execute(f"CREATE VIEW postcode_simd AS SELECT * FROM '{FILE}'")
-        cls.con.register("events", cls.events)
-        cls.sql_text = (ROOT / "docs" / "sql" / "link_by_era.sql").read_text()
-
-    def compare(self, py, sql):
-        py = py.sort_values("id").reset_index(drop=True)
-        sql = sql.sort_values("id").reset_index(drop=True)
-        self.assertEqual(len(py), len(sql))
-        self.assertEqual(py["simd_status"].tolist(), sql["simd_status"].tolist())
-        norm = lambda s: [None if pd.isna(v) else int(v) for v in s]
-        self.assertEqual(norm(py["simd_value"]), norm(sql["simd_value"]))
-        self.assertEqual([None if pd.isna(v) else v for v in py["simd_pc_norm"]], [None if pd.isna(v) else v for v in sql["simd_pc_norm"]])
-        self.assertEqual([None if pd.isna(v) else v for v in py["simd_edition"]], [None if pd.isna(v) else v for v in sql["simd_edition"]])
-        return py["simd_status"].value_counts()
-
-    def test_default_rule_a_part(self):
-        counts = self.compare(lookup.attach_by_era(self.events, self.t, "postcode", "event_date"),
-                              self.con.execute(self.sql_text).df())
-        self.assertIn(lookup.A_PART, counts.index)
-        self.assertNotIn(lookup.SPLIT_CONFLICT, counts.index)
-
-    def test_report_rule_after_deleting_the_marked_lines(self):
-        sql = "\n".join(line for line in self.sql_text.splitlines() if "-- A part" not in line)
-        counts = self.compare(lookup.attach_by_era(self.events, self.t, "postcode", "event_date", split="report"),
-                              self.con.execute(sql).df())
-        self.assertIn(lookup.SPLIT_CONFLICT, counts.index)
-        self.assertNotIn(lookup.A_PART, counts.index)
 
 if __name__ == "__main__":
     unittest.main()
