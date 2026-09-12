@@ -1,5 +1,11 @@
 # Checked against the NRS postcode lookup information note
 
+Historical review of the 11 September 2026 implementation. The ingestion observations
+below concern SPD 2026/2, not every future release. The SQL has since been replaced by
+[latest-postcode, linked-small-user examples](LINKAGE_BY_ERA.md); Python retains its
+historical record policy. This note does not establish equivalence to an official PHS
+postcode lookup or the SSPL, and the former Python/SQL parity test has been retired.
+
 NRS publishes two postcode products and an information note on which to use: the Scottish
 Postcode Directory (SPD), which this pipeline is built on, and the Scottish Statistics
 Postcode Lookup (SSPL), which the note recommends "for all statistical production". This
@@ -9,11 +15,11 @@ Source: [Geography: Scottish Statistics Postcode Lookup information note](https:
 
 ## Why the SPD and not the SSPL
 
-The SSPL "only contains the most recent version of a postcode, there are no duplicates or
-postcode history". This pipeline's purpose is to attach deprivation to a record at the date
-of an event, which needs the history: which data zone a postcode was in on that day, and
-whether it existed at all. The SSPL cannot answer that. The SPD is also the base the SSPL is
-built from, so nothing in it is a different source of truth.
+The SSPL contains latest versions rather than postcode history. The imported table keeps
+history so historical record linkage remains possible: which data zone the directory
+assigns to a postcode life, and whether it existed at a date. The SSPL alone cannot supply
+that history. The SPD is also the base the SSPL is built from, but the products use different
+allocation and selection rules; a shared source does not establish identical lookup answers.
 
 The note's reason for preferring the SSPL is the GSS Geography Policy: statistics for higher
 geographies should be built from statistical building blocks, output areas and data zones,
@@ -34,7 +40,7 @@ attaching a data-zone-level index to individual records, which is what this tabl
 | For UK-level work use the ONS NSPL rather than the SSPL | Scotland only; no NSPL involvement | Not applicable |
 | Base data for the SSPL is the SPD; a very small number of postcodes exist on one directory but not the other | The SPD is the pinned source; the ONSPD is not used | Not applicable |
 
-## The one substantive difference: split postcodes
+## Split-postcode policy in the earlier implementation
 
 NRS resolves a split postcode by taking the A part, on the grounds that A is the part with
 more addresses. The 2026/2 bulletin confirms the convention: suffixes were swapped on four
@@ -42,11 +48,11 @@ postcodes so that A is the most populated part by delivery point count. So "use 
 "use the majority part", and it is what every statistic produced from the SSPL does.
 
 The pipeline's first release refused to choose, reporting a conflict whenever the parts of a
-split postcode disagreed. On 11 September 2026 the default was changed to NRS's convention, so
-that an analyst reconciling against an official statistic built from the SSPL gets the same
-answer, and the lookups gained a `split="report"` rule for anyone who would rather see the
-ambiguity than resolve it. Both rules record themselves in the result's label, and the Python
-and SQL implementations are tested to agree under both.
+split postcode disagreed. On 11 September 2026 the default was changed to NRS's A convention,
+and the lookups gained a `split="report"` alternative. Their outputs were then tested for
+agreement, not against an official postcode-level oracle. Python retains both modes; the
+new SQL has one A-only ordinary-postcode policy and separate tests. Matching the A convention
+alone does not ensure the same result as an official statistic.
 
 ## Things the note implies that are worth stating
 

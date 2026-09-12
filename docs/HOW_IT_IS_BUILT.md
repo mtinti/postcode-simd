@@ -88,6 +88,8 @@ The trace verifies pinned sources, shows the saved record's data-zone join for e
 and compares its SIMD values with the reference rows. Use `--introduced YYYY-MM-DD` to
 choose a historical life. Use a full `pc_norm`/NRS split key, not an ambiguous base postcode.
 
-Analyst choices remain outside ingestion: [lookup.py](../simd_ingest/lookup.py) resolves
-splits to A by default (or reports consensus/conflict) and excludes PO boxes by default.
-See [Examples](EXAMPLES.md). Adding an edition does not silently change these policies.
+Analyst choices remain outside ingestion. The [two SQL examples](LINKAGE_BY_ERA.md) share
+latest-postcode selection, A-part resolution and linked-small-user geography; one uses a
+chosen SIMD edition and one uses event-year recommendations. The [Python helper](EXAMPLES.md)
+keeps its separate current/as-of and own-record geography policy. Adding an edition does
+not silently change either consumer policy.

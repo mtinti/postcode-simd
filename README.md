@@ -66,8 +66,8 @@ The old orchestration plans remain [historical records](docs/plans/README.md).
 
 ## Use the table
 
-Most present-day questions start with `WHERE is_current`. An ordinary postcode can still
-have several split records: do not assume `pc_base` is unique.
+To inspect live directory records, use `WHERE is_current`. An ordinary postcode can still
+have several split records: do not assume `pc_base` is unique in the imported table.
 
 ```sql
 SELECT pc_norm, pc_base, simd2020v2_pw_scotland_quintile
@@ -79,9 +79,15 @@ WHERE is_current AND pc_base = 'G718BQ';
 suffix only from a flagged small-user record. Original postcode text is preserved.
 PHS population-weighted fields (`pw`) and Government unweighted fields (`uw`) are distinct.
 
-The existing consumer lookups are unchanged: A-part split resolution by default,
-`split="report"` for consensus/conflict, and PO-box exclusion at lookup time rather than
-during ingestion. See [Examples](docs/EXAMPLES.md) and [Linkage by era](docs/LINKAGE_BY_ERA.md).
+For cohort linkage, start with [Two SQL lookups](docs/LINKAGE_BY_ERA.md): run the
+[shared setup](docs/sql/create_latest_postcode_lookup.sql), then choose
+[one SIMD edition](docs/sql/link_latest.sql) or [edition by event year](docs/sql/link_by_era.sql).
+Both use latest postcode geography, the A part for ordinary split postcodes, and linked
+small-user geography for large users, with explicit statuses and both record keys.
+
+The [Python helpers](docs/EXAMPLES.md) remain a separate current/as-of record lookup with
+own-record geography and an optional split consensus/conflict policy; they are not equivalent
+to the new SQL. Exclusions remain consumer choices, not deletions from the imported table.
 Adding a source edition does not automatically change the analyst's edition-by-year policy.
 
 ## Optional Docker runner

@@ -1,92 +1,66 @@
--- Attach SIMD to events by era, following the PHS deprivation guidance for analysts v3.5:
--- each event takes the edition recommended for its year (table 4) and the directory record
--- valid on its date. Same rules as simd_ingest.lookup.attach_by_era, and tested to agree with it.
+-- VERSION 2: latest postcode geography, SIMD edition chosen by EVENT YEAR.
+-- Run create_latest_postcode_lookup.sql first. Input: events(id, postcode, event_date).
+-- event_date must be DATE (or TIMESTAMP); reject invalid date text before this query.
+-- Repeated/null IDs and duplicate input rows are retained: there is no grouping by id.
 --
--- Inputs:  events(id, postcode, event_date)      one row per event; postcode as written
---          postcode_simd                          the v1 table, as a table or a view
--- Output:  one row per event: simd_edition, simd_status, simd_value, simd_pc_norm
---
--- Runs unchanged on DuckDB and SQL Server. On DuckDB, expose the file first:
---     CREATE VIEW postcode_simd AS SELECT * FROM 'results/postcode_simd.parquet';
---
--- The measure is the PHS population-weighted within-Scotland quintile, 1 = most deprived.
--- To change it, edit the six lines of the CASE that picks the column. PO boxes are excluded
--- by default, following the PHS guidance; see the predicate on the join. A split postcode
--- with several valid parts resolves to the A part, the NRS convention, with status a_part;
--- delete the three lines marked "A part" to report split_consensus / split_conflict instead.
+-- PHS v3.5 section 3.2.1.1: use the appropriate SIMD release for each period.
+-- IMPORTANT: the date chooses SIMD, NOT a historical postcode life. Both examples
+-- use the SAME latest-postcode/linked-small-user view. See ../LINKAGE_BY_ERA.md.
 
 WITH era AS (
-    SELECT * FROM (VALUES (1996, 2003, '2004'), (2004, 2006, '2006'), (2007, 2009, '2009v2'),
-                          (2010, 2013, '2012'), (2014, 2016, '2016'), (2017, 9999, '2020v2'))
-           AS v(year_from, year_to, edition)
-),
-ev AS (
-    -- The same normalisation as pc_norm: uppercase, ASCII spaces removed.
-    SELECT e.id, e.event_date, UPPER(REPLACE(e.postcode, ' ', '')) AS pc_key, era.edition
-    FROM events e
-    LEFT JOIN era ON YEAR(e.event_date) BETWEEN era.year_from AND era.year_to
+    -- 1. PHS v3.5, Table 4 (printed page 17), transcribed without interpolation.
+    -- This is a reviewed recommendation, not automatic "latest edition" detection.
+    SELECT * FROM (VALUES
+        (1996, 2003, '2004'),
+        (2004, 2006, '2006'),
+        (2007, 2009, '2009v2'),
+        (2010, 2013, '2012'),
+        (2014, 2016, '2016'),
+        (2017, 9999, '2020v2')
+    ) AS v(year_from, year_to, edition)
 ),
 matched AS (
-    -- An ordinary postcode matches every record whose base it is: an old unsplit life and
-    -- the current split parts. A full NRS key with a suffix also matches its own part.
-    SELECT ev.id, ev.event_date, ev.edition, ev.pc_key,
-           p.pc_norm, p.pc_base,
-           CASE WHEN p.pc_norm = ev.pc_key AND p.pc_norm <> p.pc_base THEN 1 ELSE 0 END AS is_part,
-           CASE WHEN p.pc_norm <> p.pc_base AND RIGHT(p.pc_norm, 1) = 'A' THEN 1 ELSE 0 END AS is_a,
-           CASE WHEN p.introduced_on <= ev.event_date
-                 AND (p.deleted_on IS NULL OR p.deleted_on > ev.event_date) THEN 1 ELSE 0 END AS is_valid,
-           CASE ev.edition
+    -- 2. Choose the edition by year and match the ordinary postcode once.
+    -- LEFT JOINs retain missing dates, pre-1996 events and unmatched postcodes.
+    SELECT e.id, e.postcode, e.event_date,
+           NULLIF(UPPER(REPLACE(e.postcode, ' ', '')), '') AS postcode_key,
+           era.edition AS simd_edition,
+           p.postcode_status,
+           p.matched_pc_norm, p.matched_introduced_on,
+           p.matched_is_current, p.matched_user_type,
+           p.simd_source_pc_norm, p.simd_source_introduced_on,
+           p.simd_source_is_current, p.spd_release,
+           -- 3. Select the already-attached PHS quintile for that edition.
+           -- The CLI used the correct data-zone vintage and reversed early bands.
+           CASE era.edition
                WHEN '2004'   THEN p.simd2004_pw_scotland_quintile
                WHEN '2006'   THEN p.simd2006_pw_scotland_quintile
                WHEN '2009v2' THEN p.simd2009v2_pw_scotland_quintile
                WHEN '2012'   THEN p.simd2012_pw_scotland_quintile
                WHEN '2016'   THEN p.simd2016_pw_scotland_quintile
                WHEN '2020v2' THEN p.simd2020v2_pw_scotland_quintile
-           END AS value
-    FROM ev
-    LEFT JOIN postcode_simd p
-           ON (p.pc_base = ev.pc_key OR (p.pc_norm = ev.pc_key AND p.pc_norm <> p.pc_base))
-          -- PHS practice: no deprivation for PO boxes and other unlinked large-user postcodes.
-          -- Delete the next line to attach whatever the directory assigns them.
-          AND (p.LinkedSmallUserPostcode IS NULL OR p.LinkedSmallUserPostcode NOT IN ('NO LINKP', 'NO LINK'))
-),
-scoped AS (
-    -- A full NRS key selects its own split part only.
-    SELECT * FROM (SELECT m.*, MAX(is_part) OVER (PARTITION BY id) AS any_part FROM matched m) x
-    WHERE any_part = 0 OR is_part = 1
-),
-summary AS (
-    SELECT id,
-           MIN(event_date) AS event_date,
-           MIN(edition)    AS edition,
-           COUNT(pc_norm)  AS n_known,
-           SUM(is_valid)   AS n_valid,
-           COUNT(DISTINCT CASE WHEN is_valid = 1 THEN value END)   AS n_values,
-           MIN(CASE WHEN is_valid = 1 THEN value END)              AS value,
-           MIN(CASE WHEN is_valid = 1 THEN pc_norm END)            AS pc_norm,
-           SUM(CASE WHEN is_valid = 1 AND is_a = 1 THEN 1 ELSE 0 END) AS n_a,
-           MIN(CASE WHEN is_valid = 1 AND is_a = 1 THEN value END)   AS a_value,
-           MIN(CASE WHEN is_valid = 1 AND is_a = 1 THEN pc_norm END) AS a_pc_norm
-    FROM scoped
-    GROUP BY id
+           END AS simd_value
+    FROM events e
+    LEFT JOIN era ON YEAR(e.event_date) BETWEEN era.year_from AND era.year_to
+    LEFT JOIN simd_postcode_latest p
+           ON p.pc_base = NULLIF(UPPER(REPLACE(e.postcode, ' ', '')), '')
 )
-SELECT id, event_date, edition AS simd_edition,
-       CASE WHEN edition IS NULL THEN 'no_edition'       -- before 1996: Carstairs territory
-            WHEN n_known = 0     THEN 'not_found'
-            WHEN n_valid = 0     THEN 'deleted'          -- known postcode, nothing valid that day
-            WHEN n_valid = 1     THEN 'unique'
-            WHEN n_a = 1         THEN 'a_part'           -- A part: several parts, the A part is used
-            WHEN n_values = 1    THEN 'split_consensus'  -- several parts, one value
-            ELSE                      'split_conflict'   -- several parts, different values
+-- 4. Report the result and retain both record keys so the route can be reviewed.
+-- Missing date is distinct from "no recommended SIMD before 1996".
+-- Postcode provenance may remain present even when no SIMD edition can be selected.
+SELECT id, postcode, event_date, simd_edition,
+       'PHS population-weighted within-Scotland quintile; 1 = most deprived' AS simd_measure,
+       CASE
+           WHEN event_date IS NULL THEN 'missing_date'
+           WHEN simd_edition IS NULL THEN 'no_edition'
+           WHEN postcode_key IS NULL THEN 'missing_postcode'
+           WHEN postcode_status IS NULL THEN 'not_found'
+           WHEN postcode_status NOT IN ('matched', 'a_part', 'linked_small_user') THEN postcode_status
+           WHEN simd_value IS NULL THEN 'missing_simd'
+           ELSE postcode_status
        END AS simd_status,
-       CASE WHEN n_valid = 1 OR (n_valid > 1 AND n_values = 1) THEN value
-            WHEN n_valid > 1 AND n_a = 1 THEN a_value    -- A part
-       END AS simd_value,
-       -- No edition means no SIMD answer at all, so the matched key is withheld too. An as-of
-       -- lookup without an edition still finds the record if that is what you need.
-       CASE WHEN edition IS NULL THEN NULL
-            WHEN n_valid = 1 THEN pc_norm
-            WHEN n_valid > 1 AND n_a = 1 THEN a_pc_norm   -- A part
-       END AS simd_pc_norm
-FROM summary
-ORDER BY id;
+       simd_value,
+       matched_pc_norm, matched_introduced_on, matched_is_current, matched_user_type,
+       simd_source_pc_norm, simd_source_introduced_on, simd_source_is_current,
+       spd_release
+FROM matched;
