@@ -1,31 +1,41 @@
 # Checked against the NRS postcode lookup information note
 
-Historical review of the 11 September 2026 implementation. The ingestion observations
-below concern SPD 2026/2, not every future release. The SQL has since been replaced by
+Review of the 11 September 2026 implementation, extended on 12 September when the SSPL
+became the main table's postcode source. The ingestion observations below concern SPD
+2026/2 and SSPL 2026/1, not every future release. The SQL has since been replaced by
 [latest-postcode, linked-small-user examples](LINKAGE_BY_ERA.md); Python retains its
 historical record policy. This note does not establish equivalence to an official PHS
-postcode lookup or the SSPL, and the former Python/SQL parity test has been retired.
+postcode lookup, and the former Python/SQL parity test has been retired.
 
 NRS publishes two postcode products and an information note on which to use: the Scottish
-Postcode Directory (SPD), which this pipeline is built on, and the Scottish Statistics
-Postcode Lookup (SSPL), which the note recommends "for all statistical production". This
-document checks what the pipeline does against each point in the note, on 11 September 2026.
+Postcode Directory (SPD) and the Scottish Statistics Postcode Lookup (SSPL), which the note
+recommends "for all statistical production". Since 12 September 2026 the pipeline builds a
+table from each: the main table from the SSPL and the history table from the SPD. This
+document checks what the pipeline does against each point in the note.
 
 Source: [Geography: Scottish Statistics Postcode Lookup information note](https://www.nrscotland.gov.uk/publications/geography-scottish-statistics-postcode-lookup-information-note/).
 
-## Why the SPD and not the SSPL
+## Which table for which question
 
-The SSPL contains latest versions rather than postcode history. The imported table keeps
-history so historical record linkage remains possible: which data zone the directory
-assigns to a postcode life, and whether it existed at a date. The SSPL alone cannot supply
-that history. The SPD is also the base the SSPL is built from, but the products use different
-allocation and selection rules; a shared source does not establish identical lookup answers.
+The SSPL contains the latest life of each whole postcode, not postcode history. The history
+table keeps every life so that historical record linkage remains possible: which data zone
+the directory assigns to a postcode life, and whether it existed at a date. The main table
+answers present-day questions with one row per postcode, as the note's statistical
+production use expects.
 
 The note's reason for preferring the SSPL is the GSS Geography Policy: statistics for higher
 geographies should be built from statistical building blocks, output areas and data zones,
 by a best-fit method, so that two publications cannot be differenced to reveal small
-populations. That concern is about aggregating to higher geographies. It does not bear on
-attaching a data-zone-level index to individual records, which is what this table does.
+populations. Checking the SSPL 2026/1 file shows how far that goes: every geography in it,
+including the 2011 and 2001 data zones, is the one containing the centroid of the postcode's
+2022 output area. In the file each 2022 output area maps to exactly one 2011 data zone while
+2,344 of its 2011 output areas map to more than one, the reverse of the directory. Against
+SPD 2026/2 the 2011 data zone differs on 6,189 postcodes current in both products and the
+2020v2 Scotland quintile on 3,844 of them; the 2001 data zone differs on 9,265. These are
+allocation differences, not cut differences, and the build report counts them every run.
+PHS builds its own postcode lookups from the SPD, so the history table is the one that
+agrees with PHS practice at record level; the main table is the one that agrees with the
+GSS policy. Neither is corrected towards the other.
 
 ## Point by point
 
@@ -35,10 +45,10 @@ attaching a data-zone-level index to individual records, which is what this tabl
 | The SPD allocates directly by grid reference and can place two postcodes of one output area in different higher geographies | The SPD's health board, HSCP and council area codes are carried as source columns. The PHS within-geography bands use PHS's own data-zone-to-geography assignment, carried as `phs_dz*` columns, not the SPD codes. The two differ on 8 records, all in one data zone, which is exactly the effect the note describes. | Agrees; the SPD codes are provenance, not the basis of any band |
 | Use one allocation method only for statistical purposes | Every band in the table is data-zone based, one method. An analyst aggregating the SPD geography columns themselves would be mixing methods; the data dictionary says to use the `phs_dz*` codes with the bands. | Agrees, with the caveat documented |
 | Split postcodes are converted to whole postcodes using the A part, "because the A part of the postcode contains more addresses" | Split parts are kept as separate records in the table. By default a lookup on the ordinary postcode resolves to the A part and says so with status `a_part`, following this convention. A `report` rule is available that returns all parts and reports agreement or conflict instead. Of 231 current split postcodes, 203 have parts in different data zones. | Agrees by default; the alternative is explicit |
-| Only the latest version of each postcode | All versions kept, keyed on postcode plus introduction date, with half-open validity | Differs, by design; required for as-of linkage |
-| Census counts of split parts are added together in the SSPL | Kept per part, as the SPD publishes them | Differs; the counts are carried, not used |
+| Only the latest version of each postcode | Main table: exactly that, deleted latest lives included. History table: all versions kept, keyed on postcode plus introduction date, with half-open validity | Main agrees; history differs by design for as-of linkage |
+| Census counts of split parts are added together in the SSPL | Main table carries the SSPL's summed counts; history table keeps them per part | Both carried, not used |
 | For UK-level work use the ONS NSPL rather than the SSPL | Scotland only; no NSPL involvement | Not applicable |
-| Base data for the SSPL is the SPD; a very small number of postcodes exist on one directory but not the other | The SPD is the pinned source; the ONSPD is not used | Not applicable |
+| Base data for the SSPL is the SPD; a very small number of postcodes exist on one directory but not the other | Both NRS products are pinned; the ONSPD is not used. SSPL 2026/1 lacks 395 postcodes introduced after its January 2026 cut | Reported as cut differences |
 
 ## Split-postcode policy in the earlier implementation
 

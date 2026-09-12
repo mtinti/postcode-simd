@@ -1,7 +1,7 @@
 """Trace one output record back through the join to the PHS and government rows it came from.
 
-    python -m simd_ingest.trace "AB12 3GQA"                 # the current record
-    python -m simd_ingest.trace "AB10 1BF" --introduced 2003-04-15
+    python -m simd_ingest.trace "AB12 3GQ"                            # main table, latest life
+    python -m simd_ingest.trace "AB10 1BF" --table history --introduced 2003-04-15
 
 Rebuilds the two reference tables from the pinned sources, so the trace is independent of
 the builder's intermediate tables, and reports for every edition whether the value in
@@ -74,7 +74,9 @@ def main(argv=None) -> int:
     ap.add_argument("postcode")
     ap.add_argument("--introduced", help="introduction date, YYYY-MM-DD, to pick one life of a postcode")
     ap.add_argument("--config", default=os.environ.get("SIMD_WORKFLOW_CONFIG", "config/workflow.yaml"))
-    ap.add_argument("--table", help="defaults to the configured results directory")
+    ap.add_argument("--table", choices=["main", "history"], default="main",
+                    help="main: the SSPL latest-postcode table (default); history: the SPD table of every life")
+    ap.add_argument("--file", help="a Parquet file to trace instead of the configured results directory")
     args = ap.parse_args(argv)
     cfg = load_config(args.config)
     registry = load_registry(cfg["source_manifest"])
@@ -85,7 +87,8 @@ def main(argv=None) -> int:
     phs = build_phs_bands(registry, root, report)
     gov = build_govscot_bands(registry, root, report)
     report.require()
-    table = pd.read_parquet(args.table or cfg["results_root"] / "postcode_simd.parquet")
+    from .pipeline import TABLES
+    table = pd.read_parquet(args.file or cfg["results_root"] / TABLES[args.table]["file"])
     lines = trace(table, phs, gov, registry, args.postcode, args.introduced)
     print("\n".join(lines))
     return int(lines[-1].endswith("MISMATCH FOUND"))

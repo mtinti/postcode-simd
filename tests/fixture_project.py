@@ -10,6 +10,7 @@ import yaml
 from simd_ingest.core.phs import BANDS, FLAGS
 from simd_ingest.core.sources import sha256
 from simd_ingest.core.spd import DERIVED
+from simd_ingest.core.sspl import DERIVED as SSPL_DERIVED
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -102,20 +103,51 @@ def project(tmp: Path, release="test-1", extra_edition=False) -> Path:
     total = len(small) + len(large)
     live = sum(s["live"] for s in raw["spd_files"])
     raw["spd_published_totals"] = dict(all=total, live=live, deleted=total - live)
-    schema = yaml.safe_load((ROOT / "simd_ingest/output_schema.yaml").read_text())
+
+    # The lookup: the same postcodes as whole postcodes, latest life, dates without a time,
+    # and the lookup's own allocation (AB10 1AC sits in zone 2 here, zone 1 in the directory).
+    sspl_headers = ["Postcode", "SplitIndicator", "LinkedSmallUserPostcode", "DateOfIntroduction", "DateOfDeletion",
+                    "PostcodeType", "DataZone2001Code", "DataZone2011Code", "DataZone2022Code",
+                    "ScottishIndexOfMultipleDeprivation2020Rank"]
+    sspl_schema = {"version": 1, "single_record": sspl_headers}
+
+    def lrow(postcode, zone=1, deleted="", split="N", kind="S", link=""):
+        return dict(Postcode=postcode, SplitIndicator=split, LinkedSmallUserPostcode=link, DateOfIntroduction="01/01/2020",
+                    DateOfDeletion=deleted, PostcodeType=kind,
+                    **{f"DataZone{v}Code": f"D{v}{'A' if zone == 1 else 'B'}" for v in (2001, 2011, 2022)},
+                    ScottishIndexOfMultipleDeprivation2020Rank=str(zone))
+
+    lookup = [lrow("AB10 1AA"), lrow("AB10 1AB", 2), lrow("AB10 1AC", 2), lrow("AB10 1AD", 2, kind="L", link="AB10 1AA")]
+    if release != "test-1":
+        lookup = [lrow("AB10 1AA", 2), lrow("AB10 1AB", 2, deleted="01/09/2026"), lrow("AB10 1AE"),
+                  lrow("AB10 1AF", split="Y"), lrow("AB10 1AD", 2, kind="L", link="AB10 1AFA")]
+    pd.DataFrame(lookup)[sspl_headers].to_csv(sources / "sspl.csv", index=False)
+    pin("sspl.csv", "NRS")
+    raw["sspl_release"] = release + "-lookup"
+    raw["sspl_file"] = dict(file="sspl.csv", rows=len(lookup), live=sum(not r["DateOfDeletion"] for r in lookup),
+                            small_user=sum(r["PostcodeType"] == "S" for r in lookup),
+                            large_user=sum(r["PostcodeType"] == "L" for r in lookup), totals_basis="counted")
+
+    history = yaml.safe_load((ROOT / "simd_ingest/output_schema_history.yaml").read_text())
     wanted = set(headers + ["LinkedSmallUserPostcode"] + DERIVED)
-    schema["fields"] = [f for f in schema["fields"] if f["name"] in wanted or f["name"].startswith(("simd", "phs_dz"))]
+    history["fields"] = [f for f in history["fields"] if f["name"] in wanted or f["name"].startswith(("simd", "phs_dz"))]
+    main = yaml.safe_load((ROOT / "simd_ingest/output_schema.yaml").read_text())
+    wanted = set(sspl_headers + SSPL_DERIVED)
+    main["fields"] = [f for f in main["fields"] if f["name"] in wanted or f["name"].startswith(("simd", "phs_dz"))]
     if extra_edition:
-        new_fields = [copy.deepcopy(f) for f in schema["fields"] if f["name"].startswith(("simd2020v2_", "phs_dz2011_"))]
-        for f in new_fields:
-            f["name"] = f["name"].replace("2020v2", "future").replace("2011", "2022")
-        schema["fields"].extend(new_fields)
-        schema["version"] = "test-extension"
-    for filename, data in (("sources.yaml", raw), ("spd_schema.yaml", spd_schema),
-                           ("output_schema.yaml", schema), ("decisions.yaml", {"decisions": []})):
+        for schema in (history, main):
+            new_fields = [copy.deepcopy(f) for f in schema["fields"] if f["name"].startswith(("simd2020v2_", "phs_dz2011_"))]
+            for f in new_fields:
+                f["name"] = f["name"].replace("2020v2", "future").replace("2011", "2022")
+            schema["fields"].extend(new_fields)
+            schema["version"] = "test-extension"
+    for filename, data in (("sources.yaml", raw), ("spd_schema.yaml", spd_schema), ("sspl_schema.yaml", sspl_schema),
+                           ("output_schema.yaml", main), ("output_schema_history.yaml", history),
+                           ("decisions.yaml", {"decisions": []})):
         (tmp / filename).write_text(yaml.safe_dump(data, sort_keys=False))
     config = dict(source_manifest=str(tmp / "sources.yaml"), spd_schema=str(tmp / "spd_schema.yaml"),
-                  output_schema=str(tmp / "output_schema.yaml"), decisions=str(tmp / "decisions.yaml"),
+                  sspl_schema=str(tmp / "sspl_schema.yaml"), output_schema=str(tmp / "output_schema.yaml"),
+                  output_schema_history=str(tmp / "output_schema_history.yaml"), decisions=str(tmp / "decisions.yaml"),
                   source_mode="offline", source_roots={"offline": str(sources), "download": str(sources)},
                   cache_root=str(tmp / "cache"), results_root=str(tmp / "results"))
     path = tmp / "workflow.yaml"

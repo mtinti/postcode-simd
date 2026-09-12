@@ -10,7 +10,7 @@ import pandas as pd
 from simd_ingest import lookup
 
 ROOT = Path(__file__).resolve().parent.parent
-FILE = ROOT / "results" / "postcode_simd.parquet"
+FILE = ROOT / "results" / "postcode_simd_history.parquet"  # dated questions need every life
 
 
 def fixture() -> pd.DataFrame:
@@ -68,6 +68,17 @@ class Statuses(unittest.TestCase):
         self.assertEqual([None if pd.isna(v) else int(v) for v in reported["simd_value"]], [None, 2, None, 4, None, None, 2])
         current = lookup.attach(cohort, self.t, "postcode", None, edition="2020v2")
         self.assertEqual(current["simd_status"].tolist()[1:3], [lookup.UNIQUE, lookup.UNIQUE])
+
+    def test_latest_life_table_refuses_dates_and_needs_no_pc_base(self):
+        latest = self.t[self.t["is_current"] & self.t["pc_norm"].eq(self.t["pc_base"])].drop(columns="pc_base")
+        latest.attrs["index_source"] = "sspl"
+        self.assertEqual(lookup.lookup(latest, "AB10 1BF", edition="2020v2").value, 3)
+        with self.assertRaises(ValueError):
+            lookup.lookup(latest, "AB10 1BF", edition="2020v2", on="2020-01-01")
+        events = pd.DataFrame({"postcode": ["AB10 1BF"], "day": ["2020-01-01"]})
+        with self.assertRaises(ValueError):
+            lookup.attach(events, latest, "postcode", "day", edition="2020v2")
+        self.assertEqual(lookup.attach(events, latest, "postcode", None, edition="2020v2")["simd_value"].tolist(), [3])
 
     def test_recommended_edition_and_labels(self):
         self.assertEqual([lookup.recommended_edition(y) for y in (1996, 2003, 2004, 2007, 2010, 2014, 2017, 2026)],

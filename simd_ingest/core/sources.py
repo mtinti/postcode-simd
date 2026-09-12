@@ -43,6 +43,8 @@ class Registry:
     spd_files: tuple
     spd_published_totals: dict
     directory_rank: dict | None
+    sspl_release: str
+    sspl_file: dict
 
     @property
     def files(self) -> tuple:
@@ -81,9 +83,10 @@ def load_registry(path: Path) -> Registry:
                    licences=raw.get("licences", {}), objects=tuple(objects),
                    phs_editions=tuple(raw["phs_editions"]), govscot_editions=tuple(raw["govscot_editions"]),
                    spd_files=tuple(raw["spd_files"]), spd_published_totals=raw["spd_published_totals"],
-                   directory_rank=raw.get("directory_rank"))
+                   directory_rank=raw.get("directory_rank"),
+                   sspl_release=str(raw["sspl_release"]), sspl_file=raw["sspl_file"])
     known = set(paths)
-    for section in (reg.phs_editions, reg.govscot_editions, reg.spd_files):
+    for section in (reg.phs_editions, reg.govscot_editions, reg.spd_files, (reg.sspl_file,)):
         for entry in section:
             if entry["file"] not in known:
                 raise ValueError(f"{entry['file']} is referenced but not pinned as a logical file")
@@ -112,6 +115,10 @@ def load_registry(path: Path) -> Registry:
         raise ValueError("Published postcode counts are inconsistent")
     if reg.directory_rank and reg.directory_rank["edition"] not in phs:
         raise ValueError("Directory rank must reference a configured SIMD edition")
+    lookup = reg.sspl_file
+    if (lookup["small_user"] + lookup["large_user"] != lookup["rows"] or not 0 <= lookup["live"] <= lookup["rows"]
+            or lookup.get("totals_basis") not in ("counted", "published")):
+        raise ValueError("Lookup counts are inconsistent or their basis is not declared")
     return reg
 
 

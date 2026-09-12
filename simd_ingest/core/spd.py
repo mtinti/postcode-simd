@@ -31,8 +31,9 @@ def normalise_postcode(series: pd.Series) -> pd.Series:
 
 def postcode_keys(frame: pd.DataFrame, role: str) -> pd.DataFrame:
     """pc_norm keeps any NRS split suffix; pc_base drops a validated suffix from a flagged
-    small-user record only. Malformed values raise rather than getting a different key."""
-    if role not in ("small_user", "large_user"):
+    small-user record only. Malformed values raise rather than getting a different key.
+    Role "sspl" is the lookup's whole-postcode file: a suffix on any record is an error."""
+    if role not in ("small_user", "large_user", "sspl"):
         raise ValueError(f"unknown role {role!r}")
     raw = frame["Postcode"]
     if not raw.str.fullmatch(r"[A-Za-z0-9]+ [A-Za-z0-9]+").all():
@@ -48,14 +49,16 @@ def postcode_keys(frame: pd.DataFrame, role: str) -> pd.DataFrame:
 
 
 def parse_dates(frame: pd.DataFrame) -> pd.DataFrame:
-    """Day-precision dates from the directory's D/M/YYYY midnight text. Never fabricates."""
+    """Day-precision dates from D/M/YYYY text, with the directory's midnight time or, as in
+    the lookup, without it. Never fabricates."""
     out = {}
     for column, target in (("DateOfIntroduction", "introduced_on"), ("DateOfDeletion", "deleted_on")):
         text = frame[column]
         nonblank = text.ne("")
-        if not text[nonblank].str.fullmatch(r"\d{1,2}/\d{1,2}/\d{4} 00:00:00").all():
-            raise ValueError(f"{column} is not a day-precision D/M/YYYY midnight date")
-        out[target] = pd.to_datetime(text.where(nonblank, None), format="%d/%m/%Y %H:%M:%S")
+        if not text[nonblank].str.fullmatch(r"\d{1,2}/\d{1,2}/\d{4}( 00:00:00)?").all():
+            raise ValueError(f"{column} is not a day-precision D/M/YYYY date")
+        day = text.str.replace(" 00:00:00", "", regex=False)
+        out[target] = pd.to_datetime(day.where(nonblank, None), format="%d/%m/%Y")
     parsed = pd.DataFrame(out, index=frame.index)
     if parsed["introduced_on"].isna().any() or (parsed["deleted_on"] < parsed["introduced_on"]).any():
         raise ValueError("Missing introduction date, or deletion before introduction")

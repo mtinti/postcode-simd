@@ -1,5 +1,6 @@
 -- SHARED SETUP: run once, then use link_latest.sql or link_by_era.sql.
--- Input: postcode_simd, the validated table produced by the ingestion CLI.
+-- Input: postcode_simd, exposed from postcode_simd_history.parquet, the history table
+-- produced by the ingestion CLI (every postcode life; this view selects the latest).
 -- Output: one row per ordinary postcode in simd_postcode_latest.
 --
 -- Guidance references and project choices: ../LINKAGE_BY_ERA.md.

@@ -10,8 +10,9 @@ docker compose run --rm build audit
 ```
 
 The default container mode is download. The pinned remote objects are cached in
-`data/cache`, their selected files are placed in `data/sources`, and results and retained
-run records go under `results` on the host. No data is baked into the image.
+`data/cache`, their selected files are placed in `data/sources`, and both tables, the report,
+the manifest and retained run records go under `results` on the host. No data is baked into
+the image.
 
 For already supplied files, keep the relative paths listed in `simd_ingest/sources.yaml`
 under `manual_data`:

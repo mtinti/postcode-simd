@@ -1,5 +1,10 @@
 """The single build path: verify -> prepare -> cross-check -> join -> readback -> publish.
 
+Two tables come out of one run. The main table is the Scottish Statistics Postcode Lookup
+with every edition attached, one row per whole postcode. The history table is the Scottish
+Postcode Directory with every edition attached, one row per postcode life. Both go through
+the same joins and the same readback; they differ in the index they start from and the key.
+
 All work is local except explicit download mode. One writer per results directory.
 No cached intermediate tables or orchestrator state are involved.
 """
@@ -17,6 +22,7 @@ import pandas as pd
 import yaml
 
 from .core import output, report as build_report
+from .core.agreement import compare_tables
 from .core.changes import compare_snapshot
 from .core.checks import Report
 from .core.crosscheck import cross_check
@@ -26,23 +32,34 @@ from .core.join import GEOGRAPHY, build_postcode_simd
 from .core.phs import canonicalise_phs, read_phs_source
 from .core.sources import load_registry, sha256, verify_root
 from .core.spd import build_postcode_index
+from .core.sspl import build_latest_index
 
-OUTPUT_NAME = "postcode_simd.parquet"
+# Table name -> which output schema describes it and which index it starts from. The history
+# table is built first so that its unchanged fingerprint is confirmed before the main table.
+TABLES = {
+    "history": {"file": "postcode_simd_history.parquet", "schema": "output_schema_history", "index": "spd"},
+    "main": {"file": "postcode_simd.parquet", "schema": "output_schema", "index": "sspl"},
+}
+CONTRACTS = ("source_manifest", "spd_schema", "sspl_schema", "output_schema", "output_schema_history", "decisions")
 
 
 def prepare(cfg: dict, mode: str, report: Report, *, audit=False):
-    """Build references from verified files; audit is always read-only and never downloads."""
+    """Build references from verified files; audit is always read-only and never downloads.
+    Returns the registry, the PHS and Government edition tables, and both postcode indices."""
     registry = load_registry(cfg["source_manifest"])
-    schema = yaml.safe_load(cfg["spd_schema"].read_text())
-    if schema.get("version") != 1:
-        raise ValueError("Unsupported postcode schema version")
+    schemas = {}
+    for name, key in (("spd", "spd_schema"), ("sspl", "sspl_schema")):
+        schemas[name] = yaml.safe_load(cfg[key].read_text())
+        if schemas[name].get("version") != 1:
+            raise ValueError(f"Unsupported {name} header schema version")
     root = cfg["source_roots"][mode]
     if audit:
         verify_root(registry, root, report)
     else:
         ensure_sources(registry, mode, root, cfg["cache_root"], report)
     report.require()
-    index = build_postcode_index(registry, root, report, schema)
+    indices = {"spd": build_postcode_index(registry, root, report, schemas["spd"]),
+               "sspl": build_latest_index(registry, root, report, schemas["sspl"])}
     report.require()
     phs = {e["key"]: canonicalise_phs(e, read_phs_source(e, root, report), report) for e in registry.phs_editions}
     gov = {e["key"]: read_gov_edition(e, root, report) for e in registry.govscot_editions}
@@ -59,7 +76,15 @@ def prepare(cfg: dict, mode: str, report: Report, *, audit=False):
         else:
             first[vintage] = geo
     report.require()
-    return registry, phs, gov, index
+    return registry, phs, gov, indices
+
+
+def load_schemas(cfg: dict) -> dict:
+    schemas = {name: output.load_schema(cfg[spec["schema"]]) for name, spec in TABLES.items()}
+    for name, spec in TABLES.items():
+        if schemas[name]["index_source"] != spec["index"]:
+            raise ValueError(f"{cfg[spec['schema']]} must declare index_source {spec['index']!r}")
+    return schemas
 
 
 def start_record(cfg: dict, mode: str) -> tuple:
@@ -80,33 +105,48 @@ def start_record(cfg: dict, mode: str) -> tuple:
     return run, record
 
 
-def write_output(cfg: dict, registry, schema: dict, mode: str, table: pd.DataFrame, index: pd.DataFrame,
+def write_output(cfg: dict, registry, schemas: dict, mode: str, tables: dict, indices: dict,
                  simd: pd.DataFrame, gov: pd.DataFrame, report: Report, extra: dict) -> dict:
-    """Validate the saved candidate and prepare evidence before replacing the current file."""
+    """Validate every saved candidate and prepare the evidence before replacing any current file.
+
+    `tables` maps a table name to its built frame; `indices` maps an index source to its frame.
+    Returns the readback result of each table.
+    """
     report.require()
     results = cfg["results_root"]
     results.mkdir(parents=True, exist_ok=True)
-    final = results / OUTPUT_NAME
-    report.observe("snapshot_changes", compare_snapshot(table, final, results / "manifest.json"))
+    manifest_path = results / "manifest.json"
     decisions_sha = sha256(cfg["decisions"])
+    report.observe("snapshot_changes", {
+        name: compare_snapshot(tables[name], results / TABLES[name]["file"], manifest_path, name, schemas[name]["key"])
+        for name in TABLES})
+    info = {}
     with tempfile.TemporaryDirectory(prefix=".build-", dir=results) as temp:
         staging = Path(temp)
-        candidate = staging / OUTPUT_NAME
-        output.write_table(table, schema, candidate, output.table_metadata(registry, schema, decisions_sha))
-        info = output.readback(candidate, schema, index, simd, gov, registry, report, decisions_sha256=decisions_sha)
+        for name, spec in TABLES.items():
+            candidate = staging / spec["file"]
+            schema = schemas[name]
+            output.write_table(tables[name], schema, candidate, output.table_metadata(registry, schema, decisions_sha))
+            info[name] = output.readback(candidate, schema, indices[spec["index"]], simd, gov, registry, report,
+                                         decisions_sha256=decisions_sha, label=f"readback.{name}")
+            info[name]["path"] = str(results / spec["file"])
         report.require()
-        info.update(path=str(final), manifest=str(results / "manifest.json"), build_report=str(results / "BUILD_REPORT.md"))
-        man = output.manifest(registry, schema, decisions_sha, sha256(cfg["spd_schema"]), mode, info, report, extra)
-        narrative = build_report.render(report, registry, table, info, mode, index, simd, gov)
+        contracts = {f"{key}_sha256": sha256(cfg[key]) for key in ("spd_schema", "sspl_schema")}
+        man = output.manifest(registry, decisions_sha, contracts, mode, info, report, extra)
+        narrative = build_report.render(report, registry, tables, info, mode, indices, simd, gov)
         (staging / "manifest.json").write_text(json.dumps(man, indent=2))
         (staging / "BUILD_REPORT.md").write_text(narrative)
         if "run_record" in extra:
             run = Path(extra["run_record"])
             shutil.copyfile(staging / "manifest.json", run / "manifest.json")
             shutil.copyfile(staging / "BUILD_REPORT.md", run / "BUILD_REPORT.md")
-        candidate.replace(final)  # Atomic individually, not a three-file transaction.
-        (staging / "manifest.json").replace(results / "manifest.json")
+        # Each replacement is atomic on its own; the set is not one transaction.
+        for spec in TABLES.values():
+            (staging / spec["file"]).replace(results / spec["file"])
+        (staging / "manifest.json").replace(manifest_path)
         (staging / "BUILD_REPORT.md").replace(results / "BUILD_REPORT.md")
+    for name in info:
+        info[name].update(manifest=str(manifest_path), build_report=str(results / "BUILD_REPORT.md"))
     return info
 
 
@@ -114,15 +154,20 @@ def build(cfg: dict, mode: str, report: Report) -> dict:
     run, record = start_record(cfg, mode)
     print(f"Run record: {run}")
     try:
-        for key in ("source_manifest", "spd_schema", "output_schema", "decisions"):
+        for key in CONTRACTS:
             shutil.copyfile(cfg[key], run / f"{key}.yaml")
         print("Verify sources and prepare postcode/PHS/Government tables")
-        registry, phs, gov, index = prepare(cfg, mode, report)
-        schema = output.load_schema(cfg["output_schema"])
-        print("Join each edition")
-        table = build_postcode_simd(index, phs, gov, registry, [f["name"] for f in schema["fields"]], report)
+        registry, phs, gov, indices = prepare(cfg, mode, report)
+        schemas = load_schemas(cfg)
+        tables = {}
+        for name, spec in TABLES.items():
+            print(f"Join each edition onto the {name} table")
+            tables[name] = build_postcode_simd(indices[spec["index"]], phs, gov, registry, schemas[name], report,
+                                               label=f"join.{name}")
+        report.require()
+        report.observe("table_agreement", compare_tables(tables["main"], tables["history"], registry))
         print("Write, reopen, check and publish")
-        info = write_output(cfg, registry, schema, mode, table, index, pd.concat(phs.values(), ignore_index=True),
+        info = write_output(cfg, registry, schemas, mode, tables, indices, pd.concat(phs.values(), ignore_index=True),
                             pd.concat(gov.values(), ignore_index=True), report, record)
     except Exception as exc:
         record.update(status="failed", error=f"{type(exc).__name__}: {exc}")
@@ -137,16 +182,17 @@ def build(cfg: dict, mode: str, report: Report) -> dict:
 
 
 def audit(cfg: dict, mode: str, report: Report) -> None:
-    registry, phs, gov, index = prepare(cfg, mode, report, audit=True)
-    schema = output.load_schema(cfg["output_schema"])
-    final = cfg["results_root"] / OUTPUT_NAME
-    info = output.readback(final, schema, index, pd.concat(phs.values(), ignore_index=True),
-                           pd.concat(gov.values(), ignore_index=True), registry, report,
-                           decisions_sha256=sha256(cfg["decisions"]))
+    registry, phs, gov, indices = prepare(cfg, mode, report, audit=True)
+    schemas = load_schemas(cfg)
     man = json.loads((cfg["results_root"] / "manifest.json").read_text())
-    report.equal("audit.manifest_hash_matches_file", info["sha256"], man["output"]["sha256"])
+    simd, gov_all = pd.concat(phs.values(), ignore_index=True), pd.concat(gov.values(), ignore_index=True)
+    for name, spec in TABLES.items():
+        info = output.readback(cfg["results_root"] / spec["file"], schemas[name], indices[spec["index"]], simd, gov_all,
+                               registry, report, decisions_sha256=sha256(cfg["decisions"]), label=f"readback.{name}")
+        report.equal(f"audit.{name}.manifest_hash_matches_file", info["sha256"], man["tables"][name]["sha256"])
+        report.equal(f"audit.{name}.schema_matches", schemas[name]["sha256"], man["tables"][name]["schema_sha256"])
     report.equal("audit.registry_matches", registry.sha256, man["registry_sha256"])
-    report.equal("audit.schema_matches", schema["sha256"], man["schema_sha256"])
-    report.equal("audit.spd_schema_matches", sha256(cfg["spd_schema"]), man["spd_schema_sha256"])
+    for key in ("spd_schema", "sspl_schema"):
+        report.equal(f"audit.{key}_matches", sha256(cfg[key]), man[f"{key}_sha256"])
     report.equal("audit.decisions_match", sha256(cfg["decisions"]), man["decisions_sha256"])
     report.require()

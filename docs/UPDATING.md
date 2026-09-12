@@ -4,6 +4,24 @@ Two maintenance jobs, with different frequencies. Neither requires a scheduler o
 implementation plan. Use a branch and review the configuration diff, test results and
 generated build report before promoting a release.
 
+Two NRS postcode products feed the two tables and are released on their own cadences: the
+Scottish Statistics Postcode Lookup (main table) and the Scottish Postcode Directory (history
+table). Refresh either on its own; the build always produces both tables and reports how
+far they agree.
+
+## Routine: new Scottish Statistics Postcode Lookup
+
+1. Obtain the intended SSPL release zip and read its data dictionary and bulletin. Choose
+   the release explicitly.
+2. In `simd_ingest/sources.yaml`, update `sspl_release`, the `nrs_sspl_*` archive
+   key/URL/hash and member hashes, and `sspl_file`. NRS publishes no counts for the SSPL:
+   count the pinned file's all/live/small-user/large-user rows yourself and keep
+   `totals_basis: counted`. They gate a changed or truncated file, not the publisher's claim.
+3. If the header is unchanged, leave `sspl_schema.yaml` and `output_schema.yaml` alone.
+   Otherwise stop and review the new fields in both, as for the directory below.
+4. Build in a review directory, read `BUILD_REPORT.md` sections 2 and 4 (main index and
+   agreement with the history table), run `pytest` and `audit`, then promote.
+
 ## Routine: new Scottish Postcode Directory
 
 1. Obtain the intended NRS cut release and read its bulletin and data dictionary. Choose
@@ -14,7 +32,7 @@ generated build report before promoting a release.
    Compute hashes of the obtained bytes (for example `shasum -a 256 <file>`), and review
    them with their official origin. A matching self-computed hash proves byte identity,
    not that a download came from the right publisher.
-3. If the headers are unchanged, leave `spd_schema.yaml` and `output_schema.yaml` alone.
+3. If the headers are unchanged, leave `spd_schema.yaml` and `output_schema_history.yaml` alone.
    If NRS changed them, stop and review the new fields: update both explicit schemas,
    nullability/descriptions and output schema version as appropriate. If the directory's
    own SIMD rank changes edition or name, update `directory_rank`; do not silently remove
@@ -34,7 +52,7 @@ generated build report before promoting a release.
 A changed split count or touching-date count is not an error. Invalid keys, source/hash
 mismatches, unpublished count discrepancies or missing SIMD matches are errors; investigate
 rather than bypass them. A new source format may require a small parser change and fixture.
-The historical examples/fingerprint in `tests/known_snapshot.json` apply only to their exact
+The historical examples/fingerprints in `tests/known_snapshot.json` apply only to their exact
 source pins and schema. General build/audit tests apply to every configured release.
 Update an approved fingerprint only after reviewing the new source-to-output evidence,
 never just to clear a failing regression.
@@ -46,11 +64,11 @@ never just to clear a failing regression.
 2. Add a PHS declaration (unique key, CSV path/prefix, geography header order, data-zone
    vintage, published zone count and explicit band direction) and a matching Government
    declaration (same key/vintage/count, DBF path and column map).
-3. Confirm the postcode directory supplies `DataZone<vintage>Code`. Every record must match
+3. Confirm both postcode products supply `DataZone<vintage>Code`. Every record must match
    in the new edition; the pipeline does not manufacture codes or silently allow nulls.
    If a future publication does not cover the archived records, that needs a reviewed
    policy/schema change, not an automatic exception.
-4. Add the 14 edition columns to `output_schema.yaml`: rank, eight PHS bands, two flags,
+4. Add the 14 edition columns to both `output_schema.yaml` and `output_schema_history.yaml`: rank, eight PHS bands, two flags,
    three Government bands. Add HB/HSCP/CA columns if this is a new data-zone vintage.
    Review storage types and descriptions, bump the schema version and record the decision.
    For shared vintages, PHS geography must agree across editions; disagreement needs an

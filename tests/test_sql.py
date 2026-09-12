@@ -206,7 +206,7 @@ def test_deleted_link_target_is_visible(con):
 
 @pytest.fixture
 def real(con):
-    path = ROOT / "results/postcode_simd.parquet"
+    path = ROOT / "results/postcode_simd_history.parquet"  # the view selects the latest life itself
     if not path.is_file():
         pytest.skip("no build output")
     con.read_parquet(str(path)).create_view("postcode_simd")

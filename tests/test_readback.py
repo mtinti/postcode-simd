@@ -22,7 +22,8 @@ ROOT = Path(__file__).resolve().parent.parent
 @pytest.fixture
 def sample(tmp_path):
     registry = load_registry(ROOT / "simd_ingest/sources.yaml")
-    schema = output.load_schema(ROOT / "simd_ingest/output_schema.yaml")
+    schema = output.load_schema(ROOT / "simd_ingest/output_schema_history.yaml")
+    main_schema = output.load_schema(ROOT / "simd_ingest/output_schema.yaml")
     decisions = ROOT / "simd_ingest/decisions.yaml"
     digest = sha256(decisions)
     # All original/derived index columns; nullable text includes absent, supplied and blank.
@@ -47,8 +48,22 @@ def sample(tmp_path):
     table = pd.concat([index, attach(index, phs, gov, registry)], axis=1)[[f["name"] for f in schema["fields"]]]
     path = tmp_path / "table.parquet"
     output.write_table(table, schema, path, output.table_metadata(registry, schema, digest))
+    # The main table's index: the same postcodes as whole postcodes, no nullable text.
+    latest = pd.DataFrame({f["name"]: [""] * 3 for f in main_schema["fields"][:56]})
+    latest["pc_norm"] = ["AB101AA", "AB101AB", "AB101AC"]
+    latest["Postcode"] = ["AB10 1AA", "AB10 1AB", "AB10 1AC"]
+    latest["PostcodeType"] = ["S", "L", "L"]
+    latest["spd_user_type"] = ["small_user", "large_user", "large_user"]
+    latest["sspl_release"] = registry.sspl_release
+    latest["introduced_on"] = pd.Timestamp("2020-01-01")
+    latest["deleted_on"] = pd.NaT
+    latest["is_current"] = True
+    latest["LinkedSmallUserPostcode"] = ["", "AB10 1AA", "NO LINKP"]
+    for vintage in (2001, 2011):
+        latest[f"DataZone{vintage}Code"] = f"DZ{vintage}"
+    main_table = pd.concat([latest, attach(latest, phs, gov, registry)], axis=1)[[f["name"] for f in main_schema["fields"]]]
     return dict(registry=registry, schema=schema, index=index, phs=phs, gov=gov, table=table,
-                path=path, decisions=decisions, digest=digest)
+                path=path, decisions=decisions, digest=digest, main_schema=main_schema, latest=latest, main_table=main_table)
 
 
 def read(sample):
@@ -86,7 +101,7 @@ def test_attached_values_are_compared(sample, column, value):
     assert "readback.attached_values" in {c.name for c in read(sample).blocking_failures}
 
 
-@pytest.mark.parametrize("key", ["band_convention", "schema_version", "spd_release", "sources", "decisions_sha256"])
+@pytest.mark.parametrize("key", ["band_convention", "schema_version", "index_release", "index_source", "allocation", "key", "sources", "decisions_sha256"])
 def test_metadata_values_not_just_names_are_checked(sample, key):
     table = pq.read_table(sample["path"])
     metadata = dict(table.schema.metadata)
@@ -102,18 +117,20 @@ def test_changed_expected_decisions_are_rejected(sample):
 
 @pytest.mark.parametrize("corruption", ["null", "metadata", "schema"])
 def test_failed_readback_leaves_previous_publication_untouched(sample, tmp_path, corruption):
-    final = tmp_path / "postcode_simd.parquet"
-    final.write_bytes(b"previous output")
+    finals = [tmp_path / "postcode_simd.parquet", tmp_path / "postcode_simd_history.parquet"]
+    for final in finals:
+        final.write_bytes(b"previous output")
     manifest = tmp_path / "manifest.json"
     manifest.write_text(json.dumps({"previous": True}))
     cfg = {"results_root": tmp_path, "decisions": sample["decisions"],
-           "spd_schema": ROOT / "simd_ingest/spd_schema.yaml"}
+           "spd_schema": ROOT / "simd_ingest/spd_schema.yaml", "sspl_schema": ROOT / "simd_ingest/sspl_schema.yaml"}
     original_write = output.write_table
 
     def corrupt_after_write(table, schema, path, metadata):
         original_write(table, schema, path, metadata)
         if corruption == "null":
-            change_cell(path, "LinkedSmallUserPostcode", 1, None)
+            if path.name == "postcode_simd_history.parquet":  # nullable there, not in the main table
+                change_cell(path, "LinkedSmallUserPostcode", 1, None)
         else:
             saved = pq.read_table(path)
             if corruption == "metadata":
@@ -125,8 +142,9 @@ def test_failed_readback_leaves_previous_publication_untouched(sample, tmp_path,
             pq.write_table(saved, path)
 
     with patch.object(output, "write_table", side_effect=corrupt_after_write), pytest.raises(BuildStopped):
-        write_output(cfg, sample["registry"], sample["schema"], "offline", sample["table"],
-                     sample["index"], sample["phs"], sample["gov"], Report(), {})
-    assert final.read_bytes() == b"previous output"
+        write_output(cfg, sample["registry"], {"history": sample["schema"], "main": sample["main_schema"]}, "offline",
+                     {"history": sample["table"], "main": sample["main_table"]},
+                     {"spd": sample["index"], "sspl": sample["latest"]}, sample["phs"], sample["gov"], Report(), {})
+    assert all(final.read_bytes() == b"previous output" for final in finals)
     assert json.loads(manifest.read_text()) == {"previous": True}
     assert not list(tmp_path.glob(".build-*"))

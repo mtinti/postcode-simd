@@ -30,24 +30,38 @@ def test_postcode_refresh_replaces_snapshot_and_reports_changes(tmp_path):
     cfg = project(tmp_path)
     assert main(["build", "--config", str(cfg)]) == 0
     first = manifest(tmp_path)
-    assert first["observations"]["snapshot_changes"]["status"] == "unavailable"
+    assert {name: c["status"] for name, c in first["observations"]["snapshot_changes"].items()} == {"history": "unavailable", "main": "unavailable"}
     cfg = project(tmp_path, "test-2")
     assert main(["build", "--config", str(cfg)]) == 0
     second = manifest(tmp_path)
-    changes = second["observations"]["snapshot_changes"]
+    changes = second["observations"]["snapshot_changes"]["history"]
     assert (changes["added_records"], changes["removed_records"], changes["changed_records"]) == (3, 1, 2)
     assert changes["newly_deleted_records"] == 1
+    assert changes["previous_release"] == "test-1"
     assert "spd_release" not in changes["changed_fields"]
     assert second["observations"]["spd.small_user"]["split_records"] == 2
-    saved = pd.read_parquet(tmp_path / "results/postcode_simd.parquet").set_index("pc_norm")
+    saved = pd.read_parquet(tmp_path / "results/postcode_simd_history.parquet").set_index("pc_norm")
     assert len(saved) == 6 and "AB101AC" not in saved.index
     assert saved.loc["AB101AA", "simd2020v2_rank"] == 2
     assert saved.loc["AB101AFA", "pc_base"] == "AB101AF"
     assert saved.loc["AB101AFB", "simd2004_pw_scotland_quintile"] == 5
     assert not saved.loc["AB101AB", "is_current"]
+    # The main table: whole postcodes, one life each, the lookup's own zones and release.
+    changes = second["observations"]["snapshot_changes"]["main"]
+    assert (changes["added_records"], changes["removed_records"], changes["changed_records"]) == (2, 1, 3)
+    assert changes["newly_deleted_records"] == 1 and changes["previous_release"] == "test-1-lookup"
+    assert "sspl_release" not in changes["changed_fields"]
+    latest = pd.read_parquet(tmp_path / "results/postcode_simd.parquet").set_index("pc_norm")
+    assert len(latest) == 5 and "AB101AC" not in latest.index and "pc_base" not in latest.columns
+    assert latest.loc["AB101AF", "SplitIndicator"] == "Y" and latest.loc["AB101AF", "simd2020v2_rank"] == 1
+    assert latest.loc["AB101AD", "LinkedSmallUserPostcode"] == "AB10 1AFA"
+    assert latest["sspl_release"].eq("test-2-lookup").all()
+    agreement = second["observations"]["table_agreement"]
+    assert agreement["shared"] == 5 and agreement["only_in_history"] == 0
+    assert second["tables"]["main"]["key"] == ["pc_norm"] and second["tables"]["history"]["key"] == ["pc_norm", "introduced_on"]
     runs = sorted((tmp_path / "results/runs").iterdir())
     assert len(runs) == 2
-    assert json.loads((runs[0] / "manifest.json").read_text())["output"] == first["output"]
+    assert json.loads((runs[0] / "manifest.json").read_text())["tables"] == first["tables"]
     for run in runs:
         record = json.loads((run / "run.json").read_text())
         assert record["status"] == "published"
@@ -57,48 +71,67 @@ def test_postcode_refresh_replaces_snapshot_and_reports_changes(tmp_path):
     assert main(["audit", "--config", str(cfg)]) == 0
     # Same release rerun produces identical data and file bytes, but a fresh run record.
     assert main(["build", "--config", str(cfg)]) == 0
-    assert manifest(tmp_path)["output"]["sha256"] == second["output"]["sha256"]
-    assert manifest(tmp_path)["observations"]["snapshot_changes"]["changed_records"] == 0
+    third = manifest(tmp_path)
+    for name in ("main", "history"):
+        assert third["tables"][name]["sha256"] == second["tables"][name]["sha256"]
+        assert third["observations"]["snapshot_changes"][name]["changed_records"] == 0
 
 
 def test_new_simd_edition_and_new_vintage_need_no_pipeline_code_change(tmp_path):
     cfg = project(tmp_path)
     assert main(["build", "--config", str(cfg)]) == 0
-    before = pd.read_parquet(tmp_path / "results/postcode_simd.parquet")
+    files = ["results/postcode_simd_history.parquet", "results/postcode_simd.parquet"]
+    before = [pd.read_parquet(tmp_path / f) for f in files]
     cfg = project(tmp_path, extra_edition=True)
     assert main(["build", "--config", str(cfg)]) == 0
-    after = pd.read_parquet(tmp_path / "results/postcode_simd.parquet")
-    pd.testing.assert_frame_equal(before, after[before.columns])
-    assert len(after.columns) == len(before.columns) + 17
-    assert after["simdfuture_rank"].tolist() == [1, 2, 1, 2]
-    assert after["simdfuture_pw_scotland_quintile"].tolist() == [1, 5, 1, 5]
-    assert after["phs_dz2022_hb"].tolist() == ["HB"] * 4
+    after = [pd.read_parquet(tmp_path / f) for f in files]
+    for old, new in zip(before, after):
+        pd.testing.assert_frame_equal(old, new[old.columns])
+        assert len(new.columns) == len(old.columns) + 17
+        assert new["phs_dz2022_hb"].tolist() == ["HB"] * 4
+    assert after[0]["simdfuture_rank"].tolist() == [1, 2, 1, 2]
+    assert after[0]["simdfuture_pw_scotland_quintile"].tolist() == [1, 5, 1, 5]
+    assert after[1]["simdfuture_rank"].tolist() == [1, 2, 2, 2]
     assert main(["audit", "--config", str(cfg)]) == 0
 
 
-@pytest.mark.parametrize("fault", ["hash", "published_count", "schema", "unmatched_zone", "shared_geography"])
+@pytest.mark.parametrize("fault", ["hash", "published_count", "schema", "unmatched_zone", "shared_geography",
+                                   "lookup_count", "lookup_suffix", "lookup_duplicate", "lookup_blank_zone",
+                                   "lookup_bad_link", "lookup_unmatched_zone"])
 def test_bad_refresh_keeps_previous_publication_and_retains_failure(tmp_path, fault):
     cfg = project(tmp_path)
     assert main(["build", "--config", str(cfg)]) == 0
     previous = manifest(tmp_path)
     cfg = project(tmp_path, "test-2")
-    if fault == "published_count":
+    if fault in ("published_count", "lookup_count"):
         path = tmp_path / "sources.yaml"
         raw = yaml.safe_load(path.read_text())
-        raw["spd_files"][0]["rows"] += 1
-        raw["spd_published_totals"]["all"] += 1
-        raw["spd_published_totals"]["deleted"] += 1
+        if fault == "published_count":
+            raw["spd_files"][0]["rows"] += 1
+            raw["spd_published_totals"]["all"] += 1
+            raw["spd_published_totals"]["deleted"] += 1
+        else:
+            raw["sspl_file"]["rows"] += 1
+            raw["sspl_file"]["small_user"] += 1
         path.write_text(yaml.safe_dump(raw))
     else:
-        filename = "phs_2006.csv" if fault == "shared_geography" else "small_user.csv"
+        filename = {"shared_geography": "phs_2006.csv"}.get(fault, "sspl.csv" if fault.startswith("lookup_") else "small_user.csv")
         path = tmp_path / "sources" / filename
         data = pd.read_csv(path, dtype=str, keep_default_na=False)
         if fault == "schema":
             data["unexpected"] = "x"
-        elif fault == "unmatched_zone":
+        elif fault in ("unmatched_zone", "lookup_unmatched_zone"):
             data.loc[0, "DataZone2001Code"] = "UNKNOWN"
         elif fault == "shared_geography":
             data.loc[0, "HB"] = "DIFFERENT"
+        elif fault == "lookup_suffix":
+            data.loc[0, "Postcode"] = "AB10 1AAA"
+        elif fault == "lookup_duplicate":
+            data.loc[1, "Postcode"] = data.loc[0, "Postcode"]
+        elif fault == "lookup_blank_zone":
+            data.loc[0, "DataZone2011Code"] = ""
+        elif fault == "lookup_bad_link":
+            data.loc[data["PostcodeType"] == "L", "LinkedSmallUserPostcode"] = "UNKNOWN"
         else:
             data.loc[0, "Postcode"] = "AB10 1AZ"
         data.to_csv(path, index=False)
@@ -106,7 +139,8 @@ def test_bad_refresh_keeps_previous_publication_and_retains_failure(tmp_path, fa
             repin(tmp_path, filename)
     assert main(["build", "--config", str(cfg)]) == 1
     assert manifest(tmp_path) == previous
-    assert sha256(tmp_path / "results/postcode_simd.parquet") == previous["output"]["sha256"]
+    for name, file in (("history", "postcode_simd_history.parquet"), ("main", "postcode_simd.parquet")):
+        assert sha256(tmp_path / "results" / file) == previous["tables"][name]["sha256"]
     run = sorted((tmp_path / "results/runs").iterdir())[-1]
     record = json.loads((run / "run.json").read_text())
     assert record["status"] == "failed" and record["error"]
@@ -130,11 +164,12 @@ def test_untrusted_previous_snapshot_is_not_used_as_comparison(tmp_path):
     path = tmp_path / "results/postcode_simd.parquet"
     table = pd.read_parquet(path)
     path.write_bytes(b"broken previous snapshot")
-    changes = compare_snapshot(table, path, tmp_path / "results/manifest.json")
+    changes = compare_snapshot(table, path, tmp_path / "results/manifest.json", "main", ["pc_norm"])
     assert changes["status"] == "unavailable"
     assert "hash" in changes["reason"]
     assert main(["build", "--config", str(cfg)]) == 0
-    assert manifest(tmp_path)["observations"]["snapshot_changes"]["status"] == "unavailable"
+    assert manifest(tmp_path)["observations"]["snapshot_changes"]["main"]["status"] == "unavailable"
+    assert manifest(tmp_path)["observations"]["snapshot_changes"]["history"]["status"] == "compared"
 
 
 def test_invalid_config_fails_without_traceback(tmp_path, capsys):
@@ -151,7 +186,8 @@ def test_report_write_failure_does_not_replace_publication(tmp_path):
     with patch("simd_ingest.pipeline.build_report.render", side_effect=OSError("Cannot prepare report")):
         assert main(["build", "--config", str(cfg)]) == 1
     assert manifest(tmp_path) == previous
-    assert sha256(tmp_path / "results/postcode_simd.parquet") == previous["output"]["sha256"]
+    for name, file in (("history", "postcode_simd_history.parquet"), ("main", "postcode_simd.parquet")):
+        assert sha256(tmp_path / "results" / file) == previous["tables"][name]["sha256"]
 
 
 @pytest.mark.parametrize("fault", ["missing_government", "duplicate_edition", "wrong_vintage"])
@@ -179,12 +215,16 @@ def test_real_pinned_data_build_matches_contract_and_known_fingerprint(tmp_path)
     assert main(["build", "--config", str(cfg)]) == 0
     result = manifest(tmp_path)
     registry = load_registry(ROOT / "simd_ingest/sources.yaml")
-    schema = yaml.safe_load((ROOT / "simd_ingest/output_schema.yaml").read_text())
-    assert result["output"]["rows"] == registry.spd_published_totals["all"]
-    assert result["output"]["columns"] == len(schema["fields"])
+    history = yaml.safe_load((ROOT / "simd_ingest/output_schema_history.yaml").read_text())
+    main_schema = yaml.safe_load((ROOT / "simd_ingest/output_schema.yaml").read_text())
+    assert result["tables"]["history"]["rows"] == registry.spd_published_totals["all"]
+    assert result["tables"]["history"]["columns"] == len(history["fields"])
+    assert result["tables"]["main"]["rows"] == registry.sspl_file["rows"]
+    assert result["tables"]["main"]["columns"] == len(main_schema["fields"])
     known = known_snapshot(result)
     if known is not None:
-        assert result["output"]["logical_fingerprint"] == known["logical_fingerprint"]
+        assert result["tables"]["history"]["logical_fingerprint"] == known["logical_fingerprint"]
+        assert result["tables"]["main"]["logical_fingerprint"] == known["main_logical_fingerprint"]
     assert main(["audit", "--config", str(cfg)]) == 0
 
 
@@ -193,3 +233,25 @@ def test_historical_expectations_do_not_gate_other_releases(tmp_path):
     cfg = project(tmp_path, "test-2", extra_edition=True)
     assert main(["build", "--config", str(cfg)]) == 0
     assert known_snapshot(manifest(tmp_path)) is None
+
+
+def test_main_table_answers_current_questions_and_refuses_dated_ones(tmp_path):
+    from simd_ingest import lookup
+    cfg = project(tmp_path)
+    assert main(["build", "--config", str(cfg)]) == 0
+    latest = lookup.load(tmp_path / "results/postcode_simd.parquet")
+    history = lookup.load(tmp_path / "results/postcode_simd_history.parquet")
+    assert latest.attrs["index_source"] == "sspl" and history.attrs["index_source"] == "spd"
+    # AB10 1AC: the lookup places it in zone 2, the directory in zone 1. Each table answers for itself.
+    assert lookup.lookup(latest, "AB10 1AC", edition="2020v2", measure="rank").value == 2
+    assert lookup.lookup(history, "AB10 1AC", edition="2020v2", measure="rank").value == 1
+    assert lookup.lookup(history, "AB10 1AC", edition="2020v2", on="2021-01-01").status == lookup.UNIQUE
+    with pytest.raises(ValueError, match="history"):
+        lookup.lookup(latest, "AB10 1AC", edition="2020v2", on="2021-01-01")
+    events = pd.DataFrame({"postcode": ["AB10 1AC"], "day": ["2021-01-01"]})
+    with pytest.raises(ValueError, match="history"):
+        lookup.attach(events, latest, "postcode", "day", edition="2020v2")
+    assert lookup.attach(events, latest, "postcode", None, edition="2020v2")["simd_status"].tolist() == [lookup.UNIQUE]
+    # PO boxes are excluded at lookup time in both tables; AB10 1AD is a linked large user, so it is found.
+    assert lookup.lookup(latest, "AB10 1AD", edition="2020v2").status == lookup.UNIQUE
+    assert lookup.lookup(latest, "AB10 1AD", edition="2020v2", include_large_users=False).status == lookup.NOT_FOUND

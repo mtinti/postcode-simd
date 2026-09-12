@@ -37,8 +37,9 @@ def main(argv=None) -> int:
             audit(cfg, mode, report)
         else:
             info = build(cfg, mode, report)
-            print(f"Wrote {info['path']}: {info['rows']:,} rows x {info['columns']} columns")
-            print(f"Review: {info['build_report']}")
+            for name, table in info.items():
+                print(f"Wrote {table['path']} ({name}): {table['rows']:,} rows x {table['columns']} columns")
+            print(f"Review: {next(iter(info.values()))['build_report']}")
     except (BuildStopped, FetchError, OSError, ValueError, KeyError, TypeError, yaml.YAMLError) as exc:
         print_report(report)
         print(f"Stopped: {exc}", file=sys.stderr)

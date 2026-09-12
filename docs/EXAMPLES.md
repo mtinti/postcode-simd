@@ -19,7 +19,7 @@ All output below was produced against the v1.1 file.
 
 ```python
 from simd_ingest import lookup
-t = lookup.load("results/postcode_simd.parquet")
+t = lookup.load("results/postcode_simd_history.parquet")  # every life; dated questions need this table
 ```
 
 ## 1. A current postcode, using a chosen SIMD edition

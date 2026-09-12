@@ -1,19 +1,29 @@
-# Postcode-SIMD reference table
+# Postcode-SIMD reference tables
 
-A CLI pipeline that rebuilds one postcode-to-SIMD table from hash-pinned public files.
-Routine maintenance is a postcode-directory refresh. Adding a SIMD edition is a separate,
-less frequent change to the source registry and output schema.
+A CLI pipeline that rebuilds two postcode-to-SIMD tables from hash-pinned public files.
+Routine maintenance is a refresh of one of the two NRS postcode products. Adding a SIMD
+edition is a separate, less frequent change to the source registry and output schemas.
 
-The current source configuration is SPD 2026/2 and six SIMD editions (2004–2020v2):
-247,773 directory records × 162 columns. Current and deleted records, both user types,
-remain in the table. Each new directory release replaces the snapshot completely.
+| Table | Postcode source | One row per | Key | Answers |
+| --- | --- | --- | --- | --- |
+| `postcode_simd.parquet`, the **main table** | Scottish Statistics Postcode Lookup (SSPL) 2026/1 | whole postcode, latest life, both user types: 229,708 rows × 146 columns | `pc_norm` | what is this postcode's SIMD now |
+| `postcode_simd_history.parquet`, the **history table** | Scottish Postcode Directory (SPD) 2026/2 | postcode life, both user types: 247,773 rows × 162 columns | `pc_norm`, `introduced_on` | what was this postcode's SIMD on a date |
+
+Six SIMD editions (2004–2020v2) are attached to both. The two NRS products allocate data
+zones differently: the SSPL takes the zone containing the centroid of the postcode's 2022
+output area, the SPD the zone containing the postcode itself. On SSPL 2026/1 against SPD
+2026/2 the 2011 data zone differs for 6,189 postcodes current in both, which changes the
+2020v2 Scotland quintile of 3,844 of them. Every build reports these counts. PHS builds
+its own lookups from the SPD, so use the history table where agreement with PHS practice
+matters. Each new release replaces its table completely.
 
 ## Start here
 
 For a human review, read [How it is built](docs/HOW_IT_IS_BUILT.md), then the build's
 `results/BUILD_REPORT.md`. The report shows the actual checks, changes since the previous
 snapshot, and an example postcode. [Updating the sources](docs/UPDATING.md) is the maintenance
-runbook. The [data dictionary](docs/DATA_DICTIONARY.md) describes the columns.
+runbook. The data dictionaries describe the columns of the [main](docs/DATA_DICTIONARY.md) and
+[history](docs/DATA_DICTIONARY_HISTORY.md) tables.
 
 ## Install and build
 
@@ -37,7 +47,8 @@ simd-ingest build --source-mode download
 ```bash
 simd-ingest fetch --source-mode download  # download/verify only
 simd-ingest audit --source-mode download  # read-only audit of data/sources and results
-python -m simd_ingest.trace "AB12 3GQA"    # follow one record back to its source rows
+python -m simd_ingest.trace "AB12 3GQ"     # follow one main-table record back to its source rows
+python -m simd_ingest.trace "AB12 3GQA" --table history
 python -m pytest tests -q
 ```
 
@@ -47,16 +58,17 @@ automatically.
 
 ## What a build leaves
 
-- `results/postcode_simd.parquet`: the current complete snapshot, keyed by
-  `(pc_norm, introduced_on)`. Release is metadata/an attribute, not part of the key.
-- `results/BUILD_REPORT.md`: the human review entry point.
-- `results/manifest.json`: all checks, observations, input pins and output fingerprints.
+- `results/postcode_simd.parquet`: the main table, keyed by `pc_norm`.
+- `results/postcode_simd_history.parquet`: the history table, keyed by `(pc_norm, introduced_on)`.
+  Release is metadata/an attribute of each table, not part of its key.
+- `results/BUILD_REPORT.md`: the human review entry point, including the agreement between the two tables.
+- `results/manifest.json`: all checks, observations, input pins and both tables' fingerprints.
 - `results/runs/<run-id>/`: retained configuration/source/schema/decision snapshots,
   runtime and code hashes, and that run's report. Failed builds retain their error and checks too.
 
-The build writes a candidate, reopens it and checks saved values and metadata before replacing
-the current table. Validation failure leaves the previous publication untouched. Run one
-writer per results directory; files are replaced atomically individually, not as a multi-file
+The build writes both candidates, reopens them and checks saved values and metadata before
+replacing the current tables. Validation failure leaves the previous publication untouched. Run
+one writer per results directory; files are replaced atomically individually, not as a multi-file
 transaction. After an interrupted publication, run `audit`; if it fails, rebuild from pinned
 sources. Keep `results/runs`, source archives and the corresponding code in your backups.
 Old table copies are not retained.
@@ -64,31 +76,42 @@ Old table copies are not retained.
 There is no scheduler, server, intermediate-table cache or orchestration database.
 The old orchestration plans remain [historical records](docs/plans/README.md).
 
-## Use the table
+## Use the tables
 
-To inspect live directory records, use `WHERE is_current`. An ordinary postcode can still
-have several split records: do not assume `pc_base` is unique in the imported table.
+The main table has one row per whole postcode, so a present-day question is one lookup:
 
 ```sql
-SELECT pc_norm, pc_base, simd2020v2_pw_scotland_quintile
+SELECT pc_norm, is_current, simd2020v2_pw_scotland_quintile
 FROM 'results/postcode_simd.parquet'
-WHERE is_current AND pc_base = 'G718BQ';
+WHERE pc_norm = 'G718BQ';
 ```
 
-`pc_norm` removes ASCII spaces and keeps the NRS split suffix; `pc_base` removes a validated
-suffix only from a flagged small-user record. Original postcode text is preserved.
-PHS population-weighted fields (`pw`) and Government unweighted fields (`uw`) are distinct.
+The history table keeps every life and the NRS split parts. A question about a date, or
+about which split part applies, goes there:
+
+```sql
+SELECT pc_norm, pc_base, introduced_on, deleted_on, simd2020v2_pw_scotland_quintile
+FROM 'results/postcode_simd_history.parquet'
+WHERE pc_base = 'G718BQ' AND introduced_on <= DATE '2015-06-01'
+  AND (deleted_on IS NULL OR deleted_on > DATE '2015-06-01');
+```
+
+`pc_norm` removes ASCII spaces; in the history table it keeps the NRS split suffix and
+`pc_base` removes a validated suffix from a flagged small-user record. Original postcode text
+is preserved. PHS population-weighted fields (`pw`) and Government unweighted fields (`uw`)
+are distinct.
 
 For cohort linkage, start with [Two SQL lookups](docs/LINKAGE_BY_ERA.md): run the
-[shared setup](docs/sql/create_latest_postcode_lookup.sql), then choose
+[shared setup](docs/sql/create_latest_postcode_lookup.sql) on the history table, then choose
 [one SIMD edition](docs/sql/link_latest.sql) or [edition by event year](docs/sql/link_by_era.sql).
 Both use latest postcode geography, the A part for ordinary split postcodes, and linked
 small-user geography for large users, with explicit statuses and both record keys.
 
-The [Python helpers](docs/EXAMPLES.md) remain a separate current/as-of record lookup with
-own-record geography and an optional split consensus/conflict policy; they are not equivalent
-to the new SQL. Exclusions remain consumer choices, not deletions from the imported table.
-Adding a source edition does not automatically change the analyst's edition-by-year policy.
+The [Python helpers](docs/EXAMPLES.md) read either table: current lookups against the main
+table, current or as-of lookups against the history table, with own-record geography and an
+optional split consensus/conflict policy. A dated question against the main table is refused.
+Exclusions remain consumer choices, not deletions from the tables. Adding a source edition
+does not automatically change the analyst's edition-by-year policy.
 
 ## Optional Docker runner
 
@@ -104,8 +127,11 @@ See [Docker](docs/DOCKER.md) for offline and audit commands.
 ## Code to read
 
 `cli.py` handles arguments; `pipeline.py` contains the single build sequence.
-`core/spd.py`, `phs.py`, `govscot.py`, `join.py` and `output.py` contain the data rules.
-`sources.yaml` declares sources and editions, `spd_schema.yaml` declares directory headers,
-`output_schema.yaml` declares the saved table, and `decisions.yaml` records policy.
-Tests include synthetic postcode refreshes, a new SIMD edition/vintage, corrupted inputs
-and saved files; downloaded-data tests also pin the current logical output fingerprint.
+`core/sspl.py` and `core/spd.py` read the two postcode products, `phs.py`, `govscot.py`,
+`join.py` and `output.py` contain the shared data rules, and `core/agreement.py` compares the
+two tables. `sources.yaml` declares sources and editions, `sspl_schema.yaml` and
+`spd_schema.yaml` declare the postcode file headers, `output_schema.yaml` and
+`output_schema_history.yaml` declare the saved tables, and `decisions.yaml` records policy.
+Tests include synthetic postcode refreshes of both products, a new SIMD edition/vintage,
+corrupted inputs and saved files; downloaded-data tests also pin both tables' rows-only
+fingerprints.

@@ -2,8 +2,10 @@
 # parent of this file's directory. Use absolute paths to run against another location.
 source_manifest: simd_ingest/sources.yaml
 spd_schema: simd_ingest/spd_schema.yaml
+sspl_schema: simd_ingest/sspl_schema.yaml
 decisions: simd_ingest/decisions.yaml
-output_schema: simd_ingest/output_schema.yaml
+output_schema: simd_ingest/output_schema.yaml            # main table, from the SSPL
+output_schema_history: simd_ingest/output_schema_history.yaml  # history table, from the SPD
 
 # offline: use pre-supplied files under source_roots.offline; no network access.
 # download: fetch every pinned object into cache_root and place files under source_roots.download.

@@ -11,8 +11,9 @@ ROOT = Path(__file__).resolve().parent.parent
 def known_snapshot(manifest: dict) -> dict | None:
     """2026 examples/fingerprint only apply to their exact source pins and schema."""
     known = json.loads((ROOT / "tests/known_snapshot.json").read_text())
+    history = manifest["tables"]["history"]
     if (sorted(o["sha256"] for o in manifest["sources"]) == known["remote_object_sha256"]
-            and manifest["schema_sha256"] == known["schema_sha256"]):
+            and history["schema_sha256"] == known["schema_sha256"]):
         return known
     return None
 
@@ -40,8 +41,10 @@ def write_config(temp: Path, source: Path, decisions: Path) -> Path:
     cfg.write_text(f"""
 source_manifest: {ROOT / 'simd_ingest' / 'sources.yaml'}
 spd_schema: {ROOT / 'simd_ingest' / 'spd_schema.yaml'}
+sspl_schema: {ROOT / 'simd_ingest' / 'sspl_schema.yaml'}
 decisions: {decisions}
 output_schema: {ROOT / 'simd_ingest' / 'output_schema.yaml'}
+output_schema_history: {ROOT / 'simd_ingest' / 'output_schema_history.yaml'}
 source_mode: offline
 source_roots: {{offline: {source}, download: {temp / 'dl'}}}
 cache_root: {temp / 'cache'}

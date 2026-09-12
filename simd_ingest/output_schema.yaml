@@ -1,368 +1,290 @@
-# Frozen output schema of the history table (Scottish Postcode Directory, every postcode life).
-# Order, Arrow type and nullability are the contract. Fields unchanged since postcode_simd_wide_v1.
-# 65 directory columns + 7 derived + 6 PHS geography + 6 editions x 14 SIMD fields = 162.
-version: postcode_simd_wide_v1
-table: postcode_simd_history
-index_source: spd
-allocation: postcode_grid_reference
-key: [pc_norm, introduced_on]
-columns: 162
+# Frozen output schema of the main table (Scottish Statistics Postcode Lookup, latest life per postcode).
+# Order, Arrow type and nullability are the contract.
+# 50 lookup columns + 6 derived + 6 PHS geography + 6 editions x 14 SIMD fields = 146.
+# Data zones follow the SSPL's allocation: the zone containing the 2022 output-area centroid.
+version: postcode_simd_sspl_v1
+table: postcode_simd
+index_source: sspl
+allocation: oa2022_centroid
+key:
+- pc_norm
+columns: 146
 fields:
 - name: Postcode
   type: string
   nullable: false
-  source: directory
-  note: ''
+  source: lookup
+  note: whole postcode as published; NRS has already resolved splits to the A part
 - name: PostcodeDistrict
   type: string
   nullable: false
-  source: directory
+  source: lookup
   note: ''
 - name: PostcodeSector
   type: string
   nullable: false
-  source: directory
-  note: ''
-- name: DateOfIntroduction
-  type: string
-  nullable: false
-  source: directory
-  note: ''
-- name: DateOfDeletion
-  type: string
-  nullable: false
-  source: directory
-  note: ''
-- name: GridReferenceEasting
-  type: string
-  nullable: false
-  source: directory
-  note: ''
-- name: GridReferenceNorthing
-  type: string
-  nullable: false
-  source: directory
-  note: ''
-- name: Latitude
-  type: string
-  nullable: false
-  source: directory
-  note: ''
-- name: Longitude
-  type: string
-  nullable: false
-  source: directory
+  source: lookup
   note: ''
 - name: SplitIndicator
   type: string
   nullable: false
-  source: directory
-  note: ''
-- name: CouncilArea2019Code
+  source: lookup
+  note: Y when the SPD holds this postcode as split parts; counts here are the summed whole
+- name: LinkedSmallUserPostcode
   type: string
   nullable: false
-  source: directory
-  note: ''
-- name: UKParliamentaryConstituency2024Code
+  source: lookup
+  note: 'large users only: small-user postcode containing the grid reference, NO LINKP for PO boxes, NO LINK otherwise unlinked; may carry an A suffix; blank for small users'
+- name: DateOfIntroduction
   type: string
   nullable: false
-  source: directory
+  source: lookup
   note: ''
-- name: ScottishParliamentaryRegion2026Code
+- name: DateOfDeletion
   type: string
   nullable: false
-  source: directory
-  note: ''
-- name: ScottishParliamentaryConstituency2026Code
+  source: lookup
+  note: blank while current
+- name: PostcodeType
   type: string
   nullable: false
-  source: directory
-  note: ''
-- name: ElectoralWard2022Code
+  source: lookup
+  note: S small user, L large user
+- name: GridReferenceEasting
   type: string
   nullable: false
-  source: directory
+  source: lookup
   note: ''
-- name: HealthBoardArea2019Code
+- name: GridReferenceNorthing
   type: string
   nullable: false
-  source: directory
-  note: ''
-- name: HealthBoardArea2006Code
-  type: string
-  nullable: false
-  source: directory
-  note: ''
-- name: HealthBoardArea1995Code
-  type: string
-  nullable: false
-  source: directory
-  note: ''
-- name: IntegrationAuthority2019Code
-  type: string
-  nullable: false
-  source: directory
+  source: lookup
   note: ''
 - name: OutputArea2022Code
   type: string
   nullable: false
-  source: directory
+  source: lookup
   note: ''
 - name: OutputArea2011Code
   type: string
   nullable: false
-  source: directory
-  note: ''
-- name: OutputArea2001Code
-  type: string
-  nullable: false
-  source: directory
-  note: ''
-- name: OutputArea1991Code
-  type: string
-  nullable: false
-  source: directory
+  source: lookup
   note: ''
 - name: DataZone2022Code
   type: string
   nullable: false
-  source: directory
+  source: lookup
   note: ''
 - name: DataZone2011Code
   type: string
   nullable: false
-  source: directory
-  note: ''
-- name: DataZone2001Code
-  type: string
-  nullable: false
-  source: directory
+  source: lookup
   note: ''
 - name: IntermediateZone2022Code
   type: string
   nullable: false
-  source: directory
+  source: lookup
   note: ''
 - name: IntermediateZone2011Code
   type: string
   nullable: false
-  source: directory
+  source: lookup
+  note: ''
+- name: OutputArea2001Code
+  type: string
+  nullable: false
+  source: lookup
+  note: ''
+- name: DataZone2001Code
+  type: string
+  nullable: false
+  source: lookup
   note: ''
 - name: IntermediateZone2001Code
   type: string
   nullable: false
-  source: directory
+  source: lookup
   note: ''
-- name: CensusHouseholdCount2022
-  type: string
-  nullable: true
-  source: directory
-  note: small-user only
-- name: CensusPopulationCount2022
-  type: string
-  nullable: true
-  source: directory
-  note: small-user only
-- name: CensusHouseholdCount2011
-  type: string
-  nullable: true
-  source: directory
-  note: small-user only
-- name: CensusPopulationCount2011
-  type: string
-  nullable: true
-  source: directory
-  note: small-user only
-- name: CensusHouseholdCount2001
-  type: string
-  nullable: true
-  source: directory
-  note: small-user only
-- name: CensusPopulationCount2001
-  type: string
-  nullable: true
-  source: directory
-  note: small-user only
-- name: CensusHouseholdCount1991
-  type: string
-  nullable: true
-  source: directory
-  note: small-user only
-- name: CensusPopulationCount1991
-  type: string
-  nullable: true
-  source: directory
-  note: small-user only
-- name: ScottishIndexOfMultipleDeprivation2020Rank
+- name: OutputArea1991Code
   type: string
   nullable: false
-  source: directory
+  source: lookup
   note: ''
-- name: LAU2025Level1Code
+- name: CouncilArea2019Code
   type: string
   nullable: false
-  source: directory
-  note: ''
-- name: ITL2025Level2Code
-  type: string
-  nullable: false
-  source: directory
-  note: ''
-- name: ITL2025Level3Code
-  type: string
-  nullable: false
-  source: directory
-  note: ''
-- name: Locality2020Code
-  type: string
-  nullable: false
-  source: directory
-  note: ''
-- name: Locality2022Code
-  type: string
-  nullable: false
-  source: directory
-  note: ''
-- name: Locality2001Code
-  type: string
-  nullable: false
-  source: directory
-  note: ''
-- name: Locality1991Code
-  type: string
-  nullable: false
-  source: directory
-  note: ''
-- name: Settlement2020Code
-  type: string
-  nullable: false
-  source: directory
-  note: ''
-- name: Settlement2022Code
-  type: string
-  nullable: false
-  source: directory
-  note: ''
-- name: Settlement2001Code
-  type: string
-  nullable: false
-  source: directory
-  note: ''
-- name: CivilParish1930Code
-  type: string
-  nullable: false
-  source: directory
-  note: ''
-- name: EnterpriseRegion2008Code
-  type: string
-  nullable: false
-  source: directory
-  note: ''
-- name: IslandCode
-  type: string
-  nullable: false
-  source: directory
-  note: ''
-- name: LocalGovernmentDistrict1995Code
-  type: string
-  nullable: false
-  source: directory
-  note: ''
-- name: LocalGovernmentDistrict1991Code
-  type: string
-  nullable: false
-  source: directory
-  note: ''
-- name: NationalPark2010Code
-  type: string
-  nullable: false
-  source: directory
+  source: lookup
   note: ''
 - name: RegistrationDistrict2007Code
   type: string
   nullable: false
-  source: directory
+  source: lookup
   note: ''
-- name: ROACommunityPlanningPartnership2006Code
+- name: LocalGovernmentDistrict1995Code
   type: string
   nullable: false
-  source: directory
+  source: lookup
   note: ''
-- name: ROALocal2006Code
+- name: LocalGovernmentDistrict1991Code
   type: string
   nullable: false
-  source: directory
+  source: lookup
+  note: ''
+- name: ElectoralWard2022Code
+  type: string
+  nullable: false
+  source: lookup
+  note: ''
+- name: ScottishParliamentaryRegion2021Code
+  type: string
+  nullable: false
+  source: lookup
+  note: ''
+- name: ScottishParliamentaryConstituency2021Code
+  type: string
+  nullable: false
+  source: lookup
+  note: ''
+- name: UKParliamentaryConstituency2024Code
+  type: string
+  nullable: false
+  source: lookup
+  note: ''
+- name: HealthBoardArea2019Code
+  type: string
+  nullable: false
+  source: lookup
+  note: ''
+- name: HealthBoardArea2006Code
+  type: string
+  nullable: false
+  source: lookup
+  note: ''
+- name: HealthBoardArea1995Code
+  type: string
+  nullable: false
+  source: lookup
+  note: ''
+- name: IntegrationAuthority2019Code
+  type: string
+  nullable: false
+  source: lookup
   note: ''
 - name: StrategicDevelopmentPlanningArea2013Code
   type: string
   nullable: false
-  source: directory
+  source: lookup
+  note: ''
+- name: CivilParish1930Code
+  type: string
+  nullable: false
+  source: lookup
   note: ''
 - name: TravelToWorkArea2011Code
   type: string
   nullable: false
-  source: directory
+  source: lookup
+  note: ''
+- name: IslandCode
+  type: string
+  nullable: false
+  source: lookup
   note: ''
 - name: UrbanRural6Fold2022Code
   type: string
   nullable: false
-  source: directory
+  source: lookup
   note: ''
 - name: UrbanRural8Fold2022Code
   type: string
   nullable: false
-  source: directory
+  source: lookup
   note: ''
-- name: GridLinkIndicator
+- name: LAU2025Level1Code
   type: string
   nullable: false
-  source: directory
+  source: lookup
   note: ''
-- name: GridLinkPositionalAccuracy
+- name: ITL2025Level2Code
   type: string
   nullable: false
-  source: directory
+  source: lookup
   note: ''
-- name: NeverDigitised
+- name: ITL2025Level3Code
   type: string
-  nullable: true
-  source: directory
-  note: small-user only
-- name: LinkedSmallUserPostcode
+  nullable: false
+  source: lookup
+  note: ''
+- name: CensusHouseholdCount2022
   type: string
-  nullable: true
-  source: directory
-  note: large-user only
+  nullable: false
+  source: lookup
+  note: ''
+- name: CensusPopulationCount2022
+  type: string
+  nullable: false
+  source: lookup
+  note: ''
+- name: CensusHouseholdCount2011
+  type: string
+  nullable: false
+  source: lookup
+  note: ''
+- name: CensusPopulationCount2011
+  type: string
+  nullable: false
+  source: lookup
+  note: ''
+- name: CensusHouseholdCount2001
+  type: string
+  nullable: false
+  source: lookup
+  note: ''
+- name: CensusPopulationCount2001
+  type: string
+  nullable: false
+  source: lookup
+  note: ''
+- name: CensusHouseholdCount1991
+  type: string
+  nullable: false
+  source: lookup
+  note: ''
+- name: CensusPopulationCount1991
+  type: string
+  nullable: false
+  source: lookup
+  note: ''
+- name: ScottishIndexOfMultipleDeprivation2020Rank
+  type: string
+  nullable: false
+  source: lookup
+  note: the lookup's own 2020 rank, compared with simd2020v2_rank as a check
 - name: pc_norm
   type: string
   nullable: false
   source: derived
-  note: 'primary key part 1: uppercased, spaces removed, NRS suffix kept'
-- name: pc_base
-  type: string
-  nullable: false
-  source: derived
-  note: 'ordinary postcode: validated small-user split suffix removed; can be ambiguous'
+  note: 'primary key: uppercased, spaces removed; no split suffix exists in this table'
 - name: spd_user_type
   type: string
   nullable: false
   source: derived
-  note: small_user or large_user
-- name: spd_release
+  note: small_user or large_user, from PostcodeType
+- name: sspl_release
   type: string
   nullable: false
   source: derived
-  note: directory release this record came from
+  note: lookup release this record came from
 - name: introduced_on
   type: date32
   nullable: false
   source: derived
-  note: primary key part 2
+  note: introduction of the latest life
 - name: deleted_on
   type: date32
   nullable: true
   source: derived
-  note: null while current; validity is [introduced_on, deleted_on)
+  note: null while current; the latest life may be deleted
 - name: is_current
   type: bool
   nullable: false

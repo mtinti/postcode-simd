@@ -16,7 +16,7 @@ selects an **index edition**, not an older postcode life.
 
 ## Run the examples
 
-First expose the validated imported table as `postcode_simd`, then run
+First expose the history table (`postcode_simd_history.parquet`, every postcode life) as `postcode_simd`, then run
 [create_latest_postcode_lookup.sql](sql/create_latest_postcode_lookup.sql). This creates
 `simd_postcode_latest`, a view with one row per ordinary postcode. The postcode selection
 rules live there once, rather than being copied into both queries.
@@ -34,7 +34,7 @@ events = pd.read_csv("my_cohort.csv", dtype={"postcode": "string"})
 events["event_date"] = pd.to_datetime(events["event_date"], errors="raise")
 
 with duckdb.connect() as con:
-    con.execute("CREATE VIEW postcode_simd AS SELECT * FROM 'results/postcode_simd.parquet'")
+    con.execute("CREATE VIEW postcode_simd AS SELECT * FROM 'results/postcode_simd_history.parquet'")
     con.execute((sql / "create_latest_postcode_lookup.sql").read_text())
     con.register("events", events)
     latest = con.execute((sql / "link_latest.sql").read_text()).df()
