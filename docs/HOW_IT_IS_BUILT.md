@@ -1,108 +1,93 @@
 # How the table is built
 
-A reviewer starts here. Six decisions explain how the table is made. Each one names the
-file and function where it lives, and the check that guards it.
+Read this once for the rules; read `results/BUILD_REPORT.md` for a particular run's evidence.
+The [updating runbook](UPDATING.md) covers postcode refreshes and new SIMD editions.
+The [decision log](../simd_ingest/decisions.yaml) records policy; [old plans](plans/README.md)
+are historical, not an additional implementation specification.
 
-Next read `results/BUILD_REPORT.md`, the same steps with that run's numbers, then use
-[the data dictionary](DATA_DICTIONARY.md) for individual fields. `results/manifest.json`
-holds all check records. The [decision log](../simd_ingest/decisions.yaml) is authoritative
-for current choices and their supersessions; [old plans](plans/README.md) are background only.
-
-## The data flow
+## Follow one path
 
 ```text
-13 pinned objects ─► 17 files, hashes verified
-        │
-        ├─ SmallUser.csv + LargeUser.csv ──► postcode_index   247,773 records, key = postcode + introduction date
-        ├─ 6 PHS files ────────────────────► phs_bands        39,972 rows, one per edition and data zone, 1 = most deprived
-        └─ 6 shapefile tables ─────────────► govscot_bands    39,972 rows, unweighted bands and population
-                                                    │
-        postcode_index + phs_bands + govscot_bands ─► postcode_simd   12 joins on the data zone, one edition at a time
-                                                    │
-                                     written, reopened, re-checked, manifest and build report
+Pinned files ──► verify hashes
+                    ├─ SmallUser + LargeUser ──► postcode records, keys and dates
+                    ├─ PHS CSVs ────────────────► population-weighted edition tables
+                    └─ Government DBFs ────────► unweighted edition tables
+                                    │
+                    check zones/ranks and shared PHS geography
+                                    │
+                    join each edition on its declared data-zone vintage
+                                    │
+                    write candidate → reopen → compare → replace snapshot
+                                    │
+                    human report + manifest + retained run record
 ```
 
-## The six judgements
+The sequence is in [pipeline.py](../simd_ingest/pipeline.py), `prepare`, `build` and
+`write_output`. No alternate execution path, persisted intermediate tables or server.
+All steps run every time; hash-verified downloads can be reused.
 
-**1. What a postcode key is.** `pc_norm` is the postcode uppercased with spaces removed, keeping any
-A, B or C suffix NRS added when it split the postcode. `pc_base` removes that suffix, and only
-from a small-user record flagged as split. A record is identified by `pc_norm` with its
-introduction date, because a postcode can have several lives.
-`core/spd.py`, `postcode_keys`. Check: `spd.primary_key_unique`.
+## The rules to review
 
-**2. When a record is valid.** From its introduction date up to but not including its deletion
-date; no deletion date means current. A record whose two dates are equal is kept but is never
-valid on any day. `core/spd.py`, `parse_dates` and `active_on`. Checks: `spd.strict_overlaps`,
-`spd.touching_pairs`.
+| Decision | Implementation | Evidence |
+| --- | --- | --- |
+| Keep every directory record, including deleted and large-user records | `core/spd.py: union_index` | Published all/live/deleted counts; original fields retained as text |
+| Key = postcode without spaces + introduction date | `postcode_keys`, `parse_dates` | Valid shapes/dates; unique non-null natural key |
+| Only flagged small-user split suffixes are removed from `pc_base` | `postcode_keys` | Malformed or unexpected suffixes stop the build; original text and full key remain |
+| Validity is introduction inclusive, deletion exclusive | `parse_dates`, `active_on` | No strict overlaps; same-day records retained but never active |
+| Turn only the eight early-edition PHS bands | `core/phs.py: canonicalise_phs` | 2004/2006: `11 - decile`, `6 - quintile`; ranks and flags unchanged |
+| Use the right data-zone vintage for each edition | `sources.yaml`, `core/join.py` | Same rows after each join; every record matched |
+| PHS within-area bands use PHS geography | `pipeline.prepare`, `join_edition` | HB/HSCP/CA codes agree across editions sharing a vintage before storing one set |
+| Copy published values, do not reconstruct bands | `core/phs.py`, `core/govscot.py` | Source pins, value ranges/direction, PHS/Government zone and rank agreement |
 
-**3. Which way the PHS bands run.** PHS publishes 2004 and 2006 with 1 meaning least deprived,
-the reverse of every later edition. Those two are turned, `11 - decile` and `6 - quintile`, so
-that 1 means most deprived in every column. Ranks and the two 15% flags are never touched.
-`core/phs.py`, `canonicalise_phs`. Check: `phs.<edition>.rank1_in_band1`, which requires the
-most deprived zone to sit in band 1 after the turn.
+The directory's own published SIMD rank is also compared with the attached rank; its column
+and edition are explicit in `sources.yaml`. Population is read as supplied, but no
+population-weighting reconstruction is run. Published PHS and Government bands are not
+compared with each other, averaged or substituted.
 
-**4. Which data zone to join on.** Editions 2004 to 2012 are on 2001 data zones, so they join
-through `DataZone2001Code`; 2016 and 2020v2 through `DataZone2011Code`. The directory's 2022
-zones are carried but unused. `core/join.py`, `join_edition`. Checks per join:
-`rows_unchanged` and `every_record_matched`.
+## Checks versus observations
 
-**5. Which geography a within-board band belongs to.** PHS computes within-board bands inside
-the board it assigned the data zone to, which is not always the board the directory assigned
-the postcode to. The PHS assignment travels with the band as `phs_dz<vintage>_hb`, `_hscp`,
-`_ca`. `core/join.py`, the geography columns in `join_edition`.
+A changed source hash, header, published count, invalid key/date, overlapping life, unresolved
+real large-user link, missing joined value or failed readback blocks publication.
 
-**6. Published bands are authoritative.** Apart from the explicit early-edition reversal above,
-every band is copied from its publisher. No band is reconstructed from rank or population,
-and population-weighted bands are not compared with unweighted bands. The population
-reconstruction diagnostic was removed on 11 September 2026; the earlier diagnostic-only
-policy is historical. PHS and government ranks must agree on the same data zones in every
-edition, and the directory's 2020 rank must agree with the attached rank.
-`core/crosscheck.py` and `core/join.py`. Checks:
-`cross.<edition>.same_zones`, `cross.<edition>.rank_identical`.
+Split counts, repeated-key counts, key lengths, touching dates, link-category counts and
+current ambiguity describe a release. They are recorded, not compared with 2026/2 constants.
+The report also compares the new table with the previous hash-verified snapshot by natural
+key: added, removed, changed and newly deleted records, plus changes by field. The release
+label alone is ignored. An unavailable/untrusted previous snapshot is stated explicitly;
+it does not prevent building a source-faithful new snapshot.
 
-## What the saved-file check proves
+Published bulletin counts are independent acceptance inputs in `sources.yaml`. Do not change
+them merely to make a failing build pass.
 
-`core/output.py`, `readback`, reopens the Parquet before replacement. Original and derived
-postcode fields must equal the accepted index; null must not replace a supplied value or
-source blank. Each attached value is looked up again through the saved data-zone code.
-The embedded band convention, schema version, release, source pins and decision hash must
-also equal the build contract. The source hashes and schema alone do not prove this.
+## Saved-file validation and lineage
 
-The CLI and Dagster call the same `core/join.py`, `build_postcode_simd`, for the twelve
-joins. Dagster's stages record their checks in its event log; the final stage collects the
-records from **that run**, including all 17 source verifications. Missing evidence prevents
-publication. Neither the narrative report nor the manifest invents an upstream pass.
+`core/output.py: readback` reopens the candidate. It checks ordered columns, types,
+nullability, keys and metadata. Original/derived postcode fields must equal the accepted
+index; a source blank is not null. Attached values are looked up again using the saved
+data-zone codes, independently of the join sequence. This verifies the saved transformation,
+not the publisher's deprivation methodology.
 
-For example, the current `AB12 3GQA` record illustrates the direction change without hiding
-the source value. These values were checked against the pinned files and saved SPD 2026/2 build:
+The run directory retains the accepted source registry, both schemas and decision log,
+the resolved configuration, Python/dependency versions, code hashes and all checks.
+The manifest links that run to the final file hash and rows-only fingerprint.
+The fingerprint is a regression aid under pinned runtime versions, not a cross-version
+data standard. A changed decision log can change the file hash without changing its rows.
 
-| Edition | Data-zone key | Published PHS Scotland quintile | Transformation | Saved quintile |
-| --- | --- | ---: | --- | ---: |
-| 2004 | `S01000336` (2001 vintage) | 2 | `6 - 2` | 4 |
-| 2020v2 | `S01006848` (2011 vintage) | 4 | None | 4 |
+Validation happens before publication; table/report/manifest replacements are individually
+atomic, not one transaction. Use one writer and do not edit inputs while a build runs.
+After interruption, a hash/readback audit tells you whether to rebuild. No restart or
+concurrency state machine is maintained.
 
-This example explains the operation; `readback.attached_values` checks every attached value
-across the whole table, not just the example postcode.
+## Check one record
 
-## Two judgements that live in the lookups, not the table
+```bash
+python -m simd_ingest.trace "AB12 3GQA"
+```
 
-The table carries every record and every value. What to do with them is decided at lookup
-time, in `simd_ingest/lookup.py` and `docs/sql/link_by_era.sql`:
+The trace verifies pinned sources, shows the saved record's data-zone join for each edition,
+and compares its SIMD values with the reference rows. Use `--introduced YYYY-MM-DD` to
+choose a historical life. Use a full `pc_norm`/NRS split key, not an ambiguous base postcode.
 
-- **Split postcodes** resolve to the A part, as NRS does in its own statistical lookup, unless
-  `split="report"` asks for the ambiguity instead.
-- **PO boxes** and other large-user postcodes with no linked small-user postcode are excluded,
-  as the PHS guidance does, unless `include_po_boxes=True`.
-
-## Where to look when something is wrong
-
-| Symptom | Look at |
-| --- | --- |
-| A source changed | `source.hash.<file>` in the manifest; the build stops before reading it |
-| A join lost or gained rows | `join.<kind>.<edition>.rows_unchanged` |
-| A postcode got no value for an edition | `join.<kind>.<edition>.every_record_matched`; its data zone is not in that edition |
-| A band looks reversed | `phs.<edition>.rank1_in_band1` |
-| A supplied value became null | `readback.index.<column>` or `readback.attached_values` |
-| The file describes the wrong convention or sources | `readback.metadata.<field>` |
-| A Dagster report lacks upstream evidence | `orchestration/evidence.py`; the final stage refuses publication |
-| One record, end to end | `python -m simd_ingest.trace "<postcode>"` |
+Analyst choices remain outside ingestion: [lookup.py](../simd_ingest/lookup.py) resolves
+splits to A by default (or reports consensus/conflict) and excludes PO boxes by default.
+See [Examples](EXAMPLES.md). Adding an edition does not silently change these policies.

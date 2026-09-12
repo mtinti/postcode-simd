@@ -9,6 +9,10 @@ In particular, the population diagnostic was removed by `trust-the-sources` on 1
 2026, and the default split lookup changed to the A part with an explicit report option.
 Earlier policies below explain the history; they do not override those decisions.
 
+On 12 September 2026, CLI-first replaced the orchestration delivery plan. The current
+maintenance instructions are [Updating the sources](../UPDATING.md); no Dagster runtime
+or intermediate-table cache is required.
+
 | Document | Date | Status |
 | --- | --- | --- |
 | `Full_Implementation_Plan.md` | 9 September 2026 | The original scope: four published products, three database targets. Superseded. |
