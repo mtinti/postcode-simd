@@ -36,16 +36,16 @@ def render(schema: dict, registry, manifest: dict | None) -> str:
     editions = [e["key"] for e in registry.phs_editions]
     lines = [f"# Data dictionary: postcode_simd, schema `{schema['version']}`", ""]
     lines += ["One row per Scottish Postcode Directory record, both user types, current and deleted, with all",
-              "six SIMD editions attached. Generated from `simd_ingest/output_schema.yaml`; do not edit by hand.", ""]
+              f"{len(editions)} SIMD editions attached. Generated from `simd_ingest/output_schema.yaml`; do not edit by hand.", ""]
     if manifest:
         o = manifest["output"]
         lines += [f"Current build: {o['rows']:,} rows by {o['columns']} columns, SPD release {manifest['spd_release']}, ",
                   f"built {manifest['built_at'][:19]}Z. Parquet SHA256 `{o['sha256']}`; rows-only fingerprint ",
                   f"`{o.get('logical_fingerprint', '')}`. The file hash also covers the embedded provenance metadata, ",
-                  "so it changes when the decision log changes; the fingerprint changes only when the data does.", ""]
+                  "so it changes when the decision log changes; compare fingerprints under the same pinned runtime.", ""]
     lines += ["## Key", "",
               "Primary key: `pc_norm` with `introduced_on`. Unique across both user types. A postcode alone repeats",
-              "up to seven times across its history, so never join on `pc_norm` without the date.", "",
+              "across its history, so use the date or explicitly select current records.", "",
               "Validity of a record is the half-open interval `introduced_on <= day < deleted_on`, with a null",
               "`deleted_on` meaning current. A record whose two dates are equal is retained but is never valid",
               "on any day.", ""]
@@ -55,7 +55,7 @@ def render(schema: dict, registry, manifest: dict | None) -> str:
               "edition on every row; choosing one is the analyst's decision.", "",
               "| Edition | Data zones | Population year | Use with health data for |", "| --- | --- | --- | --- |"]
     lines += [f"| {a} | {b} | {c} | {d} |" for a, b, c, d in GUIDANCE_TABLE_4]
-    lines += ["", "Editions on 2001 data zones cannot be used with 2011 data zones and vice versa; the join here",
+    lines += ["", "Data-zone vintages are not interchangeable; the join here",
               "already uses the right vintage for each edition. The file carries SIMD only; the Carstairs index",
               "the same guidance describes for pre-1996 data is not included.", ""]
     lines += ["## Things that will catch you out", "",

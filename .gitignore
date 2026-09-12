@@ -2,10 +2,9 @@
 manual_data/
 data/
 
-# Build output and the Dagster instance: the record lives beside the data, not in git.
+# Build output and legacy local instance history are not source code.
 results/
-.dagster/*
-!.dagster/dagster.yaml
+.dagster/
 
 # Output of the retired prototype, if still present locally.
 out/

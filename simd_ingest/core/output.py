@@ -146,7 +146,7 @@ def readback(path: Path, schema: dict, index: pd.DataFrame, simd: pd.DataFrame, 
             "note": "sha256 covers the file including embedded provenance metadata; logical_fingerprint covers the rows only"}
 
 
-def manifest(registry: Registry, schema: dict, decisions_sha256: str, baselines_sha256: str, mode: str,
+def manifest(registry: Registry, schema: dict, decisions_sha256: str, spd_schema_sha256: str, mode: str,
              output: dict, report: Report, extra: dict) -> dict:
     return {
         "built_at": dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -156,14 +156,14 @@ def manifest(registry: Registry, schema: dict, decisions_sha256: str, baselines_
         "schema_sha256": schema["sha256"],
         "registry_sha256": registry.sha256,
         "decisions_sha256": decisions_sha256,
-        "baselines_sha256": baselines_sha256,
+        "spd_schema_sha256": spd_schema_sha256,
         "band_convention": BAND_CONVENTION,
         "licences": registry.licences,
         "sources": [{"key": o.key, "publisher": o.publisher, "url": o.url, "sha256": o.sha256,
                      "files": [{"path": f.path, "sha256": f.sha256, "role": f.role} for f in o.files]} for o in registry.objects],
         "output": output,
         "summary": report.summary(),
-        "diagnostic_differences": [c.name for c in report.diagnostic_differences],
         "checks": report.to_records(),
+        "observations": report.observations,
         **extra,
     }

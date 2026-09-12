@@ -9,7 +9,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from simd_ingest.cli import write_output
+from simd_ingest.pipeline import write_output
 from simd_ingest.core import output
 from simd_ingest.core.checks import BuildStopped, Report
 from simd_ingest.core.join import attach
@@ -107,7 +107,7 @@ def test_failed_readback_leaves_previous_publication_untouched(sample, tmp_path,
     manifest = tmp_path / "manifest.json"
     manifest.write_text(json.dumps({"previous": True}))
     cfg = {"results_root": tmp_path, "decisions": sample["decisions"],
-           "baselines": ROOT / "simd_ingest/acceptance_baselines.yaml"}
+           "spd_schema": ROOT / "simd_ingest/spd_schema.yaml"}
     original_write = output.write_table
 
     def corrupt_after_write(table, schema, path, metadata):
@@ -129,4 +129,4 @@ def test_failed_readback_leaves_previous_publication_untouched(sample, tmp_path,
                      sample["index"], sample["phs"], sample["gov"], Report(), {})
     assert final.read_bytes() == b"previous output"
     assert json.loads(manifest.read_text()) == {"previous": True}
-    assert not (tmp_path / "postcode_simd.parquet.candidate").exists()
+    assert not list(tmp_path.glob(".build-*"))

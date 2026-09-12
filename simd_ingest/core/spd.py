@@ -105,41 +105,39 @@ def current_candidates(current: pd.DataFrame, ordinary_postcode: str) -> dict:
     return {"selection_status": status, "candidate_count": len(candidates), "candidates": candidates}
 
 
-def read_index_file(spec: dict, registry: Registry, root: Path, report: Report, baselines: dict) -> pd.DataFrame:
-    """One directory file with its keys and dates derived and its own counts checked."""
-    base = baselines["postcode"]
+def read_index_file(spec: dict, registry: Registry, root: Path, report: Report, schema: dict) -> pd.DataFrame:
+    """One directory file: validate the contract, then record this release's profile."""
     role, label = spec["role"], f"spd.{spec['role']}"
     d = pd.read_csv(Path(root) / spec["file"], dtype=str, keep_default_na=False, encoding="utf-8-sig")
-    report.equal(f"{label}.schema", list(d.columns), baselines["schemas"][role])
+    report.equal(f"{label}.schema", list(d.columns), schema[role])
     report.equal(f"{label}.rows", len(d), spec["rows"])
     report.equal(f"{label}.identical_duplicates", int(d.duplicated().sum()), 0)
-    keys = postcode_keys(d, role)
-    dates = parse_dates(d)
-    d = pd.concat([d, keys, dates], axis=1)
+    report.require()
+    d = pd.concat([d, postcode_keys(d, role), parse_dates(d)], axis=1)
     d["spd_user_type"] = role
     d["spd_release"] = registry.spd_release
     d["is_current"] = d["deleted_on"].isna()
     report.equal(f"{label}.live", int(d["is_current"].sum()), spec["live"])
-    report.equal(f"{label}.same_day", int(d["introduced_on"].eq(d["deleted_on"]).sum()), base["same_day_records"][role])
-    report.equal(f"{label}.split_records", int(d["SplitIndicator"].eq("Y").sum()), base["split_records"][role])
-    report.equal(f"{label}.key_lengths", d["pc_norm"].str.len().value_counts().to_dict(), base["normalised_length_counts"][role])
     counts = d["pc_norm"].value_counts()
-    report.equal(f"{label}.repeated_keys", int(counts.gt(1).sum()), base["repeated_keys"][role])
-    report.equal(f"{label}.max_repeats", int(counts.max()), base["max_records_per_key"])
-    if role == "small_user":
-        report.equal(f"{label}.all_splits_suffixed", int(d["pc_norm"].ne(d["pc_base"]).sum()), base["split_records"][role])
-        report.equal(f"{label}.live_never_digitised", int((d["is_current"] & d["NeverDigitised"].eq("Y")).sum()), base["live_never_digitised_small_user"])
+    profile = {
+        "rows": len(d), "live": int(d["is_current"].sum()),
+        "same_day": int(d["introduced_on"].eq(d["deleted_on"]).sum()),
+        "split_records": int(d["SplitIndicator"].eq("Y").sum()),
+        "key_lengths": d["pc_norm"].str.len().value_counts().to_dict(),
+        "repeated_keys": int(counts.gt(1).sum()),
+        "max_repeats": int(counts.max()) if len(counts) else 0,
+    }
+    if "NeverDigitised" in d:
+        profile["live_never_digitised"] = int((d["is_current"] & d["NeverDigitised"].eq("Y")).sum())
+    report.observe(label, profile)
     return d
 
 
-def union_index(small: pd.DataFrame, large: pd.DataFrame, registry: Registry, report: Report, baselines: dict) -> pd.DataFrame:
-    """Both files as one table: the small-user header first, then the large-user-only column,
-    then the derived fields. spd_user_type on every row says which file it came from."""
-    base = baselines["postcode"]
-    original = baselines["schemas"]["small_user"] + [c for c in baselines["schemas"]["large_user"] if c not in baselines["schemas"]["small_user"]]
+def union_index(small: pd.DataFrame, large: pd.DataFrame, registry: Registry, report: Report, schema: dict) -> pd.DataFrame:
+    """Stack the files; retain raw blanks and distinguish columns absent from a role."""
+    original = schema["small_user"] + [c for c in schema["large_user"] if c not in schema["small_user"]]
     d = pd.concat([small, large], ignore_index=True)[original + DERIVED]
     d = d.sort_values(["pc_norm", "introduced_on"], kind="mergesort").reset_index(drop=True)
-
     report.equal("spd.columns", len(d.columns), len(original) + len(DERIVED))
     report.equal("spd.primary_key_unique", int(d.duplicated(["pc_norm", "introduced_on"]).sum()), 0)
     report.equal("spd.primary_key_nonnull", int(d["pc_norm"].isna().sum() + d["introduced_on"].isna().sum()), 0)
@@ -147,31 +145,30 @@ def union_index(small: pd.DataFrame, large: pd.DataFrame, registry: Registry, re
     report.equal("spd.total_all", len(d), totals["all"])
     report.equal("spd.total_live", int(d["is_current"].sum()), totals["live"])
     report.equal("spd.total_deleted", int((~d["is_current"]).sum()), totals["deleted"])
-    intervals, pairs = interval_summary(d)
-    report.equal("spd.touching_pairs", intervals["touching_pairs"], base["touching_pairs"])
-    report.equal("spd.touching_transitions", intervals["transitions"], base["touching_transitions"])
+    intervals, _ = interval_summary(d)
     report.equal("spd.strict_overlaps", intervals["strict_overlaps"], 0)
-    february = pairs[pairs["deleted_on_a"].eq(pd.Timestamp(base["february_correction_date"])) & pairs["spd_user_type_a"].eq("small_user") & pairs["spd_user_type_b"].eq("small_user")]
-    report.equal("spd.february_corrections", sorted(february["pc_norm"]), base["february_correction_keys"])
     links = classify_links(large["LinkedSmallUserPostcode"], small["pc_norm"])
-    report.equal("spd.link_categories", links.value_counts().to_dict(), {**base["link_sentinels"], "linked": base["real_links"]})
-    report.equal("spd.unresolved_real_links", int(links.eq("unresolved").sum()), base["unresolved_real_links"])
+    report.equal("spd.unresolved_real_links", int(links.eq("unresolved").sum()), 0)
     current = d[d["is_current"]]
     report.equal("spd.current_unique_nrs", bool(current["pc_norm"].is_unique), True)
     counts = current["pc_base"].value_counts()
     multiple = counts[counts.gt(1)]
-    report.equal("spd.live_base_keys", len(counts), base["live_base_keys"])
-    report.equal("spd.multiple_candidate_bases", len(multiple), base["base_keys_with_multiple_candidates"])
-    report.equal("spd.multiple_candidate_sizes", multiple.value_counts().to_dict(), base["multiple_candidate_group_sizes"])
-    report.equal("spd.base_keys_with_differing_2011_zones", int(current.groupby("pc_base")["DataZone2011Code"].nunique().gt(1).sum()), base["base_keys_with_differing_2011_zones"])
-    example = current_candidates(current, base["current_example"]["base"])
-    report.equal("spd.example_selection", example["selection_status"], "ambiguous")
-    report.equal("spd.example_candidates", dict(zip(example["candidates"]["pc_norm"], example["candidates"]["ScottishIndexOfMultipleDeprivation2020Rank"].astype(int))), base["current_example"]["candidates"])
-    for vintage in (2001, 2011, 2022):
-        report.equal(f"spd.dz{vintage}.blanks", int(d[f"DataZone{vintage}Code"].eq("").sum()), 0)
+    report.observe("spd.intervals", intervals)
+    report.observe("spd.links", links.value_counts().to_dict())
+    report.observe("spd.current", {
+        "base_keys": len(counts), "multiple_candidate_bases": len(multiple),
+        "multiple_candidate_sizes": multiple.value_counts().to_dict(),
+    })
+    for vintage in sorted({int(e["dz_vintage"]) for e in registry.phs_editions}):
+        col = f"DataZone{vintage}Code"
+        report.add(f"spd.dz{vintage}.present", col in d, f"required by the configured SIMD editions: {col}")
+        report.require()
+        report.equal(f"spd.dz{vintage}.blanks", int(d[col].eq("").sum()), 0)
+        report.observe(f"spd.dz{vintage}.ambiguous_bases", int(current.groupby("pc_base")[col].nunique().gt(1).sum()))
     return d
 
 
-def build_postcode_index(registry: Registry, root: Path, report: Report, baselines: dict) -> pd.DataFrame:
-    frames = {spec["role"]: read_index_file(spec, registry, root, report, baselines) for spec in registry.spd_files}
-    return union_index(frames["small_user"], frames["large_user"], registry, report, baselines)
+def build_postcode_index(registry: Registry, root: Path, report: Report, schema: dict) -> pd.DataFrame:
+    frames = {spec["role"]: read_index_file(spec, registry, root, report, schema) for spec in registry.spd_files}
+    report.require()
+    return union_index(frames["small_user"], frames["large_user"], registry, report, schema)

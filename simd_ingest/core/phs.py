@@ -4,7 +4,7 @@ read_phs_source     the file as published: typed, schema checked, ranks dense, n
 canonicalise_phs    the edition table the joins use: bands turned so that 1 means most deprived,
                     which only the 2004 and 2006 files need; ranks and 15% flags never touched
 
-build_phs_bands stacks the six canonical tables into one long table for readback and the trace.
+build_phs_bands stacks the canonical tables into one long table for readback and the trace.
 """
 
 from __future__ import annotations
@@ -24,8 +24,6 @@ BANDS = {
     "CADecile": "pw_ca_decile", "CAQuintile": "pw_ca_quintile",
 }
 FLAGS = {"Most15pc": "most15pc", "Least15pc": "least15pc"}
-# The PHS files order the geography columns differently by vintage. Parse by name.
-GEOGRAPHY_ORDER = {2001: ["DataZone", "IntZone", "CA", "HSCP", "HB"], 2011: ["DataZone", "IntZone", "HB", "HSCP", "CA"]}
 # Which geography column a band is computed within; None means all of Scotland.
 SCOPE = {"scotland": None, "hb": "HB", "hscp": "HSCP", "ca": "CA"}
 
@@ -37,9 +35,10 @@ def read_phs_source(ed: dict, root: Path, report: Report) -> pd.DataFrame:
     key, prefix, vintage = ed["key"], ed["prefix"], int(ed["dz_vintage"])
     label = f"phs.{key}.source"
     d = pd.read_csv(Path(root) / ed["file"], dtype=str, keep_default_na=False, encoding="utf-8-sig")
-    expected = GEOGRAPHY_ORDER[vintage] + [prefix + s for s in ["Rank", *BANDS, *FLAGS]]
+    expected = ed["geography_columns"] + [prefix + s for s in ["Rank", *BANDS, *FLAGS]]
     report.equal(f"{label}.schema", list(d.columns), expected)
     report.equal(f"{label}.rows", len(d), ed["rows"])
+    report.require()
     report.equal(f"{label}.key_unique", bool(d["DataZone"].is_unique), True)
     report.equal(f"{label}.blanks", int(d.eq("").sum().sum()), 0)
     for s in ["Rank", *BANDS, *FLAGS]:
@@ -82,7 +81,7 @@ def canonicalise_phs(ed: dict, source: pd.DataFrame, report: Report) -> pd.DataF
 
 
 def build_phs_bands(registry: Registry, root: Path, report: Report) -> pd.DataFrame:
-    """All six canonical edition tables stacked, for readback and the trace."""
+    """All canonical edition tables stacked, for readback and the trace."""
     frames = [canonicalise_phs(ed, read_phs_source(ed, root, report), report) for ed in registry.phs_editions]
     table = pd.concat(frames, ignore_index=True)
     report.equal("phs.total_rows", len(table), sum(e["rows"] for e in registry.phs_editions))

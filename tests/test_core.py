@@ -103,20 +103,28 @@ class SavedTableIntegrity(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        from simd_ingest.cli import load_config, prepare
+        from simd_ingest.config import load_config
+        from simd_ingest.pipeline import prepare
         from support import source_root, write_config
         source = source_root()
         if source is None or not (ROOT / "results" / "postcode_simd.parquet").is_file():
             raise unittest.SkipTest("no pinned sources or no build output")
         cls.temp = tempfile.mkdtemp(prefix="simd_core_")
         cls.cfg = load_config(write_config(Path(cls.temp), source, ROOT / "simd_ingest" / "decisions.yaml"))
-        cls.registry, cls.baselines, phs_tables, gov_tables, cls.index = prepare(cls.cfg, "offline", Report())
+        cls.registry, phs_tables, gov_tables, cls.index = prepare(cls.cfg, "offline", Report())
         cls.simd = pd.concat(phs_tables.values(), ignore_index=True)
         cls.gov = pd.concat(gov_tables.values(), ignore_index=True)
         from simd_ingest.core import output
         cls.output = output
         cls.schema = output.load_schema(cls.cfg["output_schema"])
-        cls.decisions_sha = sha256(cls.cfg["decisions"])
+        # This optional test audits an older local artifact, using its retained manifest,
+        # not today's decision log. Fresh builds are tested separately.
+        import json
+        manifest = json.loads((ROOT / "results/manifest.json").read_text())
+        if (manifest["schema_sha256"] != cls.schema["sha256"]
+                or sorted(o["sha256"] for o in manifest["sources"]) != sorted(o.sha256 for o in cls.registry.objects)):
+            raise unittest.SkipTest("saved artifact belongs to another source/schema contract")
+        cls.decisions_sha = manifest["decisions_sha256"]
 
     def test_good_file_passes_and_modified_cell_fails(self):
         path = ROOT / "results" / "postcode_simd.parquet"

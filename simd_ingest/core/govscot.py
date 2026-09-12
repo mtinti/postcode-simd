@@ -28,6 +28,12 @@ def read_gov_edition(ed: dict, root: Path, report: Report) -> pd.DataFrame:
     missing = [c for c in cols.values() if c not in d.columns]
     if not report.equal(f"{label}.columns_present", missing, [], detail=f"missing {missing}" if missing else "all declared columns present"):
         return pd.DataFrame(columns=COLUMNS)
+    # Do not truncate a future file's fractional values when converting to integers.
+    for kind, column in cols.items():
+        if kind != "datazone":
+            values = pd.to_numeric(d[column], errors="raise")
+            report.equal(f"{label}.{kind}.integral", bool((values.notna() & values.mod(1).eq(0)).all()), True)
+    report.require()
     out = pd.DataFrame({
         "edition": key, "dz_vintage": int(ed["dz_vintage"]), "dz_code": d[cols["datazone"]].astype(str),
         "rank": d[cols["rank"]].astype("int64"),
@@ -48,6 +54,6 @@ def read_gov_edition(ed: dict, root: Path, report: Report) -> pd.DataFrame:
 
 
 def build_govscot_bands(registry: Registry, root: Path, report: Report) -> pd.DataFrame:
-    """All six edition tables stacked, for readback and the trace."""
+    """All configured edition tables stacked, for readback and the trace."""
     frames = [read_gov_edition(ed, Path(root), report) for ed in registry.govscot_editions]
     return pd.concat(frames, ignore_index=True)[COLUMNS]

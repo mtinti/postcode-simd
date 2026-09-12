@@ -1,8 +1,8 @@
 """postcode_simd: the index with every edition joined on, one edition at a time.
 
 join_edition adds one edition's columns by one merge on one data zone column, then checks
-that the row count is unchanged and that no new column is empty. Twelve of those, in a fixed
-order, take the index to the frozen 162-column contract. The order does not affect the
+that the row count is unchanged and that no new column is empty. The configured editions,
+in registry order, take the index to the explicit output contract. Order does not affect the
 result; each join uses its own key. It is fixed so that a reader can follow it.
 """
 
@@ -50,8 +50,9 @@ def join_edition(table: pd.DataFrame, edition_table: pd.DataFrame, ed: dict, kin
     out = table.merge(right, left_on=dz_col, right_index=True, how="left", validate="many_to_one").reset_index(drop=True)
     label = f"join.{kind}.{key}"
     report.equal(f"{label}.rows_unchanged", len(out), before, detail=f"{len(out):,} rows before and after the merge on {dz_col}")
-    report.equal(f"{label}.every_record_matched", int(out[list(right.columns)].isna().sum().sum()), 0,
-                 detail=f"{len(right.columns)} columns added, none empty")
+    empty = int(out[list(right.columns)].isna().sum().sum())
+    report.equal(f"{label}.every_record_matched", empty, 0,
+                 detail=f"{len(right.columns)} columns added, {empty} empty cells")
     return out
 
 
@@ -71,6 +72,7 @@ def finish(table: pd.DataFrame, index: pd.DataFrame, registry: Registry, columns
     missing = [c for c in columns if c not in table.columns]
     extra = [c for c in table.columns if c not in columns]
     report.equal("join.schema_columns", {"missing": missing, "extra": extra}, {"missing": [], "extra": []})
+    report.require()
     table = table[columns]
     added = table[[c for c in columns if c.startswith("simd") or c.startswith("phs_dz")]]
     report.equal("join.rows", len(table), registry.spd_published_totals["all"])
@@ -87,8 +89,10 @@ def finish(table: pd.DataFrame, index: pd.DataFrame, registry: Registry, columns
             report.equal(f"join.{c}.range", bool(added[c].between(1, WIDTH[kind]).all()), True)
         elif kind in ("most15pc", "least15pc"):
             report.equal(f"join.{c}.binary", bool(added[c].isin([0, 1]).all()), True)
-    own = table["ScottishIndexOfMultipleDeprivation2020Rank"].astype("int64")
-    report.equal("join.directory_rank_agreement", int(own.ne(table["simd2020v2_rank"]).sum()), 0)
+    if registry.directory_rank:
+        check = registry.directory_rank
+        own = pd.to_numeric(table[check["column"]], errors="raise")
+        report.equal("join.directory_rank_agreement", int(own.ne(table[f"simd{check['edition']}_rank"]).sum()), 0)
     return table
 
 

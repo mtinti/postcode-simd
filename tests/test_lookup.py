@@ -83,6 +83,11 @@ class Statuses(unittest.TestCase):
 class RealFile(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        import json
+        from support import known_snapshot
+        manifest = json.loads((ROOT / "results/manifest.json").read_text())
+        if known_snapshot(manifest) is None:
+            raise unittest.SkipTest("documented 2026/2 examples do not apply to this snapshot")
         cls.t = lookup.load(FILE)
 
     def test_documented_examples(self):

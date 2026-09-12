@@ -1,12 +1,14 @@
 # simd_ingest
 
-The package behind the postcode-SIMD reference table. Start a review at
-[How it is built](../docs/HOW_IT_IS_BUILT.md), then read the run's `results/BUILD_REPORT.md`.
-See the [project README](../README.md) for commands and the
-[data dictionary](../docs/DATA_DICTIONARY.md) for columns.
+Start at [How it is built](../docs/HOW_IT_IS_BUILT.md), then read the run's
+`results/BUILD_REPORT.md`. Commands are in the [project README](../README.md);
+routine changes are in [Updating the sources](../docs/UPDATING.md).
 
-- `core/` holds every rule that touches data. It imports nothing from Dagster.
-- `orchestration/` declares Dagster assets/checks and collects their actual current-run evidence.
-- `cli.py` is the same pipeline without Dagster.
-- `sources.yaml`, `decisions.yaml`, `output_schema.yaml` and `acceptance_baselines.yaml` are the
-  contract: what is read, why, what comes out, and what the checks expect.
+- `cli.py`: argument parsing and exit status.
+- `pipeline.py`: one sequential build, retained evidence and publication; read this first.
+- `core/`: source verification, parsers, joins, saved-file checks and reporting.
+- `sources.yaml`: pinned sources, published counts and edition mappings.
+- `spd_schema.yaml`: accepted directory headers, without fixed release-profile counts.
+- `output_schema.yaml`: explicit saved-column contract.
+- `decisions.yaml`: choices and their supersessions.
+- `lookup.py`: separate consumer policies; not called by ingestion.

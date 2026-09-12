@@ -9,12 +9,13 @@ import pandas as pd
 from .checks import Report
 
 
-def cross_check(simd: pd.DataFrame, gov: pd.DataFrame, baselines: dict, report: Report) -> None:
+def cross_check(simd: pd.DataFrame, gov: pd.DataFrame, report: Report) -> None:
     for edition in simd["edition"].unique():
         p = simd[simd["edition"] == edition].set_index("dz_code")
         g = gov[gov["edition"] == edition].set_index("dz_code")
         label = f"cross.{edition}"
         if not report.equal(f"{label}.same_zones", set(p.index) == set(g.index), True):
             continue
-        report.equal(f"{label}.rank_identical", int(p["rank"].ne(g.reindex(p.index)["rank"]).sum()), 0,
-                     detail=f"{len(p):,} zones, ranks identical in both sources")
+        different = int(p["rank"].ne(g.reindex(p.index)["rank"]).sum())
+        report.equal(f"{label}.rank_identical", different, 0,
+                     detail=f"{len(p):,} zones, {different} differing ranks")

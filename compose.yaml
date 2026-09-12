@@ -3,34 +3,24 @@
 #   docker compose build                      the image
 #   docker compose run --rm build             download the pinned sources into ./data, build ./results
 #   docker compose run --rm test              the test suite, against what the build fetched
-#   docker compose up dagster                 the UI on http://localhost:3000, instance in ./.dagster
 #
 # Inside Docker the default mode is download. For an air-gapped machine, put the 17 pinned
 # files under ./manual_data and run with SIMD_SOURCE_MODE=offline.
-# Everything that matters stays on the host: sources, cache, results and the Dagster instance.
+# Sources, cache, results and run records stay on the host.
 services:
   build:
     build: .
-    image: simd-ingest:1.2.0
+    image: simd-ingest:1.3.0
     volumes: &volumes
       - ./manual_data:/app/manual_data:ro
       - ./data:/app/data
       - ./results:/app/results
-      - ./.dagster:/app/.dagster
     environment: &env
-      DAGSTER_HOME: /app/.dagster
       SIMD_SOURCE_MODE: ${SIMD_SOURCE_MODE:-download}
     command: ["build"]
 
   test:
-    image: simd-ingest:1.2.0
+    image: simd-ingest:1.3.0
     volumes: *volumes
     environment: *env
     entrypoint: ["python", "-m", "pytest", "tests", "-q"]
-
-  dagster:
-    image: simd-ingest:1.2.0
-    volumes: *volumes
-    environment: *env
-    ports: ["3000:3000"]
-    entrypoint: ["dagster", "dev", "-m", "simd_ingest.orchestration.definitions", "-h", "0.0.0.0", "-p", "3000"]

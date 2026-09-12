@@ -58,6 +58,32 @@ def render(report: Report, registry: Registry, table: pd.DataFrame, info: dict, 
           f"Key `pc_norm` + `introduced_on` unique: {_passed(report, 'spd.primary_key_unique')}. "
           f"{touching} touching record pairs, {overlaps} overlapping pairs. "
           f"Ordinary postcodes with more than one current record: {multi}.", ""]
+    L += ["### Release profile (information, not acceptance gates)", "",
+          "| File | Split records | Repeated keys | Same-day records |",
+          "| --- | ---: | ---: | ---: |"]
+    for role in ("small_user", "large_user"):
+        profile = report.observations.get(f"spd.{role}", {})
+        values = [profile.get(k, "NOT RECORDED") for k in ("split_records", "repeated_keys", "same_day")]
+        L.append(f"| {role} | " + " | ".join(str(v) for v in values) + " |")
+    L += ["", "Other profile details (key lengths, link categories and ambiguity by vintage) are in the manifest.", "",
+          "### Change from previous snapshot", ""]
+    changes = report.observations.get("snapshot_changes", {})
+    if changes.get("status") == "compared":
+        L += [f"Compared with hash-verified SPD release {changes['previous_release']}. "
+              f"{changes['added_records']:,} records added, {changes['removed_records']:,} removed from the snapshot, "
+              f"{changes['changed_records']:,} changed among {changes['common_records']:,} shared natural keys. "
+              f"{changes['newly_deleted_records']:,} retained records became deleted. "
+              "The release label alone is not counted as a record change.", "",
+              f"Columns added: {', '.join(changes['added_columns']) or 'none'}. "
+              f"Columns removed: {', '.join(changes['removed_columns']) or 'none'}.", ""]
+        if changes["changed_fields"]:
+            L += ["| Changed field | Shared records affected |", "| --- | ---: |"]
+            L += [f"| {col} | {count:,} |" for col, count in changes["changed_fields"].items()]
+        else:
+            L += ["No shared field values changed."]
+    else:
+        L += [f"Comparison unavailable: {changes.get('reason', 'not recorded')}."]
+    L += [""]
 
     # 3. PHS
     L += ["## 3. PHS population-weighted SIMD", "", "| Edition | Rows | Data zones | Bands | Rank 1 in band 1 |", "| --- | ---: | --- | --- | --- |"]
@@ -78,7 +104,7 @@ def render(report: Report, registry: Registry, table: pd.DataFrame, info: dict, 
     # 5. joins
     L += ["## 5. Joins, one edition at a time", "",
           "Each join looks up the record's data zone in one edition table and copies that edition's values on. "
-          "2001 data zones for 2004 to 2012, 2011 data zones for 2016 and 2020v2. The order is fixed for reading; "
+          "The source registry declares the data-zone vintage for each edition. The order is fixed for reading; "
           "it does not affect the result.", "",
           "| Step | Key | Rows before and after | Columns added | Empty cells |", "| --- | --- | ---: | ---: | --- |"]
     n = 0
@@ -101,16 +127,19 @@ def render(report: Report, registry: Registry, table: pd.DataFrame, info: dict, 
           "Null and source blank are distinct. Embedded convention, schema version, release, source pins and decision hash "
           "are checked against the build inputs, not just for the presence of metadata keys.",
           f"Rows-only fingerprint `{info['logical_fingerprint']}`. File SHA256 `{info['sha256']}`. "
-          "The fingerprint changes only when data changes; the file hash also covers the embedded decision-log hash.", ""]
+          "With the same pinned runtime, identical rows have the same fingerprint; the file hash also covers metadata.", ""]
 
     # example
     ex = table[table["pc_norm"] == example]
+    if ex.empty and not table.empty:
+        ex = table.iloc[:1]
     if len(ex):
         ex = ex[ex["is_current"]].iloc[0] if ex["is_current"].any() else ex.iloc[0]
         L += [f"## Example: {ex['Postcode']}", "",
               f"{ex['spd_user_type']}, introduced {pd.Timestamp(ex['introduced_on']).date()}, "
               f"{'current' if ex['is_current'] else 'deleted ' + str(pd.Timestamp(ex['deleted_on']).date())}. "
-              f"2001 zone {ex['DataZone2001Code']}, 2011 zone {ex['DataZone2011Code']}.", "",
+              "Zones: " + ", ".join(f"{v}: {ex[f'DataZone{v}Code']}" for v in
+                                     sorted({e["dz_vintage"] for e in registry.phs_editions})) + ".", "",
               "| Edition | Via | Rank | PHS Scotland quintile | Government quintile |", "| --- | --- | ---: | ---: | ---: |"]
         for ed in registry.phs_editions:
             k, v = ed["key"], ed["dz_vintage"]

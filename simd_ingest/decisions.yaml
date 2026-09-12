@@ -1,13 +1,12 @@
-# Decision log. One entry per judgement that shapes the data. Loaded as an upstream of
-# every table, so a changed decision is a changed input. Status is one of
-# implemented, agreed_pending, deferred.
+# Decision log. Hashed into the table and copied into each build's retained run record.
+# Superseded entries are history, not instructions for the current build.
 version: 1
 decisions:
   - id: bands-are-looked-up
     date: 2026-09-10
     status: implemented
     decision: Every band in the output is copied from a published file. No band is calculated from a rank.
-    reason: The publisher's value is the auditable value. The two vintage-specific formulae are kept only as validation tools.
+    reason: The publisher's value is the auditable value. Earlier formula-based validation was later removed by trust-the-sources.
     evidence: SIMD_Plan_Gap_Closure.md section 2; halfup rule for 2001 zones and ceil rule for 2011 zones each reproduce the published bands with zero mismatches.
 
   - id: invert-2004-2006-phs-bands
@@ -120,7 +119,7 @@ decisions:
 
   - id: patient-linkage-deferred
     date: 2026-09-10
-    status: deferred
+    status: superseded   # consumer helpers implemented; see split-resolution-a-part
     decision: The downstream resolver for ambiguous split postcodes, with its unique, split_consensus, split_conflict, incomplete and not_found statuses, is recorded in the plan and not implemented here.
     reason: It belongs to the consumer of this table, not to its ingestion.
 
@@ -133,7 +132,7 @@ decisions:
 
   - id: instance-location
     date: 2026-09-10
-    status: agreed_pending
+    status: superseded   # CLI-first retains run records beside results instead
     decision: The Dagster instance, which is the provenance record, lives at .dagster inside the project and is backed up together with results/. Intermediate tables are kept outside it under data/work.
     reason: A record in a temporary path is not a record. Whether HIC wants it on a shared, backed-up path instead is an operational decision still to be taken; it is one environment variable either way.
 
@@ -181,7 +180,7 @@ decisions:
 
   - id: visible-steps-and-build-report
     date: 2026-09-11
-    status: implemented
+    status: superseded   # visible code/report retained; orchestration removed by cli-first
     decision: "The build is written as small named steps in code: one function per directory file, per PHS file as published, per canonicalised PHS edition, per government edition, and one join per edition, each with its own checks. The Dagster graph stays at five things, sources plus four tables, and the steps appear as rows in a build report, results/BUILD_REPORT.md, written by every build in plain language with that run's numbers. docs/HOW_IT_IS_BUILT.md is the static one-page companion."
     reason: "A first attempt exposed every step as a graph node, fifty-one in all, and a reviewer could not read it. A graph is a machine's view; a reviewer needs a narrative with numbers. The steps stay visible where they help, in the code and the report, and out of the graph where they do not."
     evidence: "CLI and Dagster builds on branch ladder both produced sha256 c685cd137652ec37 under main's decision log, byte-identical to main. Twenty-two assets, twenty-four checks, intermediates about 16 MB of Parquet."
@@ -193,3 +192,27 @@ decisions:
     reason: "The pipeline's guarantee is that the published values reach the table unchanged, which the hash pins, the per-step checks and the readback establish. Recomputing bands to see whether the publisher's method can be reproduced answered a different question and made the build harder to read. The rank check stays because it is what justifies joining the two sources on the data zone."
     evidence: "Removing these checks changes no value; the output remains byte-identical."
 
+  - id: cli-first
+    date: 2026-09-12
+    status: implemented
+    decision: "The CLI is the only build path. Remove the Dagster runtime, web server, asset wrappers, instance configuration and persisted intermediates. Keep one visible verify/prepare/cross-check/join/readback/publish sequence, a human build report and small retained run records."
+    reason: "Routine maintenance is a postcode-directory refresh; SIMD editions arrive less frequently. A full deterministic rebuild from pinned sources is cheap. Source/configuration snapshots, runtime/code hashes and saved-file checks provide lineage without a second execution model."
+    evidence: "tests/test_pipeline.py tests postcode refresh, full replacement, failure evidence, read-only audit and a synthetic seventh edition on a new data-zone vintage."
+
+  - id: release-facts-not-fixed-gates
+    date: 2026-09-12
+    status: implemented
+    decision: "Published file/all/live/deleted counts remain blocking inputs in sources.yaml. Header contracts remain explicit. Split/repeated-key/key-length/touching-date/link-category/ambiguity profiles are recorded observations, not fixed 2026/2 acceptance constants. Compare each new snapshot with the previous hash-verified snapshot by natural key, excluding the release label from record changes."
+    reason: "Normal release changes should be visible to a reviewer without requiring changes to pipeline code or weakening correctness checks. An unavailable comparison is reported explicitly and does not block a source-faithful build."
+
+  - id: edition-extension
+    date: 2026-09-12
+    status: implemented
+    decision: "PHS header order, data-zone vintage, band direction and Government column maps are declared per edition. Both publishers must declare the same edition keys, vintage and zone count. Add explicit output fields for each new edition, and PHS geography fields for new vintages; shared-vintage geography must agree. Analyst edition-by-year recommendations are reviewed separately."
+    reason: "New editions using the supported CSV/DBF layout need registry and schema changes, not a new build path. Unknown formats or incomplete historical geography coverage require deliberate review."
+
+  - id: simple-publication
+    date: 2026-09-12
+    status: implemented
+    decision: "Use one writer per results directory. Validate the saved candidate and prepare evidence before individually replacing the current table and sidecars. Keep run records, not old Parquet copies. No restart/concurrency state machine: after interruption, audit and rebuild if needed. Audit never downloads or repairs sources."
+    reason: "Atomic replacement protects the table from validation failures. It is not a transaction across the table and sidecars; their hash agreement must be checked before import."

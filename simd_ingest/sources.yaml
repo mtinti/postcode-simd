@@ -68,8 +68,8 @@ remote_objects:
     files:
       - {member: SmallUser.csv, path: SPD/spd_postcodeindex_cut_26_2_csv/SmallUser.csv, sha256: fc82f1091ac160b4d7c4a8f923466cbb1c8292f4fe30d15c7252446a86f14d6b}
       - {member: LargeUser.csv, path: SPD/spd_postcodeindex_cut_26_2_csv/LargeUser.csv, sha256: dcb060cbce01b3a6a133aad61d0453d250bc2d8fa0890b5f6dab3e82553a0f87}
-      - {member: spd-indexdatadictionary-2026-2.docx, path: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx, sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a}
-      - {member: spd-newsbulletin-2026-2.docx, path: SPD/spd_postcodeindex_cut_26_2_csv/spd-newsbulletin-2026-2.docx, sha256: 5e050523a4319267e81c6ef7a71961f2e2f988953e6ff9923c8590c94c8dfac5}
+      - {member: spd-indexdatadictionary-2026-2.docx, path: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx, sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a, role: documentation}
+      - {member: spd-newsbulletin-2026-2.docx, path: SPD/spd_postcodeindex_cut_26_2_csv/spd-newsbulletin-2026-2.docx, sha256: 5e050523a4319267e81c6ef7a71961f2e2f988953e6ff9923c8590c94c8dfac5, role: documentation}
 
   - key: sg_simd_2004
     publisher: maps_gov_scot
@@ -118,12 +118,48 @@ remote_objects:
 # PHS population-weighted SIMD, one CSV per edition, keyed by data zone.
 # invert_bands: the 2004 and 2006 files publish bands with 1 = least deprived.
 phs_editions:
-  - {key: '2004',   file: PHS/simd2004_02042020.csv,   prefix: SIMD2004,   dz_vintage: 2001, rows: 6505, invert_bands: true}
-  - {key: '2006',   file: PHS/simd2006_02042020.csv,   prefix: SIMD2006,   dz_vintage: 2001, rows: 6505, invert_bands: true}
-  - {key: '2009v2', file: PHS/simd2009v2_23062019.csv, prefix: SIMD2009V2, dz_vintage: 2001, rows: 6505, invert_bands: false}
-  - {key: '2012',   file: PHS/simd2012_02042020.csv,   prefix: SIMD2012,   dz_vintage: 2001, rows: 6505, invert_bands: false}
-  - {key: '2016',   file: PHS/simd2016_18052020.csv,   prefix: SIMD2016,   dz_vintage: 2011, rows: 6976, invert_bands: false}
-  - {key: '2020v2', file: PHS/simd2020v2_22062020.csv, prefix: SIMD2020V2, dz_vintage: 2011, rows: 6976, invert_bands: false}
+  - key: '2004'
+    file: PHS/simd2004_02042020.csv
+    prefix: SIMD2004
+    dz_vintage: 2001
+    rows: 6505
+    invert_bands: true
+    geography_columns: [DataZone, IntZone, CA, HSCP, HB]
+  - key: '2006'
+    file: PHS/simd2006_02042020.csv
+    prefix: SIMD2006
+    dz_vintage: 2001
+    rows: 6505
+    invert_bands: true
+    geography_columns: [DataZone, IntZone, CA, HSCP, HB]
+  - key: '2009v2'
+    file: PHS/simd2009v2_23062019.csv
+    prefix: SIMD2009V2
+    dz_vintage: 2001
+    rows: 6505
+    invert_bands: false
+    geography_columns: [DataZone, IntZone, CA, HSCP, HB]
+  - key: '2012'
+    file: PHS/simd2012_02042020.csv
+    prefix: SIMD2012
+    dz_vintage: 2001
+    rows: 6505
+    invert_bands: false
+    geography_columns: [DataZone, IntZone, CA, HSCP, HB]
+  - key: '2016'
+    file: PHS/simd2016_18052020.csv
+    prefix: SIMD2016
+    dz_vintage: 2011
+    rows: 6976
+    invert_bands: false
+    geography_columns: [DataZone, IntZone, HB, HSCP, CA]
+  - key: '2020v2'
+    file: PHS/simd2020v2_22062020.csv
+    prefix: SIMD2020V2
+    dz_vintage: 2011
+    rows: 6976
+    invert_bands: false
+    geography_columns: [DataZone, IntZone, HB, HSCP, CA]
 
 # Scottish Government unweighted bands and population, one shapefile attribute table per
 # edition. Column names differ between layers, so each edition declares its own map.
@@ -142,8 +178,11 @@ govscot_editions:
   - {key: '2020v2', file: data.gov.uk/SG_SIMD_2020/SG_SIMD_2020.dbf, dz_vintage: 2011, rows: 6976,
      columns: {datazone: datazone, rank: rankv2, quintile: quintilev2, decile: decilev2, vigintile: vigintilv2, population: sape2017}}
 
+# The directory's own rank is an independent agreement check, not a join source.
+directory_rank: {edition: '2020v2', column: ScottishIndexOfMultipleDeprivation2020Rank}
+
 # Scottish Postcode Directory, cut edition. Counts are the published bulletin values.
 spd_files:
-  - {role: small_user, file: SPD/spd_postcodeindex_cut_26_2_csv/SmallUser.csv, columns: 64, rows: 196769, live: 157282}
-  - {role: large_user, file: SPD/spd_postcodeindex_cut_26_2_csv/LargeUser.csv, columns: 56, rows: 51004,  live: 4767}
+  - {role: small_user, file: SPD/spd_postcodeindex_cut_26_2_csv/SmallUser.csv, rows: 196769, live: 157282}
+  - {role: large_user, file: SPD/spd_postcodeindex_cut_26_2_csv/LargeUser.csv, rows: 51004,  live: 4767}
 spd_published_totals: {all: 247773, live: 162049, deleted: 85724}
