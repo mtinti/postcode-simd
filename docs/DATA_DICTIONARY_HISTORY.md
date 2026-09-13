@@ -6,7 +6,7 @@ containing the postcode's own grid reference. For one row per whole postcode see
 [DATA_DICTIONARY.md](DATA_DICTIONARY.md). Generated from `simd_ingest/output_schema_history.yaml`; do not edit by hand.
 
 Current build: 247,773 rows by 162 columns, history index release 2026_2,
-allocation `postcode_grid_reference`, built 2026-09-13T06:02:05Z. Parquet SHA256 `1e29d1c412727876768cf5f28d086616a14c10c0e8b457312cacf9f412a33f98`; rows-only fingerprint
+allocation `postcode_grid_reference`, built 2026-09-13T11:33:16Z. Parquet SHA256 `574f5344887da65c1ba6ea4dcda098cfd587e45c9d09049f448ee1085817377a`; rows-only fingerprint
 `59369357e44e45a5ac74b217692fd8e4799fd0aafc3b04e4e2c255abf722dc97`. The file hash also covers the embedded provenance metadata,
 so it changes when the decision log changes; compare fingerprints under the same pinned runtime.
 
@@ -49,9 +49,10 @@ the same guidance describes for pre-1996 data is not included.
   in `simd_ingest.lookup` resolve that to the A part by default, as NRS does, and say so; a report
   rule shows the ambiguity instead. Never average or vote.
 - **Large-user postcodes and PO boxes.** The source assigns them a data zone, so SIMD is attached.
-  This is source fidelity, not a linkage recommendation. The [SQL examples](LINKAGE_BY_ERA.md) follow
-  small-user links in the chosen product, excluding unusable links and `NO LINKP`/`NO LINK`.
-  Python keeps its separate own-record geography and sentinel-exclusion policy.
+  The [default SQL](LINKAGE_BY_ERA.md) uses the main SSPL record's own values and flags address
+  concerns without suppressing them. Residence eligibility and publication choices are downstream.
+  Legacy SPD linked-small-user SQL is separate under `docs/sql/history`; Python keeps its own
+  current/as-of, own-record geography and sentinel-exclusion policy.
 - **Within-geography bands.** `simd{ed}_pw_hb_*` is computed within the health board in
   `phs_dz{vintage}_hb`, which on a few records differs from the directory's own `HealthBoardArea2019Code`.
   Use the PHS code with the PHS band.

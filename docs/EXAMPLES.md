@@ -5,9 +5,10 @@ index, choose the edition for the years of your data, choose the category and le
 match by postcode. `simd_ingest.lookup` offers current-only or event-date-valid record
 matching. The choices stay with you and are passed explicitly as `edition` and `measure`.
 
-This is a separate API from the [latest-postcode SQL examples](LINKAGE_BY_ERA.md). Python
-uses the selected record's own attached geography, including for large users; it does not
-follow the linked-small-user route now used by SQL. Historical postcode selection is a
+This is a separate API from the [default SSPL SQL lookup](LINKAGE_BY_ERA.md). Both use the
+selected record's own attached geography, including for large users. Python retains its
+current/as-of and sentinel-exclusion rules; the default SQL keeps SSPL rows and flags address
+concerns without suppressing values. Historical postcode selection is a
 project policy, not the PHS postcode file's latest-version policy. Do not treat the two
 interfaces as interchangeable or this helper as verified PHS postcode-lookup equivalence.
 
@@ -170,8 +171,9 @@ to see `split_consensus` and `split_conflict` instead of `a_part`.
 When a cohort spans years, the guidance's first approach is one edition per period.
 `attach_by_era` applies that edition mapping and this helper's historical postcode policy
 in one call. The guidance's second approach, one edition throughout, is a single `attach`
-call. Neither changes Python's own-record large-user geography. For latest-postcode linkage
-and linked-small-user geography, use the [SQL guide](LINKAGE_BY_ERA.md).
+call. Neither changes Python's own-record large-user geography. For latest SSPL geography,
+analysis-year edition selection and both publishers' full measures, use the
+[SQL guide](LINKAGE_BY_ERA.md).
 
 ## The statuses
 

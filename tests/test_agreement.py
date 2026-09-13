@@ -53,7 +53,7 @@ def test_real_representatives_match_sql():
     actual = latest_per_postcode(history).sort_index()
     with duckdb.connect() as con:
         con.register("postcode_simd_history", history)
-        con.execute((SQL / "create_latest_postcode_lookup_history.sql").read_text())
+        con.execute((SQL / "create_latest_postcode_lookup.sql").read_text())
         expected = con.execute("SELECT postcode_key, matched_pc_norm, matched_is_current FROM simd_postcode_latest").df().set_index("postcode_key").sort_index()
     assert actual.index.tolist() == expected.index.tolist()
     assert actual.pc_norm.tolist() == expected.matched_pc_norm.tolist()

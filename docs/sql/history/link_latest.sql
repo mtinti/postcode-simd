@@ -1,5 +1,6 @@
+-- LEGACY SPD POLICY, NOT THE DEFAULT SSPL QUERY.
 -- VERSION 1: latest postcode geography, ONE chosen SIMD edition throughout.
--- Run the SSPL setup (default) or the explicitly named history setup first.
+-- Run this folder's create_latest_postcode_lookup.sql first.
 -- Input: events(id, postcode). The result names the selected product and release.
 -- id need not be unique: this LEFT JOIN keeps each input row, without grouping.
 --

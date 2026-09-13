@@ -25,10 +25,12 @@ the main schema now reflects. The postcode release and SIMD edition are independ
 
 ## What the project implements
 
-The [default SQL](LINKAGE_BY_ERA.md) reads SSPL. The explicitly named SPD setup is an
-alternative, never a fallback. Both use latest postcode records and linked-small-user
-geography. A dated historical-record question belongs to the separate Python API, which
-uses SPD validity intervals and own-record geography.
+The [default SQL](LINKAGE_BY_ERA.md) takes postcode and analysis year. It uses the exact
+matched SSPL record's own geography and returns both PHS and Government measures for the
+selected SIMD edition. It does not follow large-user links or resolve ordinary splits again.
+The older SPD linked-small-user policy is isolated under `docs/sql/history`, never used as a
+fallback. A dated historical-record question belongs to the separate Python API, which uses
+SPD validity intervals and own-record geography.
 
 Using an event year to choose a SIMD edition does **not** require historical postcode
 selection: the SQL era query uses the latest postcode with a Table 4 edition. Conversely,
@@ -63,11 +65,16 @@ representatives for 19 postcodes. Do not reuse its provisional counts as accepta
 describes latest versions, retained deleted records and A representatives.
 [PHS deprivation guidance v3.5](../manual_data/2023-12-phs-deprivation-guidance-v35.pdf)
 distinguishes edition policies (section 3.2, Table 4) and discusses postcode/large-user links
-(Appendix A). Linked-small-user selection is the project's explicit policy.
+(Appendix A). The former SSPL SQL also redirected large users to their linked small users.
+That is now removed: it overrides the SSPL allocation, changing 147 PHS 2020v2 quintiles
+(50 live postcodes) in the reviewed SSPL 2026/2 snapshot. The current default preserves
+the assigned values, including AB24 2TY's own quintile 5 rather than its link's quintile 1.
 
 Neither table nor SQL setup has been compared against a published PHS postcode-level
 oracle. Sharing SPD inputs or using A does not establish record-level parity, and exact PHS
 deleted-record retention has not been reproduced. The source-faithful build is not itself a
 claim that every stored large-user or PO-box value is appropriate for patient linkage.
+The default returns address warnings without hiding values. This warning-only behaviour is
+an explicit project choice: downstream patient analyses must review residence eligibility.
 
 For UK-wide statistics the NRS note recommends NSPL. This project remains Scotland-only.

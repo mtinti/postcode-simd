@@ -113,10 +113,11 @@ and compares its SIMD values with the reference rows. In the history table use
 `--introduced YYYY-MM-DD` to choose a life and a full `pc_norm`/NRS split key, not an
 ambiguous base postcode.
 
-Analyst choices remain outside ingestion. The [two SQL examples](LINKAGE_BY_ERA.md) share
-latest-postcode selection and linked-small-user geography; SSPL is the default, with an
-explicit SPD setup. SSPL already made splits whole on A; its B/C links cannot resolve.
-One query uses a chosen SIMD edition and one uses event-year recommendations, without
-selecting historical postcode lives. The [Python helper](EXAMPLES.md)
-keeps its separate current/as-of and own-record geography policy. Adding an edition does
+Analyst choices remain outside ingestion. The [default SQL](LINKAGE_BY_ERA.md) takes a postcode
+and analysis year, selects the PHS-recommended SIMD edition, and returns both publishers'
+measures from that postcode's own SSPL record. SSPL already made splits whole on A; SQL does
+not follow linked-small-user references or select historical lives. Address warnings and
+deleted records remain visible, with exclusions left to the downstream analysis. The older
+SPD linked-small-user examples remain under `docs/sql/history`. The [Python helper](EXAMPLES.md)
+keeps its separate current/as-of and sentinel-exclusion policy. Adding an edition does
 not silently change either consumer policy.

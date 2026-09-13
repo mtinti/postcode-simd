@@ -1,10 +1,10 @@
--- OPTIONAL SPD SETUP: run this INSTEAD OF create_latest_postcode_lookup.sql.
--- Then use either link_latest.sql or link_by_era.sql unchanged.
+-- LEGACY SPD SETUP: only for this folder's link_latest.sql or link_by_era.sql.
+-- Not the default SSPL query; do not substitute it for the parent folder's setup.
 -- Input: postcode_simd_history, exposed from postcode_simd_history.parquet, the history table
 -- produced by the ingestion CLI (every postcode life; this view selects the latest).
 -- Output: one row per ordinary postcode in simd_postcode_latest.
 --
--- Guidance references and project choices: ../LINKAGE_BY_ERA.md.
+-- Guidance references and project choices: README.md in this folder.
 -- PHS postcode-file documentation: most recent postcode version; A part for splits.
 -- PHS deprivation guidance v3.5, Appendix A: geography is needed; large users may
 -- be linked to small users. We use that linked small-user geography, by explicit
@@ -15,6 +15,7 @@
 -- Ordinary postcode inputs only: do not supply an NRS A/B/C suffix.
 -- SQL Server: execute this CREATE VIEW in its own batch. See the guide for setup.
 
+-- Retained SPD linked-small-user policy only; see README.md in this folder.
 CREATE VIEW simd_postcode_latest AS
 WITH full_key_versions AS (
     -- 1. Keep the newest life of each complete NRS key, across BOTH user types.

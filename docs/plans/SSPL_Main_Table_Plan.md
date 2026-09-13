@@ -12,8 +12,9 @@ Corrections to the historical text below:
 - The preliminary cross-table counts used incorrect representatives for 19 postcodes.
   They did not isolate release effects from allocation methods or prove PHS equivalence.
   Use the generated build report for current observations, never the counts below as gates.
-- The default SQL reads main; an explicitly named SPD setup supports the same queries.
-  Selecting an edition by event year does not require historical postcode matching.
+- The default SQL reads main directly, takes postcode and analysis year, and returns both
+  publishers without large-user redirection. Older SPD SQL is separate under `sql/history`.
+  Selecting an edition by analysis year does not require historical postcode matching.
 - Both tables build together; no `--table` build switch was introduced. Trace has `--table`;
   ground-truth cases stay SPD-based and main values are checked against their own source zones.
 - Package 2.0.1 and main schema `postcode_simd_sspl_v2` incorporate the coherence fixes.

@@ -1,16 +1,15 @@
--- VERSION 2: latest postcode geography, SIMD edition chosen by EVENT YEAR.
--- Run the SSPL setup (default) or the explicitly named history setup first.
--- Input: events(id, postcode, event_date). The result names the product and release.
--- event_date must be DATE (or TIMESTAMP); reject invalid date text before this query.
--- Repeated/null IDs and duplicate input rows are retained: there is no grouping by id.
---
--- PHS v3.5 section 3.2.1.1: use the appropriate SIMD release for each period.
--- IMPORTANT: the date chooses SIMD, NOT a historical postcode life. Both examples
--- use the SAME latest-postcode/linked-small-user view. See ../LINKAGE_BY_ERA.md.
+-- DEFAULT LOOKUP: postcode + health-data year -> BOTH PHS and Government SIMD fields.
+-- Run create_latest_postcode_lookup.sql first. No patient data leaves your database.
+-- Guidance references and the output dictionary: ../LINKAGE_BY_ERA.md.
 
-WITH era AS (
-    -- 1. PHS v3.5, Table 4 (printed page 17), transcribed without interpolation.
-    -- This is a reviewed recommendation, not automatic "latest edition" detection.
+WITH inputs AS (
+    -- 1. EDIT INPUT. For a cohort, replace this SELECT with id, postcode, analysis_year
+    -- from your table. The year must be an integer, not a SIMD release label.
+    SELECT 1 AS id, CAST('AB24 2TY' AS varchar(32)) AS postcode, 2020 AS analysis_year
+),
+era AS (
+    -- 2. PHS v3.5 Table 4, printed p.17: the year chooses SIMD, NOT postcode history.
+    -- https://publichealthscotland.scot/media/24056/2023-12-phs-deprivation-guidance-v35.pdf
     SELECT * FROM (VALUES
         (1996, 2003, '2004'),
         (2004, 2006, '2006'),
@@ -20,49 +19,71 @@ WITH era AS (
         (2017, 9999, '2020v2')
     ) AS v(year_from, year_to, edition)
 ),
-matched AS (
-    -- 2. Choose the edition by year and match the ordinary postcode once.
-    -- LEFT JOINs retain missing dates, pre-1996 events and unmatched postcodes.
-    SELECT e.id, e.postcode, e.event_date,
-           NULLIF(UPPER(REPLACE(e.postcode, ' ', '')), '') AS postcode_key,
-           era.edition AS simd_edition,
-           p.postcode_status,
-           p.matched_pc_norm, p.matched_introduced_on,
-           p.matched_is_current, p.matched_user_type,
-           p.simd_source_pc_norm, p.simd_source_introduced_on,
-           p.simd_source_is_current, p.requested_link_postcode,
-           p.index_source, p.index_release, p.allocation,
-           -- 3. Select the already-attached PHS quintile for that edition.
-           -- The CLI used the correct data-zone vintage and reversed early bands.
-           CASE era.edition
-               WHEN '2004'   THEN p.simd2004_pw_scotland_quintile
-               WHEN '2006'   THEN p.simd2006_pw_scotland_quintile
-               WHEN '2009v2' THEN p.simd2009v2_pw_scotland_quintile
-               WHEN '2012'   THEN p.simd2012_pw_scotland_quintile
-               WHEN '2016'   THEN p.simd2016_pw_scotland_quintile
-               WHEN '2020v2' THEN p.simd2020v2_pw_scotland_quintile
-           END AS simd_value
-    FROM events e
-    LEFT JOIN era ON YEAR(e.event_date) BETWEEN era.year_from AND era.year_to
-    LEFT JOIN simd_postcode_latest p
-           ON p.postcode_key = NULLIF(UPPER(REPLACE(e.postcode, ' ', '')), '')
+requested AS (
+    -- 3. Our join-key convention: retain the input, uppercase and remove ASCII spaces.
+    -- This does not repair invalid postcodes or remove an NRS A/B/C suffix.
+    SELECT id, postcode, analysis_year,
+           NULLIF(UPPER(REPLACE(postcode, ' ', '')), '') AS postcode_key
+    FROM inputs
 )
--- 4. Report the result and retain both record keys so the route can be reviewed.
--- Missing date is distinct from "no recommended SIMD before 1996".
--- Postcode provenance may remain present even when no SIMD edition can be selected.
-SELECT id, postcode, event_date, simd_edition,
-       'PHS population-weighted within-Scotland quintile; 1 = most deprived' AS simd_measure,
+SELECT i.id, i.postcode, i.analysis_year,
+       p.Postcode AS matched_postcode, p.pc_norm AS matched_pc_norm,
+       'sspl' AS index_source, p.sspl_release, 'oa2022_centroid' AS allocation,
+       p.introduced_on, p.deleted_on, p.is_current,
+       p.spd_user_type AS postcode_user_type, p.SplitIndicator AS split_indicator,
+       p.LinkedSmallUserPostcode AS linked_small_user_postcode,
+       -- 4. Keep matching separate from residence eligibility (PHS Appendix A, p.30).
+       -- Warnings do NOT suppress values or redirect the postcode to another record.
        CASE
-           WHEN event_date IS NULL THEN 'missing_date'
-           WHEN simd_edition IS NULL THEN 'no_edition'
-           WHEN postcode_key IS NULL THEN 'missing_postcode'
-           WHEN postcode_status IS NULL THEN 'not_found'
-           WHEN postcode_status NOT IN ('matched', 'a_part', 'linked_small_user') THEN postcode_status
-           WHEN simd_value IS NULL THEN 'missing_simd'
-           ELSE postcode_status
+           WHEN p.spd_user_type IS NULL OR p.spd_user_type <> 'large_user' THEN NULL
+           WHEN UPPER(REPLACE(p.LinkedSmallUserPostcode, ' ', '')) = 'NOLINKP' THEN 'po_box'
+           WHEN NULLIF(UPPER(REPLACE(p.LinkedSmallUserPostcode, ' ', '')), '') IS NULL
+                OR UPPER(REPLACE(p.LinkedSmallUserPostcode, ' ', '')) = 'NOLINK' THEN 'unlinked_large_user'
+           WHEN p.spd_user_type = 'large_user' THEN 'large_user'
+       END AS address_warning,
+       CASE
+           WHEN i.postcode_key IS NULL THEN 'missing_postcode'
+           WHEN p.pc_norm IS NULL THEN 'not_found'
+           ELSE 'matched'
+       END AS postcode_status,
+       e.edition AS simd_edition, 'PHS v3.5 Table 4 health-data year' AS edition_policy,
+       s.data_zone_vintage, s.data_zone_code,
+       -- These SSPL context fields describe the current lookup, not the analysis year.
+       p.OutputArea2022Code AS nrs_output_area_2022,
+       p.CouncilArea2019Code AS nrs_council_area_2019,
+       p.HealthBoardArea2019Code AS nrs_health_board_2019,
+       p.IntegrationAuthority2019Code AS nrs_hscp_2019,
+       p.UrbanRural6Fold2022Code AS nrs_urban_rural_6fold_2022,
+       p.UrbanRural8Fold2022Code AS nrs_urban_rural_8fold_2022,
+       CASE
+           WHEN i.analysis_year IS NULL THEN 'missing_year'
+           WHEN i.analysis_year < 1 OR i.analysis_year > 9999 THEN 'invalid_year'
+           WHEN e.edition IS NULL THEN 'no_edition'
+           WHEN i.postcode_key IS NULL THEN 'missing_postcode'
+           WHEN p.pc_norm IS NULL THEN 'not_found'
+           WHEN s.simd_rank IS NULL OR s.data_zone_code IS NULL
+                OR s.phs_hb_code IS NULL OR s.phs_hscp_code IS NULL OR s.phs_ca_code IS NULL
+                OR s.phs_pw_scotland_quintile IS NULL OR s.phs_pw_scotland_decile IS NULL
+                OR s.phs_pw_hb_quintile IS NULL OR s.phs_pw_hb_decile IS NULL
+                OR s.phs_pw_hscp_quintile IS NULL OR s.phs_pw_hscp_decile IS NULL
+                OR s.phs_pw_ca_quintile IS NULL OR s.phs_pw_ca_decile IS NULL
+                OR s.phs_pw_most15pc IS NULL OR s.phs_pw_least15pc IS NULL
+                OR s.gov_uw_scotland_quintile IS NULL OR s.gov_uw_scotland_decile IS NULL
+                OR s.gov_uw_scotland_vigintile IS NULL THEN 'missing_simd'
+           ELSE 'matched'
        END AS simd_status,
-       simd_value,
-       matched_pc_norm, matched_introduced_on, matched_is_current, matched_user_type,
-       simd_source_pc_norm, simd_source_introduced_on, simd_source_is_current,
-       requested_link_postcode, index_source, index_release, allocation
-FROM matched;
+       -- 5. PHS sections 3.1 and 3.4: label weighting, direction and local band geography.
+       -- Rank is shared. Never mix pw (population-weighted) and uw (unweighted) bands.
+       '1 = most deprived' AS band_direction, s.simd_rank,
+       s.phs_pw_scotland_quintile, s.phs_pw_scotland_decile,
+       s.phs_hb_code, s.phs_pw_hb_quintile, s.phs_pw_hb_decile,
+       s.phs_hscp_code, s.phs_pw_hscp_quintile, s.phs_pw_hscp_decile,
+       s.phs_ca_code, s.phs_pw_ca_quintile, s.phs_pw_ca_decile,
+       s.phs_pw_most15pc, s.phs_pw_least15pc,
+       s.gov_uw_scotland_quintile, s.gov_uw_scotland_decile, s.gov_uw_scotland_vigintile
+FROM requested i
+LEFT JOIN era e ON i.analysis_year BETWEEN e.year_from AND e.year_to
+-- NRS SSPL already supplies the latest whole record and its allocated geography.
+-- No life ranking, linked-small-user join, split aliases, or fallback to SPD.
+LEFT JOIN postcode_simd p ON p.pc_norm = i.postcode_key
+LEFT JOIN simd_postcode_by_edition s ON s.pc_norm = p.pc_norm AND s.simd_edition = e.edition;

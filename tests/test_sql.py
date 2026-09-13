@@ -15,7 +15,7 @@ import pytest
 from support import known_snapshot
 
 ROOT = Path(__file__).resolve().parent.parent
-SQL = ROOT / "docs/sql"
+SQL = ROOT / "docs/sql/history"
 EDITIONS = ("2004", "2006", "2009v2", "2012", "2016", "2020v2")
 QUERIES = ("link_latest.sql", "link_by_era.sql")
 
@@ -39,7 +39,7 @@ def con():
 
 def setup(con, rows):
     con.register("postcode_simd_history", pd.DataFrame(rows))
-    con.execute((SQL / "create_latest_postcode_lookup_history.sql").read_text())
+    con.execute((SQL / "create_latest_postcode_lookup.sql").read_text())
 
 
 def query(con, events, name="link_latest.sql", text=None):
@@ -210,7 +210,7 @@ def real(con):
     if not path.is_file():
         pytest.skip("no build output")
     con.read_parquet(str(path)).create_view("postcode_simd_history")
-    con.execute((SQL / "create_latest_postcode_lookup_history.sql").read_text())
+    con.execute((SQL / "create_latest_postcode_lookup.sql").read_text())
     return con
 
 

@@ -66,7 +66,7 @@ decisions:
   - id: link-sentinels
     date: 2026-09-10
     status: implemented
-    decision: NO LINKP and NO LINK in the large-user linked-postcode field are kept as text and both classified as no link. Ingestion attaches SIMD through each record's own data zone, not through this field. Consumer SQL may follow real links; see sql-latest-linked-postcodes.
+    decision: NO LINKP and NO LINK in the large-user linked-postcode field are kept as text and both classified as no link. Ingestion attaches SIMD through each record's own data zone, not through this field. Default SSPL SQL preserves those values with address warnings; only legacy SPD SQL follows links. See sspl-direct-sql-both-publishers.
     reason: NO LINKP is documented for PO boxes. NO LINK is undocumented and appears on six deleted records.
     evidence: 31,725 NO LINKP, 6 NO LINK, 19,273 real links, all resolving.
 
@@ -80,7 +80,7 @@ decisions:
   - id: large-user-geography-attached
     date: 2026-09-10
     status: implemented
-    decision: SIMD is attached to every large-user record, including PO boxes, because the directory assigns them a data zone. This is ingestion source fidelity, not a claim about the appropriate consumer linkage. Consumer SQL uses linked-small-user geography and withholds values for missing links; see sql-latest-linked-postcodes. Python keeps its own-record geography and sentinel exclusion.
+    decision: SIMD is attached to every large-user record, including PO boxes, because the directory assigns them a data zone. This is ingestion source fidelity, not a claim about residence eligibility. Default SSPL SQL preserves own-record values and flags address concerns; legacy SPD SQL follows links. Python keeps its own-record geography and sentinel exclusion. See sspl-direct-sql-both-publishers.
     reason: Source fidelity. The build attaches what the directory says; it does not decide which postcodes deserve a value.
     evidence: PHS deprivation guidance v3.5, Appendix A.
 
@@ -247,7 +247,7 @@ decisions:
   - id: which-table-answers-which-question
     date: 2026-09-12
     status: implemented
-    decision: "Python date-valid lookups (on=, attach with a date column, attach_by_era) and split-report requests need SPD history and are refused against SSPL. Default cohort SQL reads SSPL; an explicitly named SPD setup is available. Both SQL queries use latest postcodes and linked-small-user geography; the era query's date selects the edition only. Python remains current-only/as-of with own-record geography and sentinel exclusion. Both stored tables retain source values for PO boxes and unlinked large users; consumers apply their documented exclusions."
+    decision: "Python date-valid lookups (on=, attach with a date column, attach_by_era) and split-report requests need SPD history and are refused against SSPL. Default SQL uses own-record SSPL geography and an analysis year to select the edition, returning both publishers and address warnings. Legacy SPD SQL is isolated under docs/sql/history. Python remains current-only/as-of with own-record geography and sentinel exclusion. Both stored tables retain source values for PO boxes and unlinked large users; consumers apply their documented exclusions."
     reason: "One latest life per postcode cannot say whether a postcode existed at a date or which zone it was in then. Making the refusal explicit prevents a silent wrong answer. The split and PO-box defaults are unchanged so existing consumers see the same policy."
     evidence: "SSPL dictionary: no small-user split postcodes; A part used; counts added. SSPL 2026/1 links: NO LINKP on 27,162 large users, NO LINK on 5, 15,368 real links of which 9 keep an A suffix."
 
@@ -273,7 +273,14 @@ decisions:
 
   - id: sspl-migration-review
     date: 2026-09-13
-    status: implemented
+    status: superseded   # source/schema fixes retained; SQL policy replaced below
     decision: "Version 2.0.1 reconciles the migration. Pin SSPL 2026/2 (230103 rows, 161822 live, 187490 small users, 42613 large users); update the two Scottish Parliament columns to 2026 and main schema to postcode_simd_sspl_v2. Default SQL reads main; create_latest_postcode_lookup_history.sql is the explicit SPD alternative. Both share the two edition queries and return index_source, index_release, allocation and requested_link_postcode. SSPL accepts a linked A suffix only for a flagged small-user split representative; B/C cannot resolve. Never fall back across products. Correct the comparison selection and remove unsupported causal/PHS-parity claims."
     reason: "The implementation, decision log and examples must agree. Preserve the SPD history fingerprint independently of an SSPL refresh, and check the new main fingerprint only against its own reviewed source pins and schema. Keep historical plans clearly superseded."
     evidence: "tests/test_agreement.py checks synthetic and real SQL parity; tests/test_sql_sspl.py covers SSPL-only links, exclusions, era boundaries and row preservation; build/audit read back both saved tables against pinned sources. Original SSPL 2026/1 archive hash b8bc805567a167dd23a8891dddf44855a8174ddff3885c7f3caa0defc8d83478 and row fingerprint 6c14f4596b3fabb2c814d0af945eae02e00ea330f7440791437990ef4d98aa0f are retained as historical evidence."
+
+  - id: sspl-direct-sql-both-publishers
+    date: 2026-09-13
+    status: implemented
+    decision: "Default SQL takes postcode and integer analysis year. Use the exact matched SSPL record's geography, never redirect large users or resolve splits again. Map the year to SIMD using PHS v3.5 Table 4 and return all 14 ingested PHS/Government measures, distinctly labelled, with the selected data-zone vintage and PHS local-band geography codes. Keep every input row and report postcode/year/missing-value statuses independently of address warnings. PO boxes, unlinked large users and deleted records retain source values; residence eligibility and publication choices are downstream. Preserve the earlier SPD linked-small-user examples under docs/sql/history, not as a default fallback."
+    reason: "The user chose SSPL's published allocation and requested both publishers so later analysis can choose measures. Re-following links overrides that allocation: in SSPL 2026/2 it changed 147 PHS 2020v2 quintiles, including 50 live postcodes. NRS supplies postcode geography; PHS supplies the health-year edition policy and population-weighted bands. This is not a claim of exact PHS postcode-lookup equivalence or a pre-filtered residential cohort."
+    evidence: "NRS SSPL information note; PHS v3.5 sections 3.1-3.4, Table 4 and Appendix A. tests/test_sql_sspl.py checks every reshaped value and PHS geography across the saved editions, all year boundaries, duplicate/unmatched events, and unchanged large-user own values. AB24 2TY retains quintile 5, rather than linked AB24 2TN's quintile 1. SQL Server runtime verification remains separate."

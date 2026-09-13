@@ -78,7 +78,7 @@ The old orchestration plans remain [historical records](docs/plans/README.md).
 ## Use the tables
 
 The main table has one row per whole postcode. To inspect its latest source record
-(including a deleted latest life; this is not the cohort linkage policy):
+(including a deleted latest life):
 
 ```sql
 SELECT pc_norm, is_current, simd2020v2_pw_scotland_quintile
@@ -101,13 +101,15 @@ WHERE pc_base = 'G718BQ' AND introduced_on <= DATE '2015-06-01'
 is preserved. PHS population-weighted fields (`pw`) and Government unweighted fields (`uw`)
 are distinct.
 
-For cohort linkage, start with [Two SQL lookups](docs/LINKAGE_BY_ERA.md): run the
-[default SSPL setup](docs/sql/create_latest_postcode_lookup.sql) on the main table, then choose
-[one SIMD edition](docs/sql/link_latest.sql) or [edition by event year](docs/sql/link_by_era.sql).
-Both use latest postcode geography, the A part for ordinary split postcodes, and linked
-small-user geography for large users, with explicit statuses, both record keys and product
-provenance. An [explicit SPD setup](docs/sql/create_latest_postcode_lookup_history.sql)
-supports the same queries. Never combine the products as automatic fallbacks.
+For the [default SQL lookup](docs/LINKAGE_BY_ERA.md), run the
+[SSPL setup](docs/sql/create_latest_postcode_lookup.sql), then give
+[link_by_era.sql](docs/sql/link_by_era.sql) a **postcode and analysis year**. It returns all
+14 PHS/Government measures for the recommended SIMD edition, with distinct weighting labels,
+the selected data zone and provenance. It uses the SSPL record's own geography: no large-user
+redirection or additional split selection. Deleted records and address warnings remain
+visible; residential exclusions and which measures to publish are downstream decisions.
+The older SPD linked-small-user examples are separate under [sql/history](docs/sql/history/README.md),
+not a fallback or an interchangeable setup for the default query.
 
 The [Python helpers](docs/EXAMPLES.md) read either table: current lookups against the main
 table, current or as-of lookups against the history table, with own-record geography and an

@@ -1,8 +1,9 @@
 """Current/as-of record-level SIMD lookups, with explicit analyst choices.
 
 This API uses current-only or date-valid records and own-record large-user geography.
-It is not equivalent to the latest-postcode, linked-small-user SQL examples; see
-docs/LINKAGE_BY_ERA.md. SSPL cannot answer date-valid or split-report questions.
+The default SQL also uses own-record geography but keeps latest SSPL records, both
+publishers and address warnings instead of Python's exclusions; see docs/LINKAGE_BY_ERA.md.
+SSPL cannot answer date-valid or split-report questions.
 
 The guidance's method: choose the edition for the years of your data, choose the category
 and level, then match by postcode. This module does the matching and leaves the choices to
