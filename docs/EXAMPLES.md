@@ -8,7 +8,9 @@ matching. The choices stay with you and are passed explicitly as `edition` and `
 This is a separate API from the [SQL sets](LINKAGE_BY_ERA.md). Python uses the selected
 record's own attached geography, including for large users, with its current/as-of and
 sentinel-exclusion rules; the SQL sets use the latest postcode, or in `link_as_of.sql` the
-life valid on the address date, and follow large-user links, as PHS does. Historical postcode selection is a project policy, not the PHS postcode file's
+life valid on the address date, and follow large-user links. Applying that link rule to SSPL
+is a project interpretation of PHS Appendix A, not verified parity with PHS's own lookup.
+Historical postcode selection is a project policy, not the PHS postcode file's
 latest-version policy. Do not treat the two interfaces as interchangeable or this helper as
 verified PHS postcode-lookup equivalence.
 

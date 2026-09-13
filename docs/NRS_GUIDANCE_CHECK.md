@@ -29,11 +29,14 @@ The [SQL sets](LINKAGE_BY_ERA.md) are one per product, with no default. Both tak
 and either the year of the health data or one chosen edition, and return every stored measure
 of that edition from the record that supplies the geography. The SPD set selects the latest
 life and the A part; the SSPL set does not, because NRS did. Both follow a large user's link
-to its small-user postcode and give PO boxes and unlinked large users no SIMD, as PHS
-Appendix A describes; NRS publishes nothing against following the link, and its SPD
-dictionary calls PO-box grid references low quality. A dated question, which postcode life
-was valid when the address was recorded, is answered by `link_as_of.sql` in the SPD set and
-by the Python API, both from the SPD validity intervals; the SSPL cannot answer it.
+to its small-user postcode and give PO boxes and unlinked large users no SIMD. Applying this
+rule to SSPL is a project interpretation informed by PHS Appendix A: it does not explicitly
+settle overriding geography already allocated in SSPL. Absence of contrary NRS guidance is
+not endorsement; authoritative confirmation or a PHS postcode-level oracle is still needed.
+A dated question, which postcode life was valid on a reliable address date, is answered by
+`link_as_of.sql` in the SPD set and by the Python API, both from the SPD validity intervals;
+the SSPL cannot answer it. This project policy selects lives, not historical administrative
+or rurality snapshots. A general record edit date need not describe the person's address.
 
 Using an event year to choose a SIMD edition does **not** require historical postcode
 selection: the SQL era query uses the latest postcode with a Table 4 edition. Conversely,

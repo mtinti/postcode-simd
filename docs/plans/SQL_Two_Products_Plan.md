@@ -1,6 +1,15 @@
 # Plan: two SQL sets, one per postcode product, no default
 
-Drafted 13 September 2026. Status: implemented on 13 September 2026 (version 2.1.0); `link_as_of.sql` added to the SPD set the same day (decision sql-as-of-address-date). The SSPL set follows large-user links: NRS publishes no guidance against it (checked 13 September 2026).
+Drafted 13 September 2026. Status: implemented on 13 September 2026 (version 2.1.0);
+`link_as_of.sql` added to the SPD set the same day (decision sql-as-of-address-date).
+
+Review correction, 13 September 2026: this is a historical proposal, not the current contract.
+The five queries share a 41-column core, not identical full outputs; raw context differs.
+Applying linked-small-user geography to SSPL is a project interpretation of Appendix A,
+which does not explicitly settle overriding SSPL's own allocated geography. Absence of
+contrary NRS guidance is not endorsement. NRS recommends SSPL for statistical production,
+SPD for operational/administrative use. See [the current SQL guide](../LINKAGE_BY_ERA.md)
+and decision `sql-review-corrections` for the reviewed behaviour and remaining uncertainty.
 
 ## Aim
 

@@ -116,10 +116,15 @@ ambiguous base postcode.
 Analyst choices remain outside ingestion. The [SQL sets](sql/README.md) are one per postcode
 product, with no default: `docs/sql/spd/` reads the history table and selects the latest life
 and the A part itself; `docs/sql/sspl/` reads the main table, where NRS already did both.
-Both follow a large user's link to its small-user postcode, as PHS Appendix A describes, and
-both return the same columns. The SPD set also has `link_as_of.sql`, which uses the postcode
-life valid on the date the address was recorded. Each set chooses the SIMD edition either by the year of the
-health data (Table 4) or once for the whole study. The four files are generated from the
+Both follow a large user's link to its small-user postcode; applying that rule to SSPL is a
+project interpretation of PHS Appendix A, which does not settle overriding its own allocated
+geography. Both share 41 core columns, followed by product-specific context (91 columns for
+SSPL, 107 for SPD era/latest, 110 for SPD as-of). The SPD set also has `link_as_of.sql`, which
+uses the postcode life valid on a reliable address date, not historical administrative or
+rurality snapshots. Each set chooses the SIMD edition either by the year of the
+health data (Table 4) or once for the whole study. NRS recommends SSPL for statistical production
+and SPD for operational/administrative use; no automatic default does not change that advice.
+The five files are generated from the
 schemas by `simd_ingest/sql_examples.py`, so a new edition regenerates them. The
 [Python helper](EXAMPLES.md) keeps its separate current/as-of and sentinel-exclusion policy.
 Adding an edition does not silently change either consumer policy.

@@ -78,10 +78,13 @@ never just to clear a failing regression.
    Regenerate the data dictionary after reviewing the resulting manifest.
 6. Separately review analyst edition-by-year recommendations and consumer schema imports.
    Ingestion supports explicitly selecting the new edition; it does not infer a new
-   recommendation from the edition's date. Regenerate the four SQL files with
+   recommendation from the edition's date. Regenerate the five SQL files with
    `python -m simd_ingest.sql_examples`: the edition branches and vintage cases come from the
    registry and schemas, and a test fails while a committed file is stale. Table 4's year
    ranges live in `lookup.py` and are reviewed separately against the guidance.
+   Extend the independent edition/measure expectations in `tests/test_sql_sets.py` from the
+   reviewed source contract, not by importing the generator's mapping. Review output-core
+   and context documentation if the schema changes; source-fidelity tests cover every edition.
 
 The tests include a synthetic seventh edition on 2022 data zones requiring only registry
 and schema additions. That proves extension for the supported CSV/DBF layout, not that

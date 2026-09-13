@@ -11,21 +11,19 @@
 WITH inputs AS (
     -- STEP 1. INPUT. Replace this SELECT with:
     --   SELECT id, postcode, address_date, analysis_year FROM your_cohort
-    -- address_date is the day the postcode was recorded against the person (for example the
-    -- CHI record's edit date): the postcode life valid on that day is the one used.
+    -- address_date must relate to this person's address; do not assume a general record edit
+    -- date is a residence date. Selecting a life on that date is a project policy.
     -- analysis_year is the year of the health data as an integer: it chooses the SIMD edition.
-    -- The two are different questions; pass the same year twice only as a stated choice.
+    -- Use a health-event date as address_date only if it describes the address being linked.
     SELECT 1 AS id, CAST('FK17 8DS' AS varchar(32)) AS postcode,
            CAST('1975-06-01' AS date) AS address_date, 2020 AS analysis_year
 ),
 requested AS (
     -- STEP 2. KEY. Uppercase and remove ASCII spaces, keeping the original text: the same rule
     -- as ingestion (project choice). Nothing is repaired and an NRS A/B/C suffix is not
-    -- removed, so supply the ordinary postcode as a person writes it. input_row keeps
-    -- duplicate input rows apart.
+    -- removed, so supply the ordinary postcode as a person writes it. Duplicate inputs stay.
     SELECT id, postcode, address_date, analysis_year,
-           NULLIF(UPPER(REPLACE(postcode, ' ', '')), '') AS postcode_key,
-           ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS input_row
+           NULLIF(UPPER(REPLACE(postcode, ' ', '')), '') AS postcode_key
     FROM inputs
 ),
 era AS (
@@ -42,7 +40,7 @@ era AS (
     ) AS v(year_from, year_to, edition, data_zone_vintage)
 ),
 chosen AS (
-    SELECT r.id, r.postcode, r.address_date, r.analysis_year, r.postcode_key, r.input_row,
+    SELECT r.id, r.postcode, r.address_date, r.analysis_year, r.postcode_key,
            e.edition AS simd_edition, e.data_zone_vintage,
            'PHS v3.5 Table 4: edition by year of the health data' AS edition_policy,
            CASE
@@ -54,19 +52,25 @@ chosen AS (
     FROM requested r
     LEFT JOIN era e ON r.analysis_year BETWEEN e.year_from AND e.year_to
 ),
+lookup_requests AS (
+    -- Resolve each postcode/date pair once, then join back to every original input row.
+    -- No unique patient ID or execution-dependent row number is needed (project choice).
+    SELECT DISTINCT postcode_key, address_date FROM requested
+),
 lives_on_date AS (
-    -- STEP 4. LIFE VALID ON THE ADDRESS DATE (SPD only). A postcode life runs from
+    -- STEP 4. LIFE VALID ON THE ADDRESS DATE (SPD only, project policy). A life runs from
     -- introduced_on up to but not including deleted_on. Take every life of the ordinary
     -- postcode that contains the address date. A postcode can be deleted and later re-used
     -- elsewhere; the address date decides which life the record belongs to. A record deleted
-    -- on the address date is not valid on it. Same-day records are never valid.
-    SELECT c.input_row, p.*,
+    -- on the address date is not valid on it. Same-day records are never valid. This does
+    -- not reconstruct historical administrative or rurality snapshots.
+    SELECT c.postcode_key AS requested_key, c.address_date AS requested_date, p.*,
            DENSE_RANK() OVER (
-               PARTITION BY c.input_row
+               PARTITION BY c.postcode_key, c.address_date
                ORDER BY CASE WHEN p.pc_norm = p.pc_base OR RIGHT(p.pc_norm, 1) = 'A' THEN 0 ELSE 1 END,
                         p.introduced_on DESC
            ) AS priority
-    FROM chosen c
+    FROM lookup_requests c
     JOIN postcode_simd_history p
       ON p.pc_base = c.postcode_key
      AND p.introduced_on <= c.address_date
@@ -79,8 +83,8 @@ candidates AS (
     -- only valid part is B or C gets split_a_missing and no SIMD; two equally good records get
     -- ambiguous_postcode and no SIMD.
     SELECT l.*,
-           COUNT(*) OVER (PARTITION BY l.input_row) AS candidate_count,
-           ROW_NUMBER() OVER (PARTITION BY l.input_row ORDER BY l.pc_norm) AS candidate_number
+           COUNT(*) OVER (PARTITION BY l.requested_key, l.requested_date) AS candidate_count,
+           ROW_NUMBER() OVER (PARTITION BY l.requested_key, l.requested_date ORDER BY l.pc_norm) AS candidate_number
     FROM lives_on_date l
     WHERE l.priority = 1
 ),
@@ -90,21 +94,21 @@ representative AS (
 key_lives AS (
     -- When no life contains the date, say where the date falls relative to the lives that
     -- exist: before the first life, after the last, or in a gap between two lives.
-    SELECT c.input_row,
+    SELECT c.postcode_key AS requested_key, c.address_date AS requested_date,
            MIN(p.introduced_on) AS first_introduced_on,
            MAX(CASE WHEN p.deleted_on IS NOT NULL AND p.deleted_on <= c.address_date THEN p.deleted_on END) AS previous_life_deleted_on,
            MIN(CASE WHEN p.introduced_on > c.address_date THEN p.introduced_on END) AS next_life_introduced_on
-    FROM chosen c
+    FROM lookup_requests c
     JOIN postcode_simd_history p ON p.pc_base = c.postcode_key
-    GROUP BY c.input_row
+    GROUP BY c.postcode_key, c.address_date
 ),
 matched AS (
     -- STEP 6. LARGE USERS. PHS v3.5 Appendix A, p.30: a large-user postcode has no boundary;
     -- where NRS could link it to a small-user postcode, that postcode supplies the geography;
     -- a PO box (NO LINKP) or an unlinked large user (NO LINK) gets none. The linked small-user
-    -- record must itself be valid on the address date, by its exact key including any A/B/C
-    -- suffix. A small user supplies its own geography. Never the large user's own zone, never
-    -- another product, never a chain through a second large user.
+    -- record must itself be valid on the address date (project policy), by its exact key
+    -- including any A/B/C suffix. A small user supplies its own geography. Never the large
+    -- user's own zone, another product, or a chain through a second large user.
     SELECT c.*,
            r.pc_norm AS matched_pc_norm, r.introduced_on AS matched_introduced_on,
            r.is_current AS matched_is_current, r.spd_user_type AS matched_user_type,
@@ -275,8 +279,10 @@ matched AS (
            g.simd2020v2_uw_scotland_decile,
            g.simd2020v2_uw_scotland_vigintile
     FROM chosen c
-    LEFT JOIN representative r ON r.input_row = c.input_row
-    LEFT JOIN key_lives k ON k.input_row = c.input_row
+    LEFT JOIN representative r ON r.requested_key = c.postcode_key AND r.requested_date = c.address_date
+    LEFT JOIN key_lives k ON k.requested_key = c.postcode_key
+                        AND (k.requested_date = c.address_date
+                             OR (k.requested_date IS NULL AND c.address_date IS NULL))
     LEFT JOIN postcode_simd_history g
       ON g.spd_user_type = 'small_user'
      AND g.pc_norm = CASE

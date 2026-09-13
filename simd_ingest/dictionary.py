@@ -103,8 +103,10 @@ def render(schema: dict, registry, manifest: dict | None, name: str = "history")
                   "  rule shows the ambiguity instead. Never average or vote."]
     lines += [
               "- **Large-user postcodes and PO boxes.** The source assigns them a data zone, so SIMD is attached.",
-              "  The [SQL sets](LINKAGE_BY_ERA.md) follow a large user's link to its small-user postcode, as PHS",
-              "  does, and give PO boxes none; Python keeps its own current/as-of, own-record geography and",
+              "  The [SQL sets](LINKAGE_BY_ERA.md) follow a large user's link and give PO boxes no SIMD. Applying",
+              "  this to SSPL is a project interpretation of PHS Appendix A, which does not explicitly settle",
+              "  overriding SSPL's own allocated geography. Exact PHS lookup parity remains unverified.",
+              "  Python keeps its own current/as-of, own-record geography and",
               "  sentinel-exclusion policy. Residence eligibility and publication choices are downstream.",
               "- **Within-geography bands.** `simd{ed}_pw_hb_*` is computed within the health board in",
               "  `phs_dz{vintage}_hb`, which on a few records differs from the directory's own `HealthBoardArea2019Code`.",

@@ -8,7 +8,7 @@ postcode-in-zone allocation see the history table, [DATA_DICTIONARY_HISTORY.md](
 Generated from `simd_ingest/output_schema.yaml`; do not edit by hand.
 
 Current build: 230,103 rows by 146 columns, main index release 2026_2,
-allocation `oa2022_centroid`, built 2026-09-13T11:33:16Z. Parquet SHA256 `d6699f5ca570bed4963fbaa81d7c3c88d754a89100a9fb6e261786303d41c1be`; rows-only fingerprint
+allocation `oa2022_centroid`, built 2026-09-13T17:04:01Z. Parquet SHA256 `f4f2c96b35d5a14511328d632e8499ed6bfecef0908104724fd08aaf6074e1b2`; rows-only fingerprint
 `9515021d99099b437950960380313e6fac7a9a6393858c4d6115fef43a94e564`. The file hash also covers the embedded provenance metadata,
 so it changes when the decision log changes; compare fingerprints under the same pinned runtime.
 
@@ -52,8 +52,10 @@ the same guidance describes for pre-1996 data is not included.
 - **Split postcodes** are already whole here. `SplitIndicator` Y marks a postcode the directory holds
   as A/B/C parts; the SSPL keeps the A part's geography and sums the counts.
 - **Large-user postcodes and PO boxes.** The source assigns them a data zone, so SIMD is attached.
-  The [SQL sets](LINKAGE_BY_ERA.md) follow a large user's link to its small-user postcode, as PHS
-  does, and give PO boxes none; Python keeps its own current/as-of, own-record geography and
+  The [SQL sets](LINKAGE_BY_ERA.md) follow a large user's link and give PO boxes no SIMD. Applying
+  this to SSPL is a project interpretation of PHS Appendix A, which does not explicitly settle
+  overriding SSPL's own allocated geography. Exact PHS lookup parity remains unverified.
+  Python keeps its own current/as-of, own-record geography and
   sentinel-exclusion policy. Residence eligibility and publication choices are downstream.
 - **Within-geography bands.** `simd{ed}_pw_hb_*` is computed within the health board in
   `phs_dz{vintage}_hb`, which on a few records differs from the directory's own `HealthBoardArea2019Code`.

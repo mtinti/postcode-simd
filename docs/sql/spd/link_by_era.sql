@@ -54,7 +54,7 @@ latest_lives AS (
     -- postcode file is "based on the most recent version of a postcode" and NRS's SSPL keeps
     -- "only the latest version", so take the newest introduction of each full NRS key,
     -- across both user types. A postcode that changed user type keeps its newest life only.
-    -- This is not matching on the event date; that is the Python API's job.
+    -- This is not matching on an address date; use link_as_of.sql for that question.
     SELECT p.*,
            ROW_NUMBER() OVER (PARTITION BY p.pc_norm ORDER BY p.introduced_on DESC) AS life_number
     FROM postcode_simd_history p
@@ -71,7 +71,7 @@ ranked AS (
     SELECT l.*,
            DENSE_RANK() OVER (
                PARTITION BY l.pc_base
-               ORDER BY CASE WHEN l.is_current THEN 0 ELSE 1 END,
+               ORDER BY CASE WHEN l.is_current = 1 THEN 0 ELSE 1 END,
                         CASE WHEN l.pc_norm = l.pc_base OR RIGHT(l.pc_norm, 1) = 'A' THEN 0 ELSE 1 END,
                         l.introduced_on DESC
            ) AS priority

@@ -288,13 +288,74 @@ decisions:
   - id: sql-two-products-no-default
     date: 2026-09-13
     status: implemented
-    decision: "Two SQL sets, docs/sql/spd reading postcode_simd_history (key pc_norm, introduced_on) and docs/sql/sspl reading postcode_simd (key pc_norm), with no default and no fallback between them. Each set has link_by_era.sql (input id, postcode, analysis_year; edition by PHS v3.5 Table 4) and link_latest.sql (input id, postcode; one edition throughout), standalone with no setup view, written as numbered steps that name the guidance each implements. Both sets share one output contract: statuses, product provenance, matched and geography-source keys, the selected edition's data zone and PHS local geography codes, all 14 stored measures, and the matched record's own geography as context. The SPD set selects the latest life per NRS key and the A part (live first, then whole or A, then newest introduction; a B/C-only postcode gets split_a_missing and a tie gets ambiguous_postcode, both without SIMD). The SSPL set performs neither step because NRS already did. Both sets attach a large user's SIMD through its LinkedSmallUserPostcode: the SPD to the exact linked key including any suffix, the SSPL to the whole small-user postcode, where an A-suffixed link matches a record flagged SplitIndicator Y and a B or C suffix cannot resolve. NO LINKP is reported as po_box and NO LINK as unlinked_large_user, both without SIMD. The large user's own data zone is returned as context."
-    reason: "A study chooses the postcode product first and the edition policy second; making either a default hid the first choice. The only steps that differ between products are the ones NRS performed when building the SSPL, so the two sets differ in exactly those steps and nowhere else. PHS Appendix A attaches deprivation to a large user only through its linked small user and none to PO boxes, and NRS publishes nothing against following the link in the SSPL: its dictionary defines the link as the small-user postcode containing the large user's grid reference, and the SPD dictionary calls PO-box grid references low quality because they point at the sorting office. Keeping the own-record value as context shows what the link changed."
+    decision: >-
+      Two SQL sets, docs/sql/spd reading postcode_simd_history (key pc_norm, introduced_on)
+      and docs/sql/sspl reading postcode_simd (key pc_norm), with no default or cross-product
+      fallback. Each has standalone link_by_era.sql (id, postcode, analysis_year; edition by
+      PHS v3.5 Table 4) and link_latest.sql (id, postcode; one edition throughout), with
+      numbered steps distinguishing guidance from project choices. They share a 41-column
+      core through band_direction, then append different own-record context: SSPL has 91
+      columns, SPD era/latest 107. Select common columns by name when combining results.
+      The SPD set selects the latest life per full NRS key, then prefers live, whole or A,
+      newest introduction; a best B/C-only record gets split_a_missing, a tie gets
+      ambiguous_postcode, both without SIMD. SSPL needs neither selection step. Both follow
+      LinkedSmallUserPostcode to a small-user record: SPD uses the exact suffix; SSPL accepts
+      an A alias only for a whole record flagged SplitIndicator Y, and cannot resolve B/C.
+      NO LINKP gets po_box, NO LINK/blank/null gets unlinked_large_user, without SIMD.
+      The source record supplies all 14 stored measures and selected-vintage geographies;
+      the matched record's own fields remain context. No chaining through large users.
+    reason: >-
+      Product and edition policy remain explicit study choices, but NRS recommends SSPL
+      for statistical production and SPD for operational/administrative use. Applying
+      linked-small-user geography to SSPL is a project interpretation of PHS Appendix A,
+      which describes links and absent geography for PO boxes/unlinked large users but
+      does not explicitly settle overriding geography already allocated in SSPL. Absence
+      of contrary NRS guidance is not endorsement. Preserve the chosen policy pending
+      authoritative confirmation or comparison with a PHS postcode-level oracle; retaining
+      own-record context makes its effect visible. The SSPL suffix rule is also a project
+      interpretation. Exact PHS lookup parity remains unverified.
     evidence: "PHS v3.5 Appendix A pp.28-30, Table 4 p.17, sections 3.1-3.4; PHS postcode-file page (most recent version, A part only); NRS SSPL information note and 2026/2 dictionary; NRS SPD 2026/2 dictionary on PO-box grid references. Worked example AB24 2TY: own 2020v2 quintile 5, linked AB24 2TN quintile 1, identical in both tables. Plan: docs/plans/SQL_Two_Products_Plan.md."
 
   - id: sql-as-of-address-date
     date: 2026-09-13
     status: implemented
-    decision: "The SPD set has a third query, link_as_of.sql, with input id, postcode, address_date, analysis_year. It uses the postcode life whose half-open interval [introduced_on, deleted_on) contains the address date, applies the same A-part rule among those lives, follows a large user's link to the small-user life valid on the same date, and still chooses the edition from analysis_year. When no life contains the date it reports postcode_not_yet_introduced, between_lives or postcode_deleted_by_date with the nearest lives' dates as context, and missing_address_date when no date was given. All three queries share one output contract, with address_date null where it does not apply. The SSPL set has no dated query because NRS kept one life per postcode."
-    reason: "A latest-postcode query gives a re-used postcode the new location's SIMD for an address that belonged to the old life: 2,957 SPD postcodes have a latest life in a different 2011 data zone from the life before, 2,030 of them with a different 2020v2 quintile. The date an address was recorded against a person says which life it belongs to; the year of the health data says which edition suits the analysis. Keeping the two inputs apart keeps both choices visible. The three failure statuses turn a silent wrong answer into a reviewable address-quality finding."
+    decision: >-
+      The SPD set adds link_as_of.sql with input id, postcode, address_date, analysis_year.
+      As a project policy, select lives in [introduced_on, deleted_on), apply the whole/A
+      preference among valid lives, follow a large user's exact link to the small-user life
+      valid on that date, and choose the edition from analysis_year. Report
+      postcode_not_yet_introduced, between_lives or postcode_deleted_by_date when no life
+      contains the date, and missing_address_date for a known key with no date. Return
+      first_introduced_on, previous_life_deleted_on and next_life_introduced_on as context.
+      The 41-column core is shared with the other queries, but the added dates make 110
+      total columns. SSPL has no dated query because NRS kept one life per postcode.
+    reason: >-
+      Latest-life matching can assign a re-used postcode's new location to an older address:
+      2,957 reviewed SPD postcodes have a latest life in a different 2011 zone from the life
+      before, 2,030 with a different 2020v2 quintile. A reliable address date can distinguish
+      these lives; a general CHI record edit timestamp must not be assumed to describe
+      residence without checking its meaning. Keep address date separate from the health
+      data year. This policy does not reconstruct historical administrative or rurality
+      snapshots; context remains what the downloaded release supplies for the selected life.
     evidence: "FK17 8DS: 1975 resolves to the 1973 life in S01013116 (quintile 5), 1990 to the 1978 life in S01013113 (quintile 3), June 1978 falls between the lives. TD9 7PQ: matched on 15 May 1990 with matched_is_current false, deleted by date on its deletion day, not yet introduced in 1970. tests/test_sql_sets.py covers the interval boundaries, the gap, the split and link rules on a date, and every recorded life on its own introduction day against the built table."
+
+  - id: sql-review-corrections
+    date: 2026-09-13
+    status: implemented
+    decision: >-
+      Correct SQL Server bit predicates to is_current = 1. Resolve dated lookups per distinct
+      normalised postcode/address-date pair and join back to original inputs, without an
+      execution-dependent row number; preserve duplicates and null IDs. Test output mappings
+      independently of the generator, including a deliberately swapped quintile/decile
+      regression, every stored edition, selected geographies and own-record context.
+      Clarify the preceding decisions' output contracts and guidance claims without changing
+      postcode linkage policy, source pins or stored data values.
+    reason: >-
+      SQL Server requires a predicate for bit fields and does not materialise CTEs; unordered
+      ROW_NUMBER values are not stable join keys across references. A shared production/test
+      mapping can hide column swaps. Reviewers must distinguish documented guidance,
+      project interpretations and native runtime verification that remains outstanding.
+    evidence: >-
+      Microsoft Learn: bit (Transact-SQL), CASE (Transact-SQL), WITH common_table_expression
+      (Transact-SQL), ROW_NUMBER (Transact-SQL). tests/test_sql_sets.py exercises generated
+      queries in DuckDB; these checks do not establish SQL Server runtime compatibility.

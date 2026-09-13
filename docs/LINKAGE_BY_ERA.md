@@ -17,6 +17,9 @@ Each set has `link_by_era.sql` (edition by the year of the health data) and `lin
 from `-- BEGIN shared` to `-- END shared` is identical and a test checks it. The SPD set has
 a third query, `link_as_of.sql`, described after the steps.
 
+No automatic default does not mean equal guidance: [NRS recommends SSPL for statistical
+production and SPD for operational/administrative use](https://www.nrscotland.gov.uk/publications/geography-scottish-statistics-postcode-lookup-information-note/).
+
 ## The steps
 
 **Step 1, input.** The first `SELECT` is the worked example, AB24 2TY in 2020. Replace it with
@@ -39,7 +42,7 @@ one line marked `-- EDIT EDITION`, for the one-edition-throughout approach of se
 **Step 4, latest life, SPD only.** The directory keeps every life of a postcode. PHS's postcode
 file is "based on the most recent version of a postcode" and the SSPL keeps "only the latest
 version", so the query takes the newest introduction of each full NRS key across both user
-types. This is not matching on the event date; that belongs to the Python API.
+types. This is not matching on an address date; use `link_as_of.sql` for that question.
 
 **Step 5, split parts, SPD only.** An ordinary postcode can be several A, B and C rows. PHS
 "lookups include only the A part"; NRS uses A because it "contains more addresses". The
@@ -51,7 +54,7 @@ split, reported as `a_part`.
 
 **Step 6, large users, both sets.** PHS v3.5 Appendix A, printed p.30: a large-user postcode
 has no boundary; where NRS could link it to a small-user postcode, that postcode supplies the
-geography; a PO box or an unlinked large user has no geography. Both queries therefore follow
+geography; it describes no geography for PO boxes and unlinked large users. Both queries follow
 `LinkedSmallUserPostcode` to a small-user record in the same product. The SPD keeps the
 linked key's suffix, so "AB1 2CDB" resolves to that B part exactly. The SSPL keeps an A
 suffix on a link although its small-user rows are whole, so a link with an A suffix matches
@@ -59,13 +62,16 @@ the record flagged `SplitIndicator` Y; a B or C suffix cannot resolve. `NO LINKP
 as `po_box` and `NO LINK`, blank or null as `unlinked_large_user`, both without SIMD. There is
 no fallback to the large user's own zone, no chain through a second large user and no use of
 the other product. The large user's own fields are returned as context so the effect of the
-link is visible. NRS publishes nothing against following the link; its SPD dictionary calls
-PO-box grid references low quality because they point at the sorting office.
+link is visible. Applying this rule to SSPL is a **project interpretation**, not an explicit
+instruction to override its already allocated geography. Appendix A does not settle that
+own-versus-linked disagreement. The policy stays in place pending authoritative confirmation
+or comparison with a PHS postcode-level oracle; absence of contrary NRS guidance is not
+endorsement. The SSPL A-suffix resolution is also a project reading of its dictionary.
 
 **Step 7, values.** The stored values of the chosen edition are copied from the record that
 supplies the geography, through the data zone of that edition's vintage; the intermediate
 zone of the same vintage, which nests those data zones, comes with it. All 14 measures come
-back: PHS population-weighted Scotland, board, HSCP and council quintiles and deciles, the two
+back: SIMD rank, PHS population-weighted Scotland, board, HSCP and council quintiles and deciles, the two
 15% flags, and the Scottish Government unweighted Scotland quintile, decile and vigintile.
 The three PHS geography codes are the areas PHS used for the local bands (section 3.4); use
 them with those bands, not the NRS administrative codes. Nothing is recalculated. Band 1 is
@@ -80,9 +86,10 @@ index, edition, weighting, direction and level.
 
 ## The dated query, SPD only
 
-A patient's postcode usually comes with the date it was recorded against the person, for
-example the CHI record's edit date. `link_as_of.sql` takes `id, postcode, address_date,
-analysis_year` and changes only steps 4 to 6:
+`link_as_of.sql` takes `id, postcode, address_date, analysis_year`. The date must relate to
+that person's address; a general CHI record edit date must not be assumed to be a residence
+date without checking its meaning. This is a **project policy** for selecting postcode lives,
+not a claim that PHS mandates dated matching. It changes the postcode selection in steps 4 to 6:
 
 - **Step 4** takes the lives of the postcode that contain the address date, where a life runs
   from `introduced_on` up to but not including `deleted_on`. A postcode deleted and later
@@ -91,8 +98,16 @@ analysis_year` and changes only steps 4 to 6:
 - **Step 6** follows a large user's link to the small-user life valid on the same date.
 
 The edition still comes from `analysis_year`, because when a person lived at a postcode and
-which SIMD suits the health data are different questions. Pass the same year for both only
-as a stated choice.
+which SIMD suits the health data are different questions. Use a health-event date as
+`address_date` only if it describes the address being linked, and record that assumption.
+
+Each distinct normalised postcode/address-date pair is resolved once, then joined back to
+the original inputs. This preserves duplicate rows and duplicate/null IDs without an unstable
+generated row number. Different analysis years still select their own editions.
+
+This selects a postcode life from the downloaded SPD release. It does not reconstruct what
+administrative boundaries or rurality classifications were published on the address date;
+the returned context remains the fields supplied for that life in the downloaded release.
 
 When no life contains the date, the query says where the date falls and returns the nearest
 lives as context (`first_introduced_on`, `previous_life_deleted_on`, `next_life_introduced_on`):
@@ -122,7 +137,13 @@ The Python API answers the same question for one postcode or a frame
 (`lookup.lookup(h, postcode, edition, on=date)`, `lookup.attach`, `lookup.attach_by_era`)
 with its own large-user policy, see [Examples](EXAMPLES.md).
 
-## The output, the same in both sets
+## The output: common core, different context
+
+The first 41 columns, from `id` through `band_direction`, are identical in name and order
+across all five queries. Own-record context follows and differs by product: 91 total columns
+for SSPL, 107 for SPD era/latest and 110 for SPD as-of. Select common columns explicitly by
+name when combining results; the full outputs are not interchangeable via `SELECT *` or
+positional `UNION ALL`.
 
 | Group | Columns |
 | --- | --- |
@@ -160,13 +181,14 @@ zone S01006671 (2020v2 quintile 5) while AB24 2TN sits in S01006676 (quintile 1)
 
 Where both products supply a value for the same postcode from the same small-user postcode,
 the values agree whenever the two products place that postcode in the same data zone. Where
-they differ, the difference is the allocation method described in
-[How it is built](HOW_IT_IS_BUILT.md), never the SQL. A test checks both statements on the
-built tables.
+they differ, the allocation methods described in [How it is built](HOW_IT_IS_BUILT.md) are
+relevant context, not proof of the cause. Tests check same-zone quintile agreement and each
+query's fidelity to its own source; they do not isolate why the source products differ.
 
 ## What is not claimed
 
 The queries are tested on DuckDB; SQL Server syntax is intended but not verified. Neither
 set has been compared with PHS's own postcode-level lookup, which is not published openly.
-The representative order in step 5 and the SSPL suffix reading in step 6 are project
-choices, stated as such in the files.
+The representative order in step 5, applying linked-small-user geography to SSPL and its
+suffix reading in step 6, and date-valid selection are project choices, stated as such in
+the files. These interpretations remain distinct from verified PHS postcode-level parity.

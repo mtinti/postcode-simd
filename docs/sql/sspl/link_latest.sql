@@ -261,11 +261,11 @@ geography_source AS (
     WHERE spd_user_type = 'small_user' AND SplitIndicator = 'Y'
 ),
 matched AS (
-    -- STEP 6b. LARGE USERS. PHS v3.5 Appendix A, p.30: a large-user postcode has no boundary;
-    -- where NRS could link it to a small-user postcode, that postcode supplies the geography;
-    -- a PO box (NO LINKP) or an unlinked large user (NO LINK) gets none. A small user supplies
-    -- its own geography. Never the large user's own zone, never another product, never a chain
-    -- through a second large user. The large user's own fields stay visible as context below.
+    -- STEP 6b. LARGE USERS. Project interpretation of PHS v3.5 Appendix A, p.30: use the
+    -- linked small user's geography; no SIMD for PO boxes (NO LINKP) or unlinked large users
+    -- (NO LINK). Appendix A does not explicitly settle overriding SSPL's own allocated zone.
+    -- We retain this policy pending confirmation; the large user's own fields remain context.
+    -- A small user supplies its own geography. No cross-product fallback or large-user chain.
     SELECT c.*,
            r.pc_norm AS matched_pc_norm, r.introduced_on AS matched_introduced_on,
            r.is_current AS matched_is_current, r.spd_user_type AS matched_user_type,

@@ -12,11 +12,30 @@ import pandas as pd
 import pytest
 import yaml
 
-from simd_ingest.sql_examples import FILES, MEASURES, PRODUCTS, VARIANTS as FILE_OF, render, shared_block
+from simd_ingest import sql_examples
+from simd_ingest.sql_examples import FILES, PRODUCTS, VARIANTS as FILE_OF, render, shared_block
 from support import ROOT, known_snapshot
 
 SQL = ROOT / "docs/sql"
 EDITIONS = ("2004", "2006", "2009v2", "2012", "2016", "2020v2")
+# Independent output-to-source expectations: never import the generator's mapping here.
+# Distinct fixture values below expose swapped columns even if the generator stays consistent.
+MEASURES = [
+    ("simd_rank", "rank"),
+    ("phs_pw_scotland_quintile", "pw_scotland_quintile"),
+    ("phs_pw_scotland_decile", "pw_scotland_decile"),
+    ("phs_pw_hb_quintile", "pw_hb_quintile"),
+    ("phs_pw_hb_decile", "pw_hb_decile"),
+    ("phs_pw_hscp_quintile", "pw_hscp_quintile"),
+    ("phs_pw_hscp_decile", "pw_hscp_decile"),
+    ("phs_pw_ca_quintile", "pw_ca_quintile"),
+    ("phs_pw_ca_decile", "pw_ca_decile"),
+    ("phs_pw_most15pc", "most15pc"),
+    ("phs_pw_least15pc", "least15pc"),
+    ("gov_uw_scotland_quintile", "uw_scotland_quintile"),
+    ("gov_uw_scotland_decile", "uw_scotland_decile"),
+    ("gov_uw_scotland_vigintile", "uw_scotland_vigintile"),
+]
 VINTAGE = {e: 2011 if e in ("2016", "2020v2") else 2001 for e in EDITIONS}
 VARIANTS = ("link_by_era", "link_latest")
 RAW = {name: [f["name"] for f in yaml.safe_load((ROOT / "simd_ingest" / spec["schema"]).read_text())["fields"]
@@ -111,6 +130,37 @@ def test_committed_file_matches_generator(name, variant):
     assert sorted(p.name for p in (SQL / name).glob("*.sql")) == sorted(FILE_OF[v] for v in FILES[name])
 
 
+@pytest.mark.parametrize("name", PRODUCTS)
+def test_independent_expectations_cover_every_stored_measure(name):
+    fields = yaml.safe_load((ROOT / "simd_ingest" / PRODUCTS[name]["schema"]).read_text())["fields"]
+    expected = {f"simd{edition}_{suffix}" for edition in EDITIONS for _, suffix in MEASURES}
+    assert {f["name"] for f in fields if f["name"].startswith("simd")} == expected
+    assert len(MEASURES) == 14 and len(expected) == 84
+
+
+@pytest.mark.parametrize("name", PRODUCTS)
+def test_independent_oracle_rejects_a_swapped_generator_mapping(con, name, monkeypatch):
+    row = record(name)
+    setup(con, name, [row])
+    swapped = {"uw_scotland_quintile": "uw_scotland_decile", "uw_scotland_decile": "uw_scotland_quintile"}
+    monkeypatch.setattr(sql_examples, "MEASURES",
+                        [(out, swapped.get(suffix, suffix)) for out, suffix in sql_examples.MEASURES])
+    out = run(con, name, "link_by_era", inputs(), render(name, "era")).iloc[0]
+    with pytest.raises(AssertionError, match="gov_uw_scotland_quintile"):
+        expect_edition(out, row, "2020v2")
+
+
+def test_sql_server_predicates_and_dated_join_keys():
+    # Targeted regressions, not a substitute for running the queries on SQL Server.
+    for variant in VARIANTS:
+        sql = (SQL / "spd" / f"{variant}.sql").read_text()
+        assert "CASE WHEN l.is_current = 1 THEN" in sql
+        assert "CASE WHEN l.is_current THEN" not in sql
+    dated = (SQL / "spd/link_as_of.sql").read_text()
+    assert "ORDER BY (SELECT NULL)" not in dated and "input_row" not in dated
+    assert "SELECT DISTINCT postcode_key, address_date FROM requested" in dated
+
+
 def test_only_the_spd_set_can_answer_a_dated_question():
     with pytest.raises(ValueError, match="one life"):
         render("sspl", "asof")
@@ -123,14 +173,20 @@ def test_shared_steps_are_identical_within_a_set(name):
     assert latest.count("-- EDIT EDITION") == 1 and era.count("-- EDIT EDITION") == 0
 
 
-@pytest.mark.parametrize("name", PRODUCTS)
-@pytest.mark.parametrize("variant", VARIANTS)
-def test_output_contract_is_the_same_in_both_sets(con, name, variant):
+@pytest.mark.parametrize("name,variant", [(n, FILE_OF[v][:-4]) for n, vs in FILES.items() for v in vs])
+def test_common_output_core_and_product_specific_context(con, name, variant):
     setup(con, name, [record(name)])
     out = run(con, name, variant, inputs())
     assert list(out.columns[:len(CONTRACT)]) == CONTRACT
     assert out.columns.str.lower().is_unique
-    assert set(RAW[name]) - {"Postcode"} <= set(out.columns) and "matched_postcode" in out.columns
+    context = ["matched_postcode" if c == "Postcode" else c for c in RAW[name]]
+    if name == "spd":
+        context.insert(0, "matched_pc_base")
+    if variant == "link_as_of":
+        context[:0] = ["first_introduced_on", "previous_life_deleted_on", "next_life_introduced_on"]
+    assert list(out.columns[len(CONTRACT):]) == context
+    assert len(CONTRACT) == 41
+    assert len(out.columns) == (110 if variant == "link_as_of" else 107 if name == "spd" else 91)
 
 
 # --- steps 1 to 3: input, key, edition ---------------------------------------------------
@@ -213,7 +269,7 @@ def test_spd_representative_rule(con, rows, key, status, has_simd):
     out = run(con, "spd", "link_latest", inputs()).iloc[0]
     assert (out.matched_pc_norm, out.postcode_status) == (key, status)
     assert out.simd_status == ("matched" if has_simd else status)
-    assert out.simd_rank == (out.simd_rank if has_simd else out.simd_rank) if has_simd else pd.isna(out.simd_rank)
+    assert pd.notna(out.simd_rank) if has_simd else pd.isna(out.simd_rank)
 
 
 @pytest.mark.parametrize("live,split", [(True, "N"), (False, "N"), (True, "Y"), (False, "Y")])
@@ -320,15 +376,19 @@ def real():
     con = duckdb.connect()
     for name, spec in PRODUCTS.items():
         con.execute(f"CREATE TABLE {spec['table']} AS SELECT * FROM read_parquet('{paths[name]}')")
+        key = "pc_norm, introduced_on" if name == "spd" else "pc_norm"
+        con.execute(f"ALTER TABLE {spec['table']} ADD PRIMARY KEY ({key})")
     yield con
     con.close()
 
 
 @pytest.mark.parametrize("name", PRODUCTS)
-def test_real_table_every_postcode_once_and_every_value_traceable(real, name):
+@pytest.mark.parametrize("year,edition", [(2000, "2004"), (2005, "2006"), (2008, "2009v2"),
+                                          (2011, "2012"), (2015, "2016"), (2020, "2020v2")])
+def test_real_table_every_postcode_once_and_every_value_traceable(real, name, year, edition):
     table = PRODUCTS[name]["table"]
     key = "pc_base" if name == "spd" else "pc_norm"
-    real.execute(f"CREATE OR REPLACE VIEW cohort AS SELECT DISTINCT {key} AS id, {key} AS postcode, 2020 AS analysis_year FROM {table}")
+    real.execute(f"CREATE OR REPLACE VIEW cohort AS SELECT DISTINCT {key} AS id, {key} AS postcode, {year} AS analysis_year FROM {table}")
     sql = (SQL / name / "link_by_era.sql").read_text().replace(DEMO["link_by_era"], "    SELECT id, postcode, analysis_year FROM cohort")
     real.execute("CREATE OR REPLACE TABLE result AS " + sql)
     total = real.execute("SELECT COUNT(*) FROM cohort").fetchone()[0]
@@ -338,24 +398,30 @@ def test_real_table_every_postcode_once_and_every_value_traceable(real, name):
                              "unlinked_large_user", "po_box", "split_a_missing", "ambiguous_postcode"}
     assert real.execute("SELECT COUNT(*) FROM result WHERE simd_status = 'matched' AND postcode_status NOT IN ('matched','a_part','linked_small_user')").fetchone()[0] == 0
     assert real.execute("SELECT COUNT(*) FROM result WHERE simd_status <> 'matched' AND simd_rank IS NOT NULL").fetchone()[0] == 0
-    # Every value on a matched row is the stored 2020v2 value of the record that supplied it.
+    # Every selected value traces to its source, including nulls on an incomplete source row.
     join = "p.pc_norm = r.simd_source_pc_norm" + (" AND p.introduced_on = r.simd_source_introduced_on" if name == "spd" else "")
-    differences = " OR ".join([f"r.{out} IS DISTINCT FROM p.simd2020v2_{suffix}" for out, suffix in MEASURES]
-                              + ["r.data_zone_code IS DISTINCT FROM p.DataZone2011Code",
-                                 "r.intermediate_zone_code IS DISTINCT FROM p.IntermediateZone2011Code"]
-                              + [f"r.phs_{g}_code IS DISTINCT FROM p.phs_dz2011_{g}" for g in ("hb", "hscp", "ca")])
-    assert real.execute(f"SELECT COUNT(*) FROM result r JOIN {table} p ON {join} WHERE r.simd_status = 'matched' AND ({differences})").fetchone()[0] == 0
+    vintage = VINTAGE[edition]
+    differences = " OR ".join([f"r.{out} IS DISTINCT FROM p.simd{edition}_{suffix}" for out, suffix in MEASURES]
+                              + [f"r.data_zone_code IS DISTINCT FROM p.DataZone{vintage}Code",
+                                 f"r.intermediate_zone_code IS DISTINCT FROM p.IntermediateZone{vintage}Code"]
+                              + [f"r.phs_{g}_code IS DISTINCT FROM p.phs_dz{vintage}_{g}" for g in ("hb", "hscp", "ca")])
+    assert real.execute(f"SELECT COUNT(*) FROM result r LEFT JOIN {table} p ON {join} WHERE ({differences})").fetchone()[0] == 0
     assert real.execute(f"SELECT COUNT(*) FROM result r JOIN {table} p ON {join} WHERE p.spd_user_type <> 'small_user'").fetchone()[0] == 0
-    ex = real.execute("SELECT * FROM result WHERE id = 'AB242TY'").df().iloc[0]
-    assert (ex.postcode_status, ex.phs_pw_scotland_quintile, ex.simd_source_pc_norm, ex.DataZone2011Code) == ("linked_small_user", 1, "AB242TN", "S01006671")
+    # Raw context is from the matched postcode, not silently replaced with the link target.
+    own_join = "p.pc_norm = r.matched_pc_norm" + (" AND p.introduced_on = r.matched_introduced_on" if name == "spd" else "")
+    own_differences = " OR ".join(f"r.{'matched_postcode' if c == 'Postcode' else c} IS DISTINCT FROM p.{c}" for c in RAW[name])
+    assert real.execute(f"SELECT COUNT(*) FROM result r LEFT JOIN {table} p ON {own_join} WHERE ({own_differences})").fetchone()[0] == 0
+    assert real.execute("SELECT DISTINCT simd_edition, data_zone_vintage FROM result").fetchall() == [(edition, vintage)]
+    if edition == "2020v2":
+        ex = real.execute("SELECT * FROM result WHERE id = 'AB242TY'").df().iloc[0]
+        assert (ex.postcode_status, ex.phs_pw_scotland_quintile, ex.simd_source_pc_norm, ex.DataZone2011Code) == ("linked_small_user", 1, "AB242TN", "S01006671")
     manifest = json.loads((ROOT / "results/manifest.json").read_text())
     if known_snapshot(manifest, "history") and name == "spd":
         assert real.execute("SELECT COUNT(*) FROM result WHERE postcode_status = 'linked_small_user' AND matched_is_current").fetchone()[0] == 3249
 
 
-def test_real_tables_agree_on_the_worked_example_and_differ_only_by_allocation(real):
-    """Where both products supply a value for the same postcode from the same small-user
-    postcode, any difference is the two products' data-zone allocation, never the SQL."""
+def test_real_tables_same_zone_agrees_but_postcode_allocations_can_differ(real):
+    """An observed zone/value comparison, not proof of why the products differ."""
     outs = {}
     for name, spec in PRODUCTS.items():
         key = "pc_base" if name == "spd" else "pc_norm"
@@ -457,6 +523,46 @@ def test_as_of_every_input_row_comes_back_once(con):
     assert sorted(out.postcode_status) == ["between_lives", "matched", "matched", "not_found"]
     assert list(out.columns[:len(CONTRACT)]) == CONTRACT and out.columns.str.lower().is_unique
     assert run(con, "spd", "link_as_of", cohort.iloc[:0]).empty
+
+
+def test_as_of_pairs_are_stable_with_duplicate_ids_dates_and_input_order(con):
+    rows = [record("spd", **r) for r in LIVES] + [record("spd", "AB11AB", intro="1970-01-01", seed=3)]
+    setup(con, "spd", rows)
+    cases = [
+        ("AB1 1AA", "1975-06-01", 2020, "matched", 1, "2020v2"),
+        ("AB1 1AA", "1975-06-01", 2005, "matched", 1, "2006"),
+        (" ab1 1aa ", "1975-06-01", 2020, "matched", 1, "2020v2"),
+        ("AB1 1AA", "1990-06-01", 2020, "matched", 2, "2020v2"),
+        ("AB1 1AA", "1978-06-01", 2020, "between_lives", None, "2020v2"),
+        ("AB1 1AB", "1975-06-01", 2020, "matched", 3, "2020v2"),
+        ("AB1 1AA", None, 2020, "missing_address_date", None, "2020v2"),
+        ("ZZ1 1ZZ", None, 2020, "not_found", None, "2020v2"),
+        (None, "1975-06-01", 2020, "missing_postcode", None, "2020v2"),
+    ]
+    cohort = pd.concat([inputs(pc, year, on) for pc, on, year, *_ in cases], ignore_index=True)
+    cohort["id"] = pd.Series([None, 1, 1, None, 1, 1, None, 1, None], dtype="Int64")
+    expected_rows = []
+    for i, (_, _, _, status, seed, edition) in enumerate(cases):
+        one = run(con, "spd", "link_as_of", cohort.iloc[[i]])
+        assert one.iloc[0].postcode_status == status
+        if seed:
+            expect_edition(one.iloc[0], record("spd", seed=seed), edition)
+        else:
+            assert one[[out for out, _ in MEASURES]].isna().all().all()
+        expected_rows.append(one)
+    # Add exact duplicates too. Expected output comes from checked, isolated lookups.
+    cohort = pd.concat([cohort, cohort.iloc[[0, 6]]], ignore_index=True)
+    expected = pd.concat([*expected_rows, expected_rows[0], expected_rows[6]], ignore_index=True)
+
+    def canonical(frame):
+        # Concatenating all-null single-row results can change pandas' inferred dtypes.
+        return frame.convert_dtypes().sort_values(
+            ["postcode", "address_date", "analysis_year", "id"], na_position="last").reset_index(drop=True)
+
+    for ordered in (cohort, cohort.iloc[::-1], cohort.sample(frac=1, random_state=42)):
+        # Materialise the permutation: DuckDB's pandas scanner rejects negative strides.
+        out = run(con, "spd", "link_as_of", ordered.copy())
+        pd.testing.assert_frame_equal(canonical(out), canonical(expected))
 
 
 def test_as_of_real_recycled_and_deleted_postcodes(real):

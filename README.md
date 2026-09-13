@@ -106,13 +106,18 @@ postcode product and neither the default: `docs/sql/spd/` reads the history tabl
 `docs/sql/sspl/` reads the main table. Each set has `link_by_era.sql`, which chooses the SIMD
 edition from the year of the health data by PHS Table 4, and `link_latest.sql`, which uses
 one edition throughout. Every query is standalone, written as numbered steps that name the
-guidance they follow, and returns the same columns: statuses, product provenance, both record
-keys, the edition's data zone and PHS geography codes, all 14 stored measures, and the matched
-record's own fields as context. The SPD set selects the latest life and the A part itself;
+guidance or project choice. All five queries share 41 core columns: statuses, product provenance,
+both record keys, the edition's data and intermediate zones and PHS geography codes, and all
+14 stored measures. Product-specific own-record context follows (91 total columns for SSPL,
+107 for SPD era/latest, 110 for SPD as-of); select shared columns by name when combining results.
+The SPD set selects the latest life and the A part itself;
 the SSPL set does not, because NRS did. Both attach a large user's SIMD through its linked
-small-user postcode, as PHS does, and give PO boxes none. The SPD set adds `link_as_of.sql`
-for a postcode recorded with a date: it uses the postcode life valid on that date, which is
-how a deleted or re-used postcode is resolved correctly. The step-by-step commentary is in
+small-user postcode and give PO boxes none. Applying that rule to SSPL is a project
+interpretation of PHS Appendix A, not verified parity with PHS's own lookup.
+[NRS recommends SSPL for statistical production and SPD for operational/administrative use](https://www.nrscotland.gov.uk/publications/geography-scottish-statistics-postcode-lookup-information-note/);
+the project keeps this choice explicit. The SPD set adds `link_as_of.sql` for a reliable
+address date: it selects the postcode life valid on that date, not historical administrative
+or rurality snapshots. The step-by-step commentary is in
 [LINKAGE_BY_ERA.md](docs/LINKAGE_BY_ERA.md).
 
 The [Python helpers](docs/EXAMPLES.md) read either table: current lookups against the main

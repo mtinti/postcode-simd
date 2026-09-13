@@ -4,15 +4,20 @@ A study makes two choices, in this order. Neither has a default.
 
 1. **Which postcode product.** `spd/` reads the history table, `sspl/` reads the main table.
    The two NRS products allocate data zones differently, so the SIMD attached to a postcode
-   can differ between them. Use one product for the whole study and say which.
+   can differ between them. [NRS recommends SSPL for statistical production and SPD for
+   operational/administrative use](https://www.nrscotland.gov.uk/publications/geography-scottish-statistics-postcode-lookup-information-note/).
+   The project leaves the choice explicit; that does not make them equally recommended for
+   statistics. Use one product for the whole study and say which.
 2. **Which edition policy.** `link_by_era.sql` chooses the SIMD edition from the year of the
    health data (PHS v3.5 Table 4). `link_latest.sql` uses one edition throughout, edited on
    one marked line.
 
-The SPD set has a third query, `link_as_of.sql`, for a postcode that comes with the date it
-was recorded against the person: it uses the postcode life valid on that date, not the latest
-life, and still chooses the edition from the year of the health data. The SSPL cannot answer
-that question, because NRS kept one life per postcode.
+The SPD set has a third query, `link_as_of.sql`, for a postcode with a reliable address date:
+it uses the postcode life valid on that date, not the latest life, and still chooses the
+edition from the year of the health data. This is a project policy, not a reconstruction of
+historical administrative or rurality snapshots. A general record edit date is not necessarily
+an address date. The SSPL cannot answer a postcode-life question, because NRS kept one life
+per postcode.
 
 | Set | Import this file | As table | With key | The query does |
 | --- | --- | --- | --- | --- |
@@ -21,13 +26,20 @@ that question, because NRS kept one life per postcode.
 
 Every query is standalone: no view, no other script, no other product. Each reads top to
 bottom as numbered steps, and each step names the guidance it follows or says it is a
-project choice. The four files are generated from the schemas by
+project choice. The five files are generated from the schemas by
 `python -m simd_ingest.sql_examples`, so a new SIMD edition or a changed header regenerates
 them; a test fails if a committed file drifts from the generator.
 
-Both sets return the same columns in the same order, so a pipeline switches product by
-changing the file path and the table name. The columns and statuses are described in
+All five queries share the first **41 columns**, through `band_direction`. They then append
+different own-record context: **91 columns** in SSPL, **107** in SPD era/latest, **110** in
+SPD as-of. To combine products, select the shared columns by name; do not use `SELECT *` or
+a positional union of the full results. The columns and statuses are described in
 [LINKAGE_BY_ERA.md](../LINKAGE_BY_ERA.md).
+
+Both sets follow large-user links and withhold SIMD for PO boxes and unlinked large users.
+Applying that rule to SSPL is a project interpretation of PHS Appendix A: it does not
+explicitly settle overriding geography already allocated in SSPL. Own-record geography is
+kept as context; exact equivalence to PHS's postcode-level lookup remains unverified.
 
 Run one, from the repository root, with DuckDB:
 
