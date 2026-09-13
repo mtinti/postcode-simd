@@ -168,6 +168,7 @@ chosen AS (
 def _source_columns(editions: list) -> str:
     cols = ["pc_norm AS source_pc_norm", "introduced_on AS source_introduced_on", "is_current AS source_is_current"]
     cols += [f"DataZone{v}Code AS source_dz{v}" for v in _vintages(editions)]
+    cols += [f"IntermediateZone{v}Code AS source_iz{v}" for v in _vintages(editions)]
     cols += [f"phs_dz{v}_{g}" for v in _vintages(editions) for g in GEOGRAPHY]
     cols += [f"simd{ed}_{suffix}" for ed, _ in editions for _, suffix in MEASURES]
     return ",\n           ".join(cols)
@@ -300,7 +301,8 @@ matched AS (
 
 def _values_and_report(name: str, p: dict, editions: list, raw: list) -> str:
     vintages = _vintages(editions)
-    selects = [_case("m.data_zone_vintage", [(v, f"m.source_dz{v}") for v in vintages], "data_zone_code", quote=False)]
+    selects = [_case("m.data_zone_vintage", [(v, f"m.source_dz{v}") for v in vintages], "data_zone_code", quote=False),
+               _case("m.data_zone_vintage", [(v, f"m.source_iz{v}") for v in vintages], "intermediate_zone_code", quote=False)]
     for g in GEOGRAPHY:
         selects.append(_case("m.data_zone_vintage", [(v, f"m.phs_dz{v}_{g}") for v in vintages], f"phs_{g}_code", quote=False))
     for out, suffix in MEASURES:
@@ -343,7 +345,8 @@ def _values_and_report(name: str, p: dict, editions: list, raw: list) -> str:
     return f"""selected AS (
     -- STEP 7. VALUES. Copy the stored values of the chosen edition from the record that
     -- supplies the geography, through the data zone of that edition's vintage (PHS Table 4:
-    -- 2001 zones for 2004 to 2012, 2011 zones for 2016 and 2020v2). The three PHS codes are the
+    -- 2001 zones for 2004 to 2012, 2011 zones for 2016 and 2020v2). The intermediate zone of
+    -- the same vintage, which nests those data zones, comes with it. The three PHS codes are the
     -- areas PHS used for the within-board, within-HSCP and within-council bands (section 3.4):
     -- use them, not the NRS administrative codes, with those bands. Every one of the 14
     -- stored measures is copied: PHS population-weighted bands and flags (pw), Scottish
@@ -380,7 +383,7 @@ SELECT
        s.requested_link_postcode,
        s.source_pc_norm AS simd_source_pc_norm, s.source_introduced_on AS simd_source_introduced_on,
        s.source_is_current AS simd_source_is_current,
-       s.data_zone_code, s.phs_hb_code, s.phs_hscp_code, s.phs_ca_code,
+       s.data_zone_code, s.intermediate_zone_code, s.phs_hb_code, s.phs_hscp_code, s.phs_ca_code,
        {out_measures},
        s.band_direction,
        -- Own-record context: the matched record's NRS fields as ingested, names unchanged

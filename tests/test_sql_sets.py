@@ -27,7 +27,7 @@ CONTRACT = ["id", "postcode", "analysis_year", "postcode_key", "postcode_status"
             "index_source", "index_release", "allocation", "simd_edition", "edition_policy", "data_zone_vintage",
             "matched_pc_norm", "matched_introduced_on", "matched_is_current", "matched_user_type",
             "requested_link_postcode", "simd_source_pc_norm", "simd_source_introduced_on", "simd_source_is_current",
-            "data_zone_code", "phs_hb_code", "phs_hscp_code", "phs_ca_code",
+            "data_zone_code", "intermediate_zone_code", "phs_hb_code", "phs_hscp_code", "phs_ca_code",
             *[out for out, _ in MEASURES], "band_direction"]
 OK = ("matched", "a_part", "linked_small_user")
 
@@ -44,6 +44,7 @@ def record(name, pc="AB11AA", *, base=None, intro="2010-01-01", live=True, user=
     row.update(Postcode=pc[:-3] + " " + pc[-3:], SplitIndicator=split, LinkedSmallUserPostcode=link,
                PostcodeType="L" if user == "large_user" else "S",
                DataZone2001Code=f"dz2001-{seed}", DataZone2011Code=f"dz2011-{seed}",
+               IntermediateZone2001Code=f"iz2001-{seed}", IntermediateZone2011Code=f"iz2011-{seed}",
                pc_norm=pc, spd_user_type=user, introduced_on=pd.Timestamp(intro),
                deleted_on=pd.NaT if live else pd.Timestamp(intro) + pd.Timedelta(days=30), is_current=live)
     if name == "spd":
@@ -88,6 +89,7 @@ def expect_edition(out, row, edition):
     v = VINTAGE[edition]
     assert out.simd_edition == edition and out.data_zone_vintage == v
     assert out.data_zone_code == row[f"DataZone{v}Code"]
+    assert out.intermediate_zone_code == row[f"IntermediateZone{v}Code"]
     for g in ("hb", "hscp", "ca"):
         assert out[f"phs_{g}_code"] == row[f"phs_dz{v}_{g}"]
     assert out.band_direction == "1 = most deprived"
@@ -326,7 +328,8 @@ def test_real_table_every_postcode_once_and_every_value_traceable(real, name):
     # Every value on a matched row is the stored 2020v2 value of the record that supplied it.
     join = "p.pc_norm = r.simd_source_pc_norm" + (" AND p.introduced_on = r.simd_source_introduced_on" if name == "spd" else "")
     differences = " OR ".join([f"r.{out} IS DISTINCT FROM p.simd2020v2_{suffix}" for out, suffix in MEASURES]
-                              + ["r.data_zone_code IS DISTINCT FROM p.DataZone2011Code"]
+                              + ["r.data_zone_code IS DISTINCT FROM p.DataZone2011Code",
+                                 "r.intermediate_zone_code IS DISTINCT FROM p.IntermediateZone2011Code"]
                               + [f"r.phs_{g}_code IS DISTINCT FROM p.phs_dz2011_{g}" for g in ("hb", "hscp", "ca")])
     assert real.execute(f"SELECT COUNT(*) FROM result r JOIN {table} p ON {join} WHERE r.simd_status = 'matched' AND ({differences})").fetchone()[0] == 0
     assert real.execute(f"SELECT COUNT(*) FROM result r JOIN {table} p ON {join} WHERE p.spd_user_type <> 'small_user'").fetchone()[0] == 0

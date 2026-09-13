@@ -62,7 +62,8 @@ link is visible. NRS publishes nothing against following the link; its SPD dicti
 PO-box grid references low quality because they point at the sorting office.
 
 **Step 7, values.** The stored values of the chosen edition are copied from the record that
-supplies the geography, through the data zone of that edition's vintage. All 14 measures come
+supplies the geography, through the data zone of that edition's vintage; the intermediate
+zone of the same vintage, which nests those data zones, comes with it. All 14 measures come
 back: PHS population-weighted Scotland, board, HSCP and council quintiles and deciles, the two
 15% flags, and the Scottish Government unweighted Scotland quintile, decile and vigintile.
 The three PHS geography codes are the areas PHS used for the local bands (section 3.4); use
@@ -84,7 +85,7 @@ index, edition, weighting, direction and level.
 | Statuses | `postcode_status`, `simd_status` |
 | Provenance | `index_source`, `index_release`, `allocation`, `simd_edition`, `edition_policy`, `data_zone_vintage` |
 | Keys | `matched_pc_norm`, `matched_introduced_on`, `matched_is_current`, `matched_user_type`, `requested_link_postcode`, `simd_source_pc_norm`, `simd_source_introduced_on`, `simd_source_is_current` |
-| Geography used | `data_zone_code`, `phs_hb_code`, `phs_hscp_code`, `phs_ca_code` |
+| Geography used | `data_zone_code`, `intermediate_zone_code`, `phs_hb_code`, `phs_hscp_code`, `phs_ca_code` |
 | Measures | `simd_rank`, `phs_pw_scotland_quintile`, `phs_pw_scotland_decile`, `phs_pw_hb_quintile`, `phs_pw_hb_decile`, `phs_pw_hscp_quintile`, `phs_pw_hscp_decile`, `phs_pw_ca_quintile`, `phs_pw_ca_decile`, `phs_pw_most15pc`, `phs_pw_least15pc`, `gov_uw_scotland_quintile`, `gov_uw_scotland_decile`, `gov_uw_scotland_vigintile`, `band_direction` |
 | Own-record context | the matched record's NRS fields as ingested, names unchanged except `Postcode`, returned as `matched_postcode`; the SPD set adds `matched_pc_base` |
 
@@ -107,6 +108,7 @@ zone S01006671 (2020v2 quintile 5) while AB24 2TN sits in S01006676 (quintile 1)
 | `matched_pc_norm` | AB242TY | AB242TY |
 | `simd_source_pc_norm` | AB242TN | AB242TN |
 | `data_zone_code` | S01006676 | S01006676 |
+| `intermediate_zone_code` | S02001266 | S02001266 |
 | `phs_pw_scotland_quintile` | 1 | 1 |
 | `DataZone2011Code` (own record) | S01006671 | S01006671 |
 

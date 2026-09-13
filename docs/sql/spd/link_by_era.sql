@@ -97,6 +97,8 @@ geography_source AS (
            is_current AS source_is_current,
            DataZone2001Code AS source_dz2001,
            DataZone2011Code AS source_dz2011,
+           IntermediateZone2001Code AS source_iz2001,
+           IntermediateZone2011Code AS source_iz2011,
            phs_dz2001_hb,
            phs_dz2001_hscp,
            phs_dz2001_ca,
@@ -280,7 +282,8 @@ matched AS (
 selected AS (
     -- STEP 7. VALUES. Copy the stored values of the chosen edition from the record that
     -- supplies the geography, through the data zone of that edition's vintage (PHS Table 4:
-    -- 2001 zones for 2004 to 2012, 2011 zones for 2016 and 2020v2). The three PHS codes are the
+    -- 2001 zones for 2004 to 2012, 2011 zones for 2016 and 2020v2). The intermediate zone of
+    -- the same vintage, which nests those data zones, comes with it. The three PHS codes are the
     -- areas PHS used for the within-board, within-HSCP and within-council bands (section 3.4):
     -- use them, not the NRS administrative codes, with those bands. Every one of the 14
     -- stored measures is copied: PHS population-weighted bands and flags (pw), Scottish
@@ -292,6 +295,10 @@ selected AS (
                WHEN 2001     THEN m.source_dz2001
                WHEN 2011     THEN m.source_dz2011
            END AS data_zone_code,
+           CASE m.data_zone_vintage
+               WHEN 2001     THEN m.source_iz2001
+               WHEN 2011     THEN m.source_iz2011
+           END AS intermediate_zone_code,
            CASE m.data_zone_vintage
                WHEN 2001     THEN m.phs_dz2001_hb
                WHEN 2011     THEN m.phs_dz2011_hb
@@ -457,7 +464,7 @@ SELECT
        s.requested_link_postcode,
        s.source_pc_norm AS simd_source_pc_norm, s.source_introduced_on AS simd_source_introduced_on,
        s.source_is_current AS simd_source_is_current,
-       s.data_zone_code, s.phs_hb_code, s.phs_hscp_code, s.phs_ca_code,
+       s.data_zone_code, s.intermediate_zone_code, s.phs_hb_code, s.phs_hscp_code, s.phs_ca_code,
        s.simd_rank,
        s.phs_pw_scotland_quintile,
        s.phs_pw_scotland_decile,
