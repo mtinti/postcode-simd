@@ -5,12 +5,12 @@ index, choose the edition for the years of your data, choose the category and le
 match by postcode. `simd_ingest.lookup` offers current-only or event-date-valid record
 matching. The choices stay with you and are passed explicitly as `edition` and `measure`.
 
-This is a separate API from the [default SSPL SQL lookup](LINKAGE_BY_ERA.md). Both use the
-selected record's own attached geography, including for large users. Python retains its
-current/as-of and sentinel-exclusion rules; the default SQL keeps SSPL rows and flags address
-concerns without suppressing values. Historical postcode selection is a
-project policy, not the PHS postcode file's latest-version policy. Do not treat the two
-interfaces as interchangeable or this helper as verified PHS postcode-lookup equivalence.
+This is a separate API from the [SQL sets](LINKAGE_BY_ERA.md). Python uses the selected
+record's own attached geography, including for large users, with its current/as-of and
+sentinel-exclusion rules; the SQL sets use the latest postcode and follow large-user links,
+as PHS does. Historical postcode selection is a project policy, not the PHS postcode file's
+latest-version policy. Do not treat the two interfaces as interchangeable or this helper as
+verified PHS postcode-lookup equivalence.
 
 Every result carries the label the guidance's checklist asks you to state: edition, whether
 the category is population-weighted, the level, which end is most deprived, and how split

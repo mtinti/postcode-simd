@@ -25,12 +25,14 @@ the main schema now reflects. The postcode release and SIMD edition are independ
 
 ## What the project implements
 
-The [default SQL](LINKAGE_BY_ERA.md) takes postcode and analysis year. It uses the exact
-matched SSPL record's own geography and returns both PHS and Government measures for the
-selected SIMD edition. It does not follow large-user links or resolve ordinary splits again.
-The older SPD linked-small-user policy is isolated under `docs/sql/history`, never used as a
-fallback. A dated historical-record question belongs to the separate Python API, which uses
-SPD validity intervals and own-record geography.
+The [SQL sets](LINKAGE_BY_ERA.md) are one per product, with no default. Both take a postcode
+and either the year of the health data or one chosen edition, and return every stored measure
+of that edition from the record that supplies the geography. The SPD set selects the latest
+life and the A part; the SSPL set does not, because NRS did. Both follow a large user's link
+to its small-user postcode and give PO boxes and unlinked large users no SIMD, as PHS
+Appendix A describes; NRS publishes nothing against following the link, and its SPD
+dictionary calls PO-box grid references low quality. A dated historical-record question
+belongs to the separate Python API, which uses SPD validity intervals and own-record geography.
 
 Using an event year to choose a SIMD edition does **not** require historical postcode
 selection: the SQL era query uses the latest postcode with a Table 4 edition. Conversely,
@@ -65,16 +67,17 @@ representatives for 19 postcodes. Do not reuse its provisional counts as accepta
 describes latest versions, retained deleted records and A representatives.
 [PHS deprivation guidance v3.5](../manual_data/2023-12-phs-deprivation-guidance-v35.pdf)
 distinguishes edition policies (section 3.2, Table 4) and discusses postcode/large-user links
-(Appendix A). The former SSPL SQL also redirected large users to their linked small users.
-That is now removed: it overrides the SSPL allocation, changing 147 PHS 2020v2 quintiles
-(50 live postcodes) in the reviewed SSPL 2026/2 snapshot. The current default preserves
-the assigned values, including AB24 2TY's own quintile 5 rather than its link's quintile 1.
+(Appendix A). Both SQL sets follow a large user's link. In the reviewed SSPL 2026/2 snapshot
+that changes the PHS 2020v2 quintile of 147 large-user postcodes (50 live) against their own
+record; the own-record data zone is returned beside the linked value so the change is visible.
+AB24 2TY gets its link's quintile 1, not its own quintile 5, in both products.
 
-Neither table nor SQL setup has been compared against a published PHS postcode-level
+Neither table nor SQL query has been compared against a published PHS postcode-level
 oracle. Sharing SPD inputs or using A does not establish record-level parity, and exact PHS
 deleted-record retention has not been reproduced. The source-faithful build is not itself a
 claim that every stored large-user or PO-box value is appropriate for patient linkage.
-The default returns address warnings without hiding values. This warning-only behaviour is
-an explicit project choice: downstream patient analyses must review residence eligibility.
+The SQL reports PO boxes and unlinked large users as statuses with no SIMD, and keeps a
+deleted latest life with `matched_is_current` false. Residence eligibility stays a downstream
+decision.
 
 For UK-wide statistics the NRS note recommends NSPL. This project remains Scotland-only.

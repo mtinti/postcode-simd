@@ -101,20 +101,23 @@ WHERE pc_base = 'G718BQ' AND introduced_on <= DATE '2015-06-01'
 is preserved. PHS population-weighted fields (`pw`) and Government unweighted fields (`uw`)
 are distinct.
 
-For the [default SQL lookup](docs/LINKAGE_BY_ERA.md), run the
-[SSPL setup](docs/sql/create_latest_postcode_lookup.sql), then give
-[link_by_era.sql](docs/sql/link_by_era.sql) a **postcode and analysis year**. It returns all
-14 PHS/Government measures for the recommended SIMD edition, with distinct weighting labels,
-the selected data zone and provenance. It uses the SSPL record's own geography: no large-user
-redirection or additional split selection. Deleted records and address warnings remain
-visible; residential exclusions and which measures to publish are downstream decisions.
-The older SPD linked-small-user examples are separate under [sql/history](docs/sql/history/README.md),
-not a fallback or an interchangeable setup for the default query.
+For cohort linkage in SQL there are [two sets of queries](docs/sql/README.md), one per
+postcode product and neither the default: `docs/sql/spd/` reads the history table and
+`docs/sql/sspl/` reads the main table. Each set has `link_by_era.sql`, which chooses the SIMD
+edition from the year of the health data by PHS Table 4, and `link_latest.sql`, which uses
+one edition throughout. Every query is standalone, written as numbered steps that name the
+guidance they follow, and returns the same columns: statuses, product provenance, both record
+keys, the edition's data zone and PHS geography codes, all 14 stored measures, and the matched
+record's own fields as context. The SPD set selects the latest life and the A part itself;
+the SSPL set does not, because NRS did. Both attach a large user's SIMD through its linked
+small-user postcode, as PHS does, and give PO boxes none. The step-by-step commentary is in
+[LINKAGE_BY_ERA.md](docs/LINKAGE_BY_ERA.md).
 
 The [Python helpers](docs/EXAMPLES.md) read either table: current lookups against the main
 table, current or as-of lookups against the history table, with own-record geography and an
 optional split consensus/conflict policy on history. Date-valid and split-report questions
-against the main table are refused; SQL edition-by-year selection still works on SSPL.
+against the main table are refused; the SQL sets choose an edition by year without needing
+postcode history.
 Exclusions remain consumer choices, not deletions from the tables. Adding a source edition
 does not automatically change the analyst's edition-by-year policy.
 
