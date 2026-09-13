@@ -6,16 +6,15 @@ edition is a separate, less frequent change to the source registry and output sc
 
 | Table | Postcode source | One row per | Key | Answers |
 | --- | --- | --- | --- | --- |
-| `postcode_simd.parquet`, the **main table** | Scottish Statistics Postcode Lookup (SSPL) 2026/1 | whole postcode, latest life, both user types: 229,708 rows × 146 columns | `pc_norm` | what is this postcode's SIMD now |
-| `postcode_simd_history.parquet`, the **history table** | Scottish Postcode Directory (SPD) 2026/2 | postcode life, both user types: 247,773 rows × 162 columns | `pc_norm`, `introduced_on` | what was this postcode's SIMD on a date |
+| `postcode_simd.parquet`, the **main table** | Scottish Statistics Postcode Lookup (SSPL) 2026/2 | whole postcode, latest life, both user types: 230,103 rows × 146 columns | `pc_norm` | SIMD on the latest postcode; either one edition or edition by event year |
+| `postcode_simd_history.parquet`, the **history table** | Scottish Postcode Directory (SPD) 2026/2 | postcode life, both user types: 247,773 rows × 162 columns | `pc_norm`, `introduced_on` | date-valid postcode records, split parts, or explicitly chosen SPD latest linkage |
 
 Six SIMD editions (2004–2020v2) are attached to both. The two NRS products allocate data
 zones differently: the SSPL takes the zone containing the centroid of the postcode's 2022
-output area, the SPD the zone containing the postcode itself. On SSPL 2026/1 against SPD
-2026/2 the 2011 data zone differs for 6,189 postcodes current in both, which changes the
-2020v2 Scotland quintile of 3,844 of them. Every build reports these counts. PHS builds
-its own lookups from the SPD, so use the history table where agreement with PHS practice
-matters. Each new release replaces its table completely.
+output area, the SPD the zone containing the postcode itself. Every build reports observed
+data-zone and band differences; release changes and source corrections can also contribute.
+Neither table has been validated against an official PHS postcode-level lookup. Choose one
+product consistently for an analysis. Each new release replaces its table completely.
 
 ## Start here
 
@@ -78,7 +77,8 @@ The old orchestration plans remain [historical records](docs/plans/README.md).
 
 ## Use the tables
 
-The main table has one row per whole postcode, so a present-day question is one lookup:
+The main table has one row per whole postcode. To inspect its latest source record
+(including a deleted latest life; this is not the cohort linkage policy):
 
 ```sql
 SELECT pc_norm, is_current, simd2020v2_pw_scotland_quintile
@@ -102,14 +102,17 @@ is preserved. PHS population-weighted fields (`pw`) and Government unweighted fi
 are distinct.
 
 For cohort linkage, start with [Two SQL lookups](docs/LINKAGE_BY_ERA.md): run the
-[shared setup](docs/sql/create_latest_postcode_lookup.sql) on the history table, then choose
+[default SSPL setup](docs/sql/create_latest_postcode_lookup.sql) on the main table, then choose
 [one SIMD edition](docs/sql/link_latest.sql) or [edition by event year](docs/sql/link_by_era.sql).
 Both use latest postcode geography, the A part for ordinary split postcodes, and linked
-small-user geography for large users, with explicit statuses and both record keys.
+small-user geography for large users, with explicit statuses, both record keys and product
+provenance. An [explicit SPD setup](docs/sql/create_latest_postcode_lookup_history.sql)
+supports the same queries. Never combine the products as automatic fallbacks.
 
 The [Python helpers](docs/EXAMPLES.md) read either table: current lookups against the main
 table, current or as-of lookups against the history table, with own-record geography and an
-optional split consensus/conflict policy. A dated question against the main table is refused.
+optional split consensus/conflict policy on history. Date-valid and split-report questions
+against the main table are refused; SQL edition-by-year selection still works on SSPL.
 Exclusions remain consumer choices, not deletions from the tables. Adding a source edition
 does not automatically change the analyst's edition-by-year policy.
 

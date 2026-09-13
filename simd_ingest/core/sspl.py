@@ -59,7 +59,7 @@ def build_latest_index(registry: Registry, root: Path, report: Report, schema: d
     for sentinel in LINK_SENTINELS:
         category[links.eq(sentinel)] = sentinel
     real = category.eq("linked")
-    category[real & ~base.isin(small_keys)] = "target_not_in_file"
+    category[real & ~base.isin(small_keys)] = "small_user_target_not_found"
     report.observe(f"{label}.links", {**category.value_counts().to_dict(),
                                       "with_split_suffix": int((real & link_key.str.len().eq(base.str.len() + 1)).sum())})
     report.observe(f"{label}.profile", {

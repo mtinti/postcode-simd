@@ -38,8 +38,8 @@ far they agree.
    own SIMD rank changes edition or name, update `directory_rank`; do not silently remove
    the agreement check to get a green build.
 4. Build with a review configuration whose `results_root` is separate from production.
-   To get a change comparison, seed that directory with copies of the previous Parquet
-   and its manifest. Do not edit source files/configuration while the build is running.
+   To get change comparisons, seed that directory with both previous Parquet files
+   and their manifest. Do not edit source files/configuration while the build is running.
 5. Read `BUILD_REPORT.md`: published counts, added/removed/newly deleted records,
    field changes, split/ambiguity profile and all join/readback checks. “Removed” means
    absent from the new snapshot; “newly deleted” means a retained record now has deletion
@@ -78,7 +78,8 @@ never just to clear a failing regression.
    Regenerate the data dictionary after reviewing the resulting manifest.
 6. Separately review analyst edition-by-year recommendations and consumer schema imports.
    Ingestion supports explicitly selecting the new edition; it does not infer a new
-   recommendation from the edition's date.
+   recommendation from the edition's date. Expose the new column in both SQL setups;
+   they share the fixed-edition and era queries but deliberately use different products.
 
 The tests include a synthetic seventh edition on 2022 data zones requiring only registry
 and schema additions. That proves extension for the supported CSV/DBF layout, not that

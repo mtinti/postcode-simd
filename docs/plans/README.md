@@ -23,4 +23,4 @@ or intermediate-table cache is required.
 | `Dagster_First_Release_Plan.md` | 10 September | The three-step cut that produced v1.0, with the hardening backlog. |
 | `v1_1_Plan.md` | 11 September | CSV output, the guidance-following lookup, and Docker. Steps 2 and 3 delivered; step 1 pending. |
 | `GitHub_Plan.md` | 11 September | Publishing this repository. |
-| `SSPL_Main_Table_Plan.md` | 12 September | SSPL 2026/1 checked against the SPD table; options and steps for making it the main table. Not implemented. |
+| `SSPL_Main_Table_Plan.md` | 12 September | Historical proposal; option A implemented, then corrected and refreshed to SSPL 2026/2. See its correction notice and the current runbook. |

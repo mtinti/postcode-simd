@@ -1,5 +1,6 @@
 -- VERSION 1: latest postcode geography, ONE chosen SIMD edition throughout.
--- Run create_latest_postcode_lookup.sql first. Input: events(id, postcode).
+-- Run the SSPL setup (default) or the explicitly named history setup first.
+-- Input: events(id, postcode). The result names the selected product and release.
 -- id need not be unique: this LEFT JOIN keeps each input row, without grouping.
 --
 -- "Latest" means the latest postcode record, not an automatic choice of SIMD.
@@ -19,10 +20,11 @@ WITH matched AS (
            p.matched_pc_norm, p.matched_introduced_on,
            p.matched_is_current, p.matched_user_type,
            p.simd_source_pc_norm, p.simd_source_introduced_on,
-           p.simd_source_is_current, p.spd_release
+           p.simd_source_is_current, p.requested_link_postcode,
+           p.index_source, p.index_release, p.allocation
     FROM events e
     LEFT JOIN simd_postcode_latest p
-           ON p.pc_base = NULLIF(UPPER(REPLACE(e.postcode, ' ', '')), '')
+           ON p.postcode_key = NULLIF(UPPER(REPLACE(e.postcode, ' ', '')), '')
 )
 -- 2. Keep missing/excluded postcodes visible, with null SIMD and a reason.
 -- A latest record can be deleted: that is not a failed match in this policy.
@@ -39,5 +41,5 @@ SELECT id, postcode, simd_edition,
        simd_value,
        matched_pc_norm, matched_introduced_on, matched_is_current, matched_user_type,
        simd_source_pc_norm, simd_source_introduced_on, simd_source_is_current,
-       spd_release
+       requested_link_postcode, index_source, index_release, allocation
 FROM matched;

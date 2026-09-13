@@ -15,7 +15,11 @@ Every result carries the label the guidance's checklist asks you to state: editi
 the category is population-weighted, the level, which end is most deprived, and how split
 postcodes were resolved.
 
-All output below was produced against the v1.1 file.
+Examples below use SPD 2026/2 history, whose data rows are unchanged by the SSPL migration.
+For current-only SSPL lookups, load `results/postcode_simd.parquet` instead. SSPL rejects
+`on=`, an event-date column, `attach_by_era`, and `split="report"`: it has neither historical
+lives nor individual split parts. The SQL era query is different: it selects an edition
+by year without asking which postcode life was valid then.
 
 ```python
 from simd_ingest import lookup

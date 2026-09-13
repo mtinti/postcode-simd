@@ -26,8 +26,8 @@ single_record:
   - LocalGovernmentDistrict1995Code
   - LocalGovernmentDistrict1991Code
   - ElectoralWard2022Code
-  - ScottishParliamentaryRegion2021Code
-  - ScottishParliamentaryConstituency2021Code
+  - ScottishParliamentaryRegion2026Code
+  - ScottishParliamentaryConstituency2026Code
   - UKParliamentaryConstituency2024Code
   - HealthBoardArea2019Code
   - HealthBoardArea2006Code

@@ -58,6 +58,9 @@ def test_postcode_refresh_replaces_snapshot_and_reports_changes(tmp_path):
     assert latest["sspl_release"].eq("test-2-lookup").all()
     agreement = second["observations"]["table_agreement"]
     assert agreement["shared"] == 5 and agreement["only_in_history"] == 0
+    narrative = (tmp_path / "results/BUILD_REPORT.md").read_text()
+    assert "not a causal decomposition" in narrative
+    assert "before consumer SQL follows any large-user link" in narrative
     assert second["tables"]["main"]["key"] == ["pc_norm"] and second["tables"]["history"]["key"] == ["pc_norm", "introduced_on"]
     runs = sorted((tmp_path / "results/runs").iterdir())
     assert len(runs) == 2
@@ -221,10 +224,10 @@ def test_real_pinned_data_build_matches_contract_and_known_fingerprint(tmp_path)
     assert result["tables"]["history"]["columns"] == len(history["fields"])
     assert result["tables"]["main"]["rows"] == registry.sspl_file["rows"]
     assert result["tables"]["main"]["columns"] == len(main_schema["fields"])
-    known = known_snapshot(result)
-    if known is not None:
-        assert result["tables"]["history"]["logical_fingerprint"] == known["logical_fingerprint"]
-        assert result["tables"]["main"]["logical_fingerprint"] == known["main_logical_fingerprint"]
+    for name, fingerprint in (("history", "logical_fingerprint"), ("main", "main_logical_fingerprint")):
+        known = known_snapshot(result, name)
+        if known is not None:
+            assert result["tables"][name]["logical_fingerprint"] == known[fingerprint]
     assert main(["audit", "--config", str(cfg)]) == 0
 
 
@@ -251,6 +254,14 @@ def test_main_table_answers_current_questions_and_refuses_dated_ones(tmp_path):
     events = pd.DataFrame({"postcode": ["AB10 1AC"], "day": ["2021-01-01"]})
     with pytest.raises(ValueError, match="history"):
         lookup.attach(events, latest, "postcode", "day", edition="2020v2")
+    with pytest.raises(ValueError, match="history"):
+        lookup.lookup(latest, "AB10 1AC", edition="2020v2", split="report")
+    with pytest.raises(ValueError, match="history"):
+        lookup.attach_by_era(events.assign(day="1990-01-01"), latest, "postcode", "day")
+    # Direct pandas loads must not silently evade the latest-life guard.
+    raw = pd.read_parquet(tmp_path / "results/postcode_simd.parquet")
+    with pytest.raises(ValueError, match="history"):
+        lookup.lookup(raw, "AB10 1AC", edition="2020v2", on="2021-01-01")
     assert lookup.attach(events, latest, "postcode", None, edition="2020v2")["simd_status"].tolist() == [lookup.UNIQUE]
     # PO boxes are excluded at lookup time in both tables; AB10 1AD is a linked large user, so it is found.
     assert lookup.lookup(latest, "AB10 1AD", edition="2020v2").status == lookup.UNIQUE

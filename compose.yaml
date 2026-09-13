@@ -4,13 +4,13 @@
 #   docker compose run --rm build             download the pinned sources into ./data, build ./results
 #   docker compose run --rm test              the test suite, against what the build fetched
 #
-# Inside Docker the default mode is download. For an air-gapped machine, put the 17 pinned
+# Inside Docker the default mode is download. For an air-gapped machine, put the 20 pinned
 # files under ./manual_data and run with SIMD_SOURCE_MODE=offline.
 # Sources, cache, results and run records stay on the host.
 services:
   build:
     build: .
-    image: simd-ingest:2.0.0
+    image: simd-ingest:2.0.1
     volumes: &volumes
       - ./manual_data:/app/manual_data:ro
       - ./data:/app/data
@@ -20,7 +20,7 @@ services:
     command: ["build"]
 
   test:
-    image: simd-ingest:2.0.0
+    image: simd-ingest:2.0.1
     volumes: *volumes
     environment: *env
     entrypoint: ["python", "-m", "pytest", "tests", "-q"]

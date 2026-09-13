@@ -86,8 +86,8 @@ def render(report: Report, registry: Registry, tables: dict, info: dict, mode: s
           "records carry `SplitIndicator` Y).",
           f"Large-user links: {links.get('linked', 0):,} to a small-user postcode in the file, "
           f"{links.get('NO LINKP', 0):,} PO boxes (`NO LINKP`), {links.get('NO LINK', 0):,} `NO LINK`, "
-          f"{links.get('target_not_in_file', 0):,} pointing at a postcode not in the file; "
-          f"{links.get('with_split_suffix', 0):,} links keep an A suffix.", "",
+          f"{links.get('small_user_target_not_found', 0):,} without a small-user target in the file (absent or now large-user); "
+          f"{links.get('with_split_suffix', 0):,} links retain an NRS split suffix.", "",
           "### Change from previous snapshot", "", *_snapshot_change(changes.get("main", {}), "SSPL")]
 
     # 3. history index
@@ -120,15 +120,19 @@ def render(report: Report, registry: Registry, tables: dict, info: dict, mode: s
     a = report.observations.get("table_agreement")
     L += ["## 4. Agreement between the two tables (information, not acceptance gates)", ""]
     if a:
-        cut = a["cut_differences"]
-        L += [f"The history table reduced to its newest life per whole postcode (A part for splits) has "
+        cut = a["record_differences"]
+        L += [f"The history table reduced to latest full-key lives, then live, whole/A and newest introduction, has "
               f"{a['history_whole_postcodes']:,} postcodes; the main table has {a['main_rows']:,}; {a['shared']:,} are shared, "
               f"{a['only_in_main']:,} exist only in the main table and {a['only_in_history']:,} only in the history table. "
-              f"Among shared postcodes the introduction date differs on {cut['introduced_on']:,}, the live/deleted state on "
-              f"{cut['is_current']:,} and the user type on {cut['spd_user_type']:,}. These come from the two products being "
-              "different cuts of the Royal Mail file.", "",
-              "Geography differences come from the allocation method: the lookup takes the zone containing the 2022 "
-              "output-area centroid, the directory the zone containing the postcode.", "",
+              f"Unresolved history representatives: {a['unresolved_history_representatives'] or 'none'}. "
+              f"Comparisons below use {a['shared_resolved']:,} shared, resolved representatives. "
+              f"The introduction date differs on {cut['introduced_on']:,}, the live/deleted state on "
+              f"{cut['is_current']:,} and the user type on {cut['spd_user_type']:,}.", "",
+              "These are observed differences between the pinned releases, not a causal decomposition. "
+              "The products use different allocation methods (2022 output-area centroid versus postcode grid reference); "
+              "release changes, reintroductions and source corrections can also affect geography. Even matching release "
+              "labels do not prove the cause of an individual difference. Values below are each record's own attached "
+              "SIMD, before consumer SQL follows any large-user link; they do not measure agreement with a PHS lookup.", "",
               "| Column | Shared postcodes that differ | Of which current in both |", "| --- | ---: | ---: |"]
         L += [f"| {col} | {v['all']:,} | {v['current']:,} |" for col, v in a["geography_differences"].items()]
         L += ["", f"Effect on the attached SIMD for the {a['shared_and_current_in_both']:,} postcodes current in both tables:", "",

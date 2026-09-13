@@ -1,4 +1,4 @@
-# Data dictionary: postcode_simd, schema `postcode_simd_sspl_v1`
+# Data dictionary: postcode_simd, schema `postcode_simd_sspl_v2`
 
 The **main table**: one row per whole postcode from the Scottish Statistics Postcode Lookup (SSPL), both user types, the
 latest life of each postcode (deleted ones included), with all 6 SIMD editions attached.
@@ -7,9 +7,9 @@ Every geography, including both data-zone vintages, is the one containing the ce
 postcode-in-zone allocation see the history table, [DATA_DICTIONARY_HISTORY.md](DATA_DICTIONARY_HISTORY.md).
 Generated from `simd_ingest/output_schema.yaml`; do not edit by hand.
 
-Current build: 229,708 rows by 146 columns, main index release 2026_1, 
-allocation `oa2022_centroid`, built 2026-09-12T21:22:48Z. Parquet SHA256 `3fcb5a3e05c2079af3262158b592ecb8378cfe6ee7da7e2dd2fe1645932d4c42`; rows-only fingerprint 
-`6c14f4596b3fabb2c814d0af945eae02e00ea330f7440791437990ef4d98aa0f`. The file hash also covers the embedded provenance metadata, 
+Current build: 230,103 rows by 146 columns, main index release 2026_2,
+allocation `oa2022_centroid`, built 2026-09-13T06:02:05Z. Parquet SHA256 `06756dd523238d32ee9aaa29499b93503480b8f54b44ab81832ff0d8d35e407c`; rows-only fingerprint
+`9515021d99099b437950960380313e6fac7a9a6393858c4d6115fef43a94e564`. The file hash also covers the embedded provenance metadata,
 so it changes when the decision log changes; compare fingerprints under the same pinned runtime.
 
 ## Key
@@ -17,7 +17,8 @@ so it changes when the decision log changes; compare fingerprints under the same
 Primary key: `pc_norm`, the postcode uppercased without spaces. One row per postcode; no split suffix
 exists because NRS resolved split postcodes to the A part before publishing. `is_current` says whether
 the latest life is live; `introduced_on` and `deleted_on` describe that latest life only. This table
-cannot answer a question about a past date: use the history table for that.
+cannot select a past postcode life: use history for that. Choosing a past SIMD edition on this
+latest postcode is supported by the SQL era query. These are different policies.
 
 ## Band convention
 
@@ -45,13 +46,15 @@ the same guidance describes for pre-1996 data is not included.
 
 - **Allocation.** The SSPL assigns every higher geography from the 2022 output-area centroid. Its 2011
   and 2001 data zones therefore differ from the directory's on a few percent of postcodes, and so do
-  the SIMD values attached through them. The build report counts the differences. PHS builds its own
-  lookups from the directory; use the history table where agreement with PHS practice matters.
+  the SIMD values attached through them. The build report counts observed differences, without
+  attributing every difference to method rather than release changes. Neither table establishes
+  equivalence to PHS's published postcode lookup. Choose one product consistently for a study.
 - **Split postcodes** are already whole here. `SplitIndicator` Y marks a postcode the directory holds
   as A/B/C parts; the SSPL keeps the A part's geography and sums the counts.
-- **Large-user postcodes and PO boxes.** The directory assigns them a data zone, so SIMD is attached.
-  PHS practice attaches no deprivation to PO boxes. Filter on `spd_user_type` and on
-  `LinkedSmallUserPostcode` in (`NO LINKP`, `NO LINK`) if you want that behaviour.
+- **Large-user postcodes and PO boxes.** The source assigns them a data zone, so SIMD is attached.
+  This is source fidelity, not a linkage recommendation. The [SQL examples](LINKAGE_BY_ERA.md) follow
+  small-user links in the chosen product, excluding unusable links and `NO LINKP`/`NO LINK`.
+  Python keeps its separate own-record geography and sentinel-exclusion policy.
 - **Within-geography bands.** `simd{ed}_pw_hb_*` is computed within the health board in
   `phs_dz{vintage}_hb`, which on a few records differs from the directory's own `HealthBoardArea2019Code`.
   Use the PHS code with the PHS band.
@@ -69,7 +72,7 @@ the same guidance describes for pre-1996 data is not included.
 | phs | simd2016_18052020.csv | `3a98af3b181d8273…` |
 | phs | simd2020v2_22062020.csv | `686bc9aa38b61891…` |
 | nrs | spd_postcodeindex_cut_26_2_csv.zip | `4e93069ddb9c39c2…` |
-| nrs | sspl-2026-1.zip | `b8bc805567a167dd…` |
+| nrs | sspl-2026-2.zip | `b3cc78a21b1cdecd…` |
 | maps_gov_scot | SG_SIMD_2004.zip | `3bc179d9eebac787…` |
 | maps_gov_scot | SG_SIMD_2006.zip | `fe7c662ee48cfe28…` |
 | maps_gov_scot | SG_SIMD_2009.zip | `438a14225afcfd1d…` |
@@ -81,7 +84,7 @@ Licences: phs: Open Government Licence v3.0, stated in the PHS open data package
 
 ## Columns
 
-146 columns: 50 from the lookup, 6 derived, 
+146 columns: 50 from the lookup, 6 derived,
 6 PHS geography, and 14 per edition for 6 editions.
 
 ### Per-edition SIMD columns
@@ -113,7 +116,7 @@ Licences: phs: Open Government Licence v3.0, stated in the PHS open data package
 | 2 | `PostcodeDistrict` | string | no | lookup |  |
 | 3 | `PostcodeSector` | string | no | lookup |  |
 | 4 | `SplitIndicator` | string | no | lookup | Y when the SPD holds this postcode as split parts; counts here are the summed whole |
-| 5 | `LinkedSmallUserPostcode` | string | no | lookup | large users only: small-user postcode containing the grid reference, NO LINKP for PO boxes, NO LINK otherwise unlinked; may carry an A suffix; blank for small users |
+| 5 | `LinkedSmallUserPostcode` | string | no | lookup | large users only: small-user postcode containing the grid reference, NO LINKP for PO boxes, NO LINK otherwise unlinked; may retain an NRS split suffix; blank for small users |
 | 6 | `DateOfIntroduction` | string | no | lookup |  |
 | 7 | `DateOfDeletion` | string | no | lookup | blank while current |
 | 8 | `PostcodeType` | string | no | lookup | S small user, L large user |
@@ -134,8 +137,8 @@ Licences: phs: Open Government Licence v3.0, stated in the PHS open data package
 | 23 | `LocalGovernmentDistrict1995Code` | string | no | lookup |  |
 | 24 | `LocalGovernmentDistrict1991Code` | string | no | lookup |  |
 | 25 | `ElectoralWard2022Code` | string | no | lookup |  |
-| 26 | `ScottishParliamentaryRegion2021Code` | string | no | lookup |  |
-| 27 | `ScottishParliamentaryConstituency2021Code` | string | no | lookup |  |
+| 26 | `ScottishParliamentaryRegion2026Code` | string | no | lookup |  |
+| 27 | `ScottishParliamentaryConstituency2026Code` | string | no | lookup |  |
 | 28 | `UKParliamentaryConstituency2024Code` | string | no | lookup |  |
 | 29 | `HealthBoardArea2019Code` | string | no | lookup |  |
 | 30 | `HealthBoardArea2006Code` | string | no | lookup |  |

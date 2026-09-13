@@ -1,8 +1,27 @@
-# Plan: SSPL as the main table's postcode source, SPD retained for history
+# Historical plan: SSPL main table, SPD retained for history
 
 Drafted 12 September 2026, revised the same day after checking the SSPL 2026/1 file.
-Status: option A implemented on branch `feature/sspl-main-table` on 12 September 2026 (steps 1 and 2);
-step 3 acceptance pending.
+Status: superseded implementation proposal, retained as the original investigation record.
+Option A was implemented on 12 September and corrected by the review on 13 September 2026.
+For the current contract read [How it is built](../HOW_IT_IS_BUILT.md),
+[SQL linkage](../LINKAGE_BY_ERA.md) and [NRS guidance check](../NRS_GUIDANCE_CHECK.md).
+
+Corrections to the historical text below:
+
+- Current main source is SSPL 2026/2, not 2026/1; history remains SPD 2026/2.
+- The preliminary cross-table counts used incorrect representatives for 19 postcodes.
+  They did not isolate release effects from allocation methods or prove PHS equivalence.
+  Use the generated build report for current observations, never the counts below as gates.
+- The default SQL reads main; an explicitly named SPD setup supports the same queries.
+  Selecting an edition by event year does not require historical postcode matching.
+- Both tables build together; no `--table` build switch was introduced. Trace has `--table`;
+  ground-truth cases stay SPD-based and main values are checked against their own source zones.
+- Package 2.0.1 and main schema `postcode_simd_sspl_v2` incorporate the coherence fixes.
+  Local validation and source fingerprints are recorded by the current tests/build report;
+  release tagging and external publication are separate human actions.
+
+Everything below records the original proposal, including alternatives not selected and
+claims corrected above. It is not the current maintenance or acceptance checklist.
 
 ## 1. What was checked
 

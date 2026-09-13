@@ -1,5 +1,6 @@
 -- VERSION 2: latest postcode geography, SIMD edition chosen by EVENT YEAR.
--- Run create_latest_postcode_lookup.sql first. Input: events(id, postcode, event_date).
+-- Run the SSPL setup (default) or the explicitly named history setup first.
+-- Input: events(id, postcode, event_date). The result names the product and release.
 -- event_date must be DATE (or TIMESTAMP); reject invalid date text before this query.
 -- Repeated/null IDs and duplicate input rows are retained: there is no grouping by id.
 --
@@ -29,7 +30,8 @@ matched AS (
            p.matched_pc_norm, p.matched_introduced_on,
            p.matched_is_current, p.matched_user_type,
            p.simd_source_pc_norm, p.simd_source_introduced_on,
-           p.simd_source_is_current, p.spd_release,
+           p.simd_source_is_current, p.requested_link_postcode,
+           p.index_source, p.index_release, p.allocation,
            -- 3. Select the already-attached PHS quintile for that edition.
            -- The CLI used the correct data-zone vintage and reversed early bands.
            CASE era.edition
@@ -43,7 +45,7 @@ matched AS (
     FROM events e
     LEFT JOIN era ON YEAR(e.event_date) BETWEEN era.year_from AND era.year_to
     LEFT JOIN simd_postcode_latest p
-           ON p.pc_base = NULLIF(UPPER(REPLACE(e.postcode, ' ', '')), '')
+           ON p.postcode_key = NULLIF(UPPER(REPLACE(e.postcode, ' ', '')), '')
 )
 -- 4. Report the result and retain both record keys so the route can be reviewed.
 -- Missing date is distinct from "no recommended SIMD before 1996".
@@ -62,5 +64,5 @@ SELECT id, postcode, event_date, simd_edition,
        simd_value,
        matched_pc_norm, matched_introduced_on, matched_is_current, matched_user_type,
        simd_source_pc_norm, simd_source_introduced_on, simd_source_is_current,
-       spd_release
+       requested_link_postcode, index_source, index_release, allocation
 FROM matched;

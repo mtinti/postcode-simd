@@ -38,8 +38,8 @@ def con():
 
 
 def setup(con, rows):
-    con.register("postcode_simd", pd.DataFrame(rows))
-    con.execute((SQL / "create_latest_postcode_lookup.sql").read_text())
+    con.register("postcode_simd_history", pd.DataFrame(rows))
+    con.execute((SQL / "create_latest_postcode_lookup_history.sql").read_text())
 
 
 def query(con, events, name="link_latest.sql", text=None):
@@ -61,7 +61,7 @@ def test_latest_life_not_event_date(con, name):
     assert out.simd_value.tolist() == [4, 4]
     assert out.matched_introduced_on.eq(pd.Timestamp("2010-01-01")).all()
     assert out.simd_source_pc_norm.eq("AB11AA").all()
-    assert out.spd_release.eq("fixture").all()
+    assert out.index_release.eq("fixture").all() and out.index_source.eq("spd").all()
 
 
 @pytest.mark.parametrize("date,edition,value", [
@@ -209,14 +209,14 @@ def real(con):
     path = ROOT / "results/postcode_simd_history.parquet"  # the view selects the latest life itself
     if not path.is_file():
         pytest.skip("no build output")
-    con.read_parquet(str(path)).create_view("postcode_simd")
-    con.execute((SQL / "create_latest_postcode_lookup.sql").read_text())
+    con.read_parquet(str(path)).create_view("postcode_simd_history")
+    con.execute((SQL / "create_latest_postcode_lookup_history.sql").read_text())
     return con
 
 
 def test_real_snapshot_has_one_lookup_row_per_base_and_no_hidden_exclusion_values(real):
-    total, unique = real.execute("SELECT COUNT(*), COUNT(DISTINCT pc_base) FROM simd_postcode_latest").fetchone()
-    bases = real.execute("SELECT COUNT(DISTINCT pc_base) FROM postcode_simd").fetchone()[0]
+    total, unique = real.execute("SELECT COUNT(*), COUNT(DISTINCT postcode_key) FROM simd_postcode_latest").fetchone()
+    bases = real.execute("SELECT COUNT(DISTINCT pc_base) FROM postcode_simd_history").fetchone()[0]
     assert total == unique == bases
     assert real.execute("""SELECT COUNT(*) FROM simd_postcode_latest
         WHERE postcode_status NOT IN ('matched', 'a_part', 'linked_small_user')
@@ -229,14 +229,14 @@ def test_known_downloaded_large_user_disagreement_and_splits(real):
         pytest.skip("2026/2 examples do not apply to this snapshot")
     out = query(real, event("AB11 6GN")).iloc[0]
     assert (out.simd_status, out.simd_value, out.simd_source_pc_norm) == ("linked_small_user", 3, "AB116BE")
-    own = real.execute("SELECT simd2020v2_pw_scotland_quintile FROM postcode_simd WHERE pc_norm = 'AB116GN' AND is_current").fetchone()[0]
+    own = real.execute("SELECT simd2020v2_pw_scotland_quintile FROM postcode_simd_history WHERE pc_norm = 'AB116GN' AND is_current").fetchone()[0]
     assert own == 2  # meaningful difference: the SQL must not reuse the LU's own value
     assert query(real, event("G71 8BQ")).iloc[0].simd_value == 5
     assert query(real, event("AB12 3GQ")).iloc[0].simd_value == 4
     assert real.execute("""SELECT COUNT(*) FROM simd_postcode_latest
         WHERE matched_is_current AND postcode_status = 'linked_small_user'""").fetchone()[0] == 3249
     assert real.execute("""SELECT COUNT(*) FROM simd_postcode_latest v
-        JOIN postcode_simd p ON p.pc_norm = v.matched_pc_norm
+        JOIN postcode_simd_history p ON p.pc_norm = v.matched_pc_norm
                             AND p.introduced_on = v.matched_introduced_on
         WHERE v.matched_is_current AND v.postcode_status = 'linked_small_user'
           AND v.simd2020v2_pw_scotland_quintile <> p.simd2020v2_pw_scotland_quintile""").fetchone()[0] == 96

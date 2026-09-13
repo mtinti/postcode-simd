@@ -1,5 +1,7 @@
 {
-  "description": "Approved SPD 2026/2 history-table regression (rows unchanged since v1.0); applies only to these source pins and output schema, not to future releases. main_logical_fingerprint is the SSPL 2026/1 main table, added with v2.0.",
+  "description": "SPD 2026/2 history regression is independent of SSPL refreshes. Main is SSPL 2026/2, reviewed on 2026-09-13: all 50 raw columns and 84 SIMD columns matched the pinned CSV/DBF sources on all 230103 rows. Main requires all pins and its own schema; never update just to clear a test.",
+  "sspl_object_sha256": "b3cc78a21b1cdecd8f29d972b6385c48cabb24a40d7c17b99d82ceae1a30ecbb",
+  "main_schema_sha256": "ef247e819c626cb83d4e870d2ed5ab38460604cebefc59790e283c817881df20",
   "remote_object_sha256": [
     "33f166949c0e8a54fe2601d63cd760fdd41b1f2aee54e7f3d411c82b7c38b9e0",
     "3a98af3b181d8273eca18587663175ca28d18f338d3003be620798001aeca3a6",
@@ -8,7 +10,7 @@
     "4e93069ddb9c39c211cafdc56eeb16c4b0ed4872c9a95c20e23ec73c3b499057",
     "686bc9aa38b61891f701e10d8a3970397c7be7f3819798dc43584ae42cb3a391",
     "69f9fb1a2e51d464366497c51f68aaaf80a23774f96daa5c492dc1db1aa8c578",
-    "b8bc805567a167dd23a8891dddf44855a8174ddff3885c7f3caa0defc8d83478",
+    "b3cc78a21b1cdecd8f29d972b6385c48cabb24a40d7c17b99d82ceae1a30ecbb",
     "bffbec7c3f45da16d3dc5c34dcaef64435083167330fac4a5c3610bcefa8b5d0",
     "c4c12b6346ee9fa14383e41eaccf6d479df0c745f3fafc753b035d3600a897d3",
     "c91aea4cbf39d116ba1bc219fe88034a4f351ac93930f4f9229c1ccf1a17733d",
@@ -18,5 +20,5 @@
   ],
   "schema_sha256": "460f1689d778269975c19c28e8670766a331f53154ab3b60e7c094a005bef8dc",
   "logical_fingerprint": "59369357e44e45a5ac74b217692fd8e4799fd0aafc3b04e4e2c255abf722dc97",
-  "main_logical_fingerprint": "6c14f4596b3fabb2c814d0af945eae02e00ea330f7440791437990ef4d98aa0f"
+  "main_logical_fingerprint": "9515021d99099b437950960380313e6fac7a9a6393858c4d6115fef43a94e564"
 }
