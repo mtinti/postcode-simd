@@ -10,7 +10,7 @@
 services:
   build:
     build: .
-    image: simd-ingest:2.0.1
+    image: simd-ingest:2.1.0
     volumes: &volumes
       - ./manual_data:/app/manual_data:ro
       - ./data:/app/data
@@ -20,7 +20,7 @@ services:
     command: ["build"]
 
   test:
-    image: simd-ingest:2.0.1
+    image: simd-ingest:2.1.0
     volumes: *volumes
     environment: *env
     entrypoint: ["python", "-m", "pytest", "tests", "-q"]

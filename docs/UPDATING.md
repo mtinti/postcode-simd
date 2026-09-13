@@ -78,11 +78,10 @@ never just to clear a failing regression.
    Regenerate the data dictionary after reviewing the resulting manifest.
 6. Separately review analyst edition-by-year recommendations and consumer schema imports.
    Ingestion supports explicitly selecting the new edition; it does not infer a new
-   recommendation from the edition's date. Add one explicit edition block to the default
-   `simd_postcode_by_edition` setup, including all measures and the correct PHS geography
-   codes. Review the year ranges in `docs/sql/link_by_era.sql` separately against guidance.
-   If retaining the legacy SPD examples, extend their separate `docs/sql/history` scripts
-   too; they have a different linked-small-user policy and a quintile-only interface.
+   recommendation from the edition's date. Regenerate the four SQL files with
+   `python -m simd_ingest.sql_examples`: the edition branches and vintage cases come from the
+   registry and schemas, and a test fails while a committed file is stale. Table 4's year
+   ranges live in `lookup.py` and are reviewed separately against the guidance.
 
 The tests include a synthetic seventh edition on 2022 data zones requiring only registry
 and schema additions. That proves extension for the supported CSV/DBF layout, not that

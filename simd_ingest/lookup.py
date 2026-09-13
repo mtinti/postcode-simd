@@ -1,8 +1,8 @@
 """Current/as-of record-level SIMD lookups, with explicit analyst choices.
 
 This API uses current-only or date-valid records and own-record large-user geography.
-The default SQL also uses own-record geography but keeps latest SSPL records, both
-publishers and address warnings instead of Python's exclusions; see docs/LINKAGE_BY_ERA.md.
+The SQL sets in docs/sql use the latest postcode and follow large-user links instead;
+see docs/LINKAGE_BY_ERA.md.
 SSPL cannot answer date-valid or split-report questions.
 
 The guidance's method: choose the edition for the years of your data, choose the category
@@ -255,7 +255,7 @@ def attach_by_era(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, 
                   include_po_boxes: bool = False, include_large_users: bool = True, split: str = "a_part") -> pd.DataFrame:
     """Table 4 edition per event year, plus this API's historical postcode policy.
     Takes the record valid on the event date; adds an edition and per-row label.
-    This is not the latest-postcode policy of docs/sql/link_by_era.sql.
+    This is not the latest-postcode policy of the docs/sql sets.
 
     Events before 1996 get status `no_edition`; the guidance points to Carstairs for them.
     """
