@@ -5,9 +5,9 @@ every life of every postcode, with all 6 SIMD editions attached. Data zones are 
 containing the postcode's own grid reference. For one row per whole postcode see the main table,
 [DATA_DICTIONARY.md](DATA_DICTIONARY.md). Generated from `simd_ingest/output_schema_history.yaml`; do not edit by hand.
 
-Current build: 247,773 rows by 162 columns, history index release 2026_2, 
-allocation `postcode_grid_reference`, built 2026-09-12T21:22:48Z. Parquet SHA256 `a07e3088bd55edffaeb2b9a079604a1de0a0b0c4bc05986e2ff02833fa97c390`; rows-only fingerprint 
-`59369357e44e45a5ac74b217692fd8e4799fd0aafc3b04e4e2c255abf722dc97`. The file hash also covers the embedded provenance metadata, 
+Current build: 247,773 rows by 162 columns, history index release 2026_2,
+allocation `postcode_grid_reference`, built 2026-09-13T06:02:05Z. Parquet SHA256 `1e29d1c412727876768cf5f28d086616a14c10c0e8b457312cacf9f412a33f98`; rows-only fingerprint
+`59369357e44e45a5ac74b217692fd8e4799fd0aafc3b04e4e2c255abf722dc97`. The file hash also covers the embedded provenance metadata,
 so it changes when the decision log changes; compare fingerprints under the same pinned runtime.
 
 ## Key
@@ -48,9 +48,10 @@ the same guidance describes for pre-1996 data is not included.
   records on `pc_base` and you may get more than one row with different SIMD values. The lookups
   in `simd_ingest.lookup` resolve that to the A part by default, as NRS does, and say so; a report
   rule shows the ambiguity instead. Never average or vote.
-- **Large-user postcodes and PO boxes.** The directory assigns them a data zone, so SIMD is attached.
-  PHS practice attaches no deprivation to PO boxes. Filter on `spd_user_type` and on
-  `LinkedSmallUserPostcode` in (`NO LINKP`, `NO LINK`) if you want that behaviour.
+- **Large-user postcodes and PO boxes.** The source assigns them a data zone, so SIMD is attached.
+  This is source fidelity, not a linkage recommendation. The [SQL examples](LINKAGE_BY_ERA.md) follow
+  small-user links in the chosen product, excluding unusable links and `NO LINKP`/`NO LINK`.
+  Python keeps its separate own-record geography and sentinel-exclusion policy.
 - **Within-geography bands.** `simd{ed}_pw_hb_*` is computed within the health board in
   `phs_dz{vintage}_hb`, which on a few records differs from the directory's own `HealthBoardArea2019Code`.
   Use the PHS code with the PHS band.
@@ -68,7 +69,7 @@ the same guidance describes for pre-1996 data is not included.
 | phs | simd2016_18052020.csv | `3a98af3b181d8273…` |
 | phs | simd2020v2_22062020.csv | `686bc9aa38b61891…` |
 | nrs | spd_postcodeindex_cut_26_2_csv.zip | `4e93069ddb9c39c2…` |
-| nrs | sspl-2026-1.zip | `b8bc805567a167dd…` |
+| nrs | sspl-2026-2.zip | `b3cc78a21b1cdecd…` |
 | maps_gov_scot | SG_SIMD_2004.zip | `3bc179d9eebac787…` |
 | maps_gov_scot | SG_SIMD_2006.zip | `fe7c662ee48cfe28…` |
 | maps_gov_scot | SG_SIMD_2009.zip | `438a14225afcfd1d…` |
@@ -80,7 +81,7 @@ Licences: phs: Open Government Licence v3.0, stated in the PHS open data package
 
 ## Columns
 
-162 columns: 65 from the directory, 7 derived, 
+162 columns: 65 from the directory, 7 derived,
 6 PHS geography, and 14 per edition for 6 editions.
 
 ### Per-edition SIMD columns

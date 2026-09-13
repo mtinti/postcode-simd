@@ -10,7 +10,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from support import ROOT, known_snapshot
+from support import ROOT, known_snapshot, source_root
 
 CASES = ROOT / "tests/ground_truth.csv"
 
@@ -20,7 +20,7 @@ def cases():
     import json
     manifest = ROOT / "results/manifest.json"
     if not manifest.is_file() or known_snapshot(json.loads(manifest.read_text())) is None:
-        pytest.skip("ground-truth cases apply to the SPD 2026/2 and SSPL 2026/1 pins only")
+        pytest.skip("ground-truth postcode cases apply to the SPD 2026/2 pins only")
     return pd.read_csv(CASES, dtype={"pc_norm": str, "dz_code": str})
 
 
@@ -53,10 +53,22 @@ def test_history_table_reproduces_every_case(cases):
 
 
 def test_main_table_differs_only_where_its_data_zone_differs(cases):
-    t = pd.read_parquet(ROOT / "results/postcode_simd.parquet").set_index("pc_norm")
+    from simd_ingest.core.sources import load_registry
+    from simd_ingest.core.govscot import read_gov_edition
+    from simd_ingest.core.phs import canonicalise_phs, read_phs_source
+    from simd_ingest.core.checks import Report
+    root = source_root()
+    if root is None:
+        pytest.skip("source files needed for independent main-table expectations")
+    registry, report = load_registry(ROOT / "simd_ingest/sources.yaml"), Report()
+    # Look up source rows, not another output postcode in the same zone.
     reference = {}
-    for vintage in (2001, 2011):
-        reference[vintage] = t.drop_duplicates(f"DataZone{vintage}Code").set_index(f"DataZone{vintage}Code")
+    for ed in registry.phs_editions:
+        reference[("phs", ed["key"])] = canonicalise_phs(ed, read_phs_source(ed, root, report), report).set_index("dz_code")
+    for ed in registry.govscot_editions:
+        reference[("govscot", ed["key"])] = read_gov_edition(ed, root, report).set_index("dz_code")
+    report.require()
+    t = pd.read_parquet(ROOT / "results/postcode_simd.parquet").set_index("pc_norm")
     latest_introduction = pd.to_datetime(t["introduced_on"]).max()
     differing, missing = [], []
     for case in cases.itertuples():
@@ -73,8 +85,10 @@ def test_main_table_differs_only_where_its_data_zone_differs(cases):
             assert int(row[_column(case)]) == case.expected_value
         else:
             # A different zone by allocation: the value must be that zone's, not the case's.
-            expected = reference[case.dz_vintage].loc[zone]
-            assert int(row[_column(case)]) == int(expected[_column(case)])
+            expected = reference[(case.publisher, case.edition)].loc[zone]
+            band = f"{'pw' if case.publisher == 'phs' else 'uw'}_scotland_{case.band}"
+            assert int(row[_column(case)]) == int(expected[band])
+            assert int(row[f"simd{case.edition}_rank"]) == int(expected["rank"])
             differing.append((case.pc_norm, case.dz_code, zone))
     assert len(missing) <= 5, missing
     # The allocation difference affects a few percent of postcodes; a wholesale disagreement

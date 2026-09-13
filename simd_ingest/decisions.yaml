@@ -219,7 +219,7 @@ decisions:
 
   - id: sql-latest-linked-postcodes
     date: 2026-09-12
-    status: implemented
+    status: superseded   # SPD behaviour retained; SSPL default added by sspl-migration-review
     decision: "Two SQL examples share one latest-postcode view. One uses a chosen SIMD edition (default 2020v2); one uses PHS v3.5 Table 4 by event year. Both use PHS population-weighted Scotland quintiles, 1 most deprived. The date selects the edition, not a historical postcode life. Ordinary split postcodes use A; large users use the latest record of the exact named small-user link, including an explicit split suffix. Missing/unusable links have null SIMD, never an own-geography fallback. Keep every event row and expose both matched and source natural keys."
     reason: "The user chose the linked-small-user route. Keep edition choice separate from postcode selection and put shared rules in one reviewable place. PHS's postcode page describes latest versions and A parts; Appendix A describes large-user links but does not fully specify own-versus-linked disagreement. Exact equivalence to a published PHS postcode lookup remains unverified."
     evidence: "docs/LINKAGE_BY_ERA.md maps code to guidance and labels project choices; tests/test_sql.py uses explicit fixtures and downloaded-data checks. SPD 2026/2 example AB11 6GN has own 2020v2 quintile 2 but linked AB11 6BE supplies 3."
@@ -227,27 +227,27 @@ decisions:
   - id: sql-representative-and-interface-boundary
     date: 2026-09-12
     status: implemented
-    decision: "After selecting the newest life per full key across both user types, prefer live records, then whole/A, then newest introduction per ordinary postcode. Ties and missing A receive no geography. Retain last-known deleted records, including named small-user link targets, and expose their current flags. Missing event dates and years without an edition have distinct statuses; postcode provenance may still be present. Accept ordinary input postcodes only. The imported snapshot and Python current/as-of, own-record geography API are unchanged. Python/SQL parity is no longer claimed."
+    decision: "For the SPD SQL setup and the cross-table comparison, select the newest life per full key across both user types, then prefer live records, whole/A, and newest introduction per ordinary postcode. Ties and missing A receive no geography. Retain last-known deleted records, including named small-user link targets, with current flags. Missing dates and years without an edition have distinct statuses. Accept ordinary input postcodes only. SSPL already selects latest whole records upstream. Python keeps its separate current/as-of, own-record geography policy; no Python/SQL parity is claimed."
     reason: "This ordering and complete deleted-record retention are explicit project policies, not a claim to reproduce PHS's unpublished selection details. Do not silently change existing Python consumers or revive an older small-user record when the newest life is an unlinked large user. New SIMD editions and year mappings require separate review."
 
   - id: sspl-main-table
     date: 2026-09-12
     status: implemented
     decision: "Two tables from two NRS products. The main table, postcode_simd.parquet, is built from the Scottish Statistics Postcode Lookup (SSPL): one row per whole postcode, both user types, latest life including deleted postcodes, key pc_norm. The history table, postcode_simd_history.parquet, is the existing SPD build: every postcode life, key (pc_norm, introduced_on), rows unchanged. Neither table is derived from the other."
-    reason: "NRS recommends the SSPL for statistical production and the project's latest-postcode SQL already links on the latest postcode, which is what the SSPL publishes. History is still needed for as-of and era linkage, so the SPD table stays."
+    reason: "NRS recommends SSPL for statistical production. History is still needed for date-valid postcode matching and inspecting split parts. Choosing an SIMD edition by event year does not itself require postcode history: the default SQL era query reads SSPL."
     evidence: "docs/plans/SSPL_Main_Table_Plan.md section 1: SSPL 2026/1 has 229,708 unique whole postcodes, both data-zone vintages, no blank geography, PO-box sentinels, and deletion dates."
 
   - id: sspl-allocation-is-part-of-the-contract
     date: 2026-09-12
     status: implemented
     decision: "The main table's data zones are the SSPL's: every higher geography is the one containing the centroid of the postcode's 2022 output area. The history table's data zones are the SPD's: the zone containing the postcode's own grid reference. Each table's metadata names its method (allocation: oa2022_centroid or postcode_grid_reference), the data dictionary states it, and every build reports how many current postcodes differ between the two tables and how many SIMD bands change as a result. The difference is an observation, never a gate, and never reconciled by editing either table."
-    reason: "In SSPL 2026/1 the 2011 data zone differs from the SPD's on 10,695 postcodes (6,234 current) and the 2001 data zone on 15,338 (9,312 current), because the SSPL nests everything through 2022 output areas. That changes the 2020v2 Scotland quintile of 3,839 current postcodes. PHS builds its own lookups from the SPD, so a user must be able to see which method a table follows."
-    evidence: "In the SSPL each 2022 output area maps to exactly one 2011 and one 2001 data zone while 2,344 of its 2011 output areas map to more than one 2011 data zone; in the SPD every 2011 output area maps to one 2011 data zone. docs/plans/SSPL_Main_Table_Plan.md section 1."
+    reason: "A user must be able to see which allocation method a table follows. The comparison reports observed differences, not a causal decomposition into release and allocation effects. It compares own-record bands before linked-small-user selection. Neither shared inputs nor matching bands establish equivalence to a PHS postcode-level lookup."
+    evidence: "NRS information note and current build report. The preliminary SSPL 2026/1 comparison in the historical plan used different PAF cuts and incorrect representatives for 19 postcodes; its provisional counts and cause claims are not acceptance evidence."
 
   - id: which-table-answers-which-question
     date: 2026-09-12
     status: implemented
-    decision: "Lookups that need a date (lookup with on=, attach with a date column, attach_by_era) read the history table. Latest-postcode lookups and the SQL examples read the main table. lookup.load reads index_source from the table metadata; an as-of question against the main table is refused with a message, never answered from its single latest life. The main table has no pc_base distinction and no split option: NRS already resolved splits to the A part and summed the counts. PO boxes and unlinked large users are kept in both tables and excluded at lookup time, as now."
+    decision: "Python date-valid lookups (on=, attach with a date column, attach_by_era) and split-report requests need SPD history and are refused against SSPL. Default cohort SQL reads SSPL; an explicitly named SPD setup is available. Both SQL queries use latest postcodes and linked-small-user geography; the era query's date selects the edition only. Python remains current-only/as-of with own-record geography and sentinel exclusion. Both stored tables retain source values for PO boxes and unlinked large users; consumers apply their documented exclusions."
     reason: "One latest life per postcode cannot say whether a postcode existed at a date or which zone it was in then. Making the refusal explicit prevents a silent wrong answer. The split and PO-box defaults are unchanged so existing consumers see the same policy."
     evidence: "SSPL dictionary: no small-user split postcodes; A part used; counts added. SSPL 2026/1 links: NO LINKP on 27,162 large users, NO LINK on 5, 15,368 real links of which 9 keep an A suffix."
 
@@ -262,11 +262,18 @@ decisions:
     date: 2026-09-12
     status: implemented
     decision: "The SSPL and the SPD pinned together need not be the same PAF cut; each table records its own release label. Cross-table differences in postcode presence, introduction date, live status and user type are reported as observations. A pin is chosen by hand for each product."
-    reason: "SSPL 2026/1 is built from the January 2026 PAF and SPD 2026/2 includes introductions to July 2026. Waiting for aligned cuts would delay every refresh; reporting the differences keeps them visible."
-    evidence: "395 SPD postcodes absent from the SSPL, all introduced from January 2026; 233 live in the SSPL but deleted in the SPD; 92 the reverse; 37 changed user type."
+    reason: "The products may be refreshed independently, but there is no need to retain an older SSPL when the intended newer release is available. The current pins are both 2026/2. Matching release labels still do not establish the cause of each geography difference."
+    evidence: "SSPL 2026/2 publication, 18 August 2026, July PAF: https://www.nrscotland.gov.uk/publications/scottish-statistics-postcode-lookup-20262/. The older SSPL 2026/1 pin was superseded by sspl-migration-review."
 
   - id: version-2
     date: 2026-09-12
     status: implemented
     decision: "The change ships as 2.0.0. The main table's file keeps its name but its key and row grain change, and the previous table moves to postcode_simd_history.parquet."
     reason: "A consumer reading postcode_simd.parquet will get one row per postcode instead of one per life. That is a breaking change and the version must say so."
+
+  - id: sspl-migration-review
+    date: 2026-09-13
+    status: implemented
+    decision: "Version 2.0.1 reconciles the migration. Pin SSPL 2026/2 (230103 rows, 161822 live, 187490 small users, 42613 large users); update the two Scottish Parliament columns to 2026 and main schema to postcode_simd_sspl_v2. Default SQL reads main; create_latest_postcode_lookup_history.sql is the explicit SPD alternative. Both share the two edition queries and return index_source, index_release, allocation and requested_link_postcode. SSPL accepts a linked A suffix only for a flagged small-user split representative; B/C cannot resolve. Never fall back across products. Correct the comparison selection and remove unsupported causal/PHS-parity claims."
+    reason: "The implementation, decision log and examples must agree. Preserve the SPD history fingerprint independently of an SSPL refresh, and check the new main fingerprint only against its own reviewed source pins and schema. Keep historical plans clearly superseded."
+    evidence: "tests/test_agreement.py checks synthetic and real SQL parity; tests/test_sql_sspl.py covers SSPL-only links, exclusions, era boundaries and row preservation; build/audit read back both saved tables against pinned sources. Original SSPL 2026/1 archive hash b8bc805567a167dd23a8891dddf44855a8174ddff3885c7f3caa0defc8d83478 and row fingerprint 6c14f4596b3fabb2c814d0af945eae02e00ea330f7440791437990ef4d98aa0f are retained as historical evidence."

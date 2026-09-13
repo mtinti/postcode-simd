@@ -8,12 +8,20 @@ import json
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def known_snapshot(manifest: dict) -> dict | None:
-    """2026 examples/fingerprint only apply to their exact source pins and schema."""
+def known_snapshot(manifest: dict, table: str = "history") -> dict | None:
+    """Each regression applies to its own source pins and schema.
+
+    Refreshing SSPL must not disable the unchanged SPD history regression.
+    """
     known = json.loads((ROOT / "tests/known_snapshot.json").read_text())
-    history = manifest["tables"]["history"]
-    if (sorted(o["sha256"] for o in manifest["sources"]) == known["remote_object_sha256"]
-            and history["schema_sha256"] == known["schema_sha256"]):
+    expected = known["remote_object_sha256"]
+    sources = manifest["sources"]
+    schema_key = "main_schema_sha256" if table == "main" else "schema_sha256"
+    if table == "history":
+        sources = [o for o in sources if not o["key"].startswith("nrs_sspl_")]
+        expected = [s for s in expected if s != known["sspl_object_sha256"]]
+    if (sorted(o["sha256"] for o in sources) == sorted(expected)
+            and manifest["tables"][table]["schema_sha256"] == known[schema_key]):
         return known
     return None
 

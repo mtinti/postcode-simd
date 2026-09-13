@@ -2,7 +2,7 @@
 # Order, Arrow type and nullability are the contract.
 # 50 lookup columns + 6 derived + 6 PHS geography + 6 editions x 14 SIMD fields = 146.
 # Data zones follow the SSPL's allocation: the zone containing the 2022 output-area centroid.
-version: postcode_simd_sspl_v1
+version: postcode_simd_sspl_v2
 table: postcode_simd
 index_source: sspl
 allocation: oa2022_centroid
@@ -34,7 +34,7 @@ fields:
   type: string
   nullable: false
   source: lookup
-  note: 'large users only: small-user postcode containing the grid reference, NO LINKP for PO boxes, NO LINK otherwise unlinked; may carry an A suffix; blank for small users'
+  note: 'large users only: small-user postcode containing the grid reference, NO LINKP for PO boxes, NO LINK otherwise unlinked; may retain an NRS split suffix; blank for small users'
 - name: DateOfIntroduction
   type: string
   nullable: false
@@ -135,12 +135,12 @@ fields:
   nullable: false
   source: lookup
   note: ''
-- name: ScottishParliamentaryRegion2021Code
+- name: ScottishParliamentaryRegion2026Code
   type: string
   nullable: false
   source: lookup
   note: ''
-- name: ScottishParliamentaryConstituency2021Code
+- name: ScottishParliamentaryConstituency2026Code
   type: string
   nullable: false
   source: lookup

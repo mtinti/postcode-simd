@@ -68,7 +68,8 @@ def render(schema: dict, registry, manifest: dict | None, name: str = "history")
                   "Primary key: `pc_norm`, the postcode uppercased without spaces. One row per postcode; no split suffix",
                   "exists because NRS resolved split postcodes to the A part before publishing. `is_current` says whether",
                   "the latest life is live; `introduced_on` and `deleted_on` describe that latest life only. This table",
-                  "cannot answer a question about a past date: use the history table for that.", ""]
+                  "cannot select a past postcode life: use history for that. Choosing a past SIMD edition on this",
+                  "latest postcode is supported by the SQL era query. These are different policies.", ""]
     else:
         lines += ["## Key", "",
                   "Primary key: `pc_norm` with `introduced_on`. Unique across both user types. A postcode alone repeats",
@@ -89,8 +90,9 @@ def render(schema: dict, registry, manifest: dict | None, name: str = "history")
     if name == "main":
         lines += ["- **Allocation.** The SSPL assigns every higher geography from the 2022 output-area centroid. Its 2011",
                   "  and 2001 data zones therefore differ from the directory's on a few percent of postcodes, and so do",
-                  "  the SIMD values attached through them. The build report counts the differences. PHS builds its own",
-                  "  lookups from the directory; use the history table where agreement with PHS practice matters.",
+                  "  the SIMD values attached through them. The build report counts observed differences, without",
+                  "  attributing every difference to method rather than release changes. Neither table establishes",
+                  "  equivalence to PHS's published postcode lookup. Choose one product consistently for a study.",
                   "- **Split postcodes** are already whole here. `SplitIndicator` Y marks a postcode the directory holds",
                   "  as A/B/C parts; the SSPL keeps the A part's geography and sums the counts."]
     else:
@@ -100,9 +102,10 @@ def render(schema: dict, registry, manifest: dict | None, name: str = "history")
                   "  in `simd_ingest.lookup` resolve that to the A part by default, as NRS does, and say so; a report",
                   "  rule shows the ambiguity instead. Never average or vote."]
     lines += [
-              "- **Large-user postcodes and PO boxes.** The directory assigns them a data zone, so SIMD is attached.",
-              "  PHS practice attaches no deprivation to PO boxes. Filter on `spd_user_type` and on",
-              "  `LinkedSmallUserPostcode` in (`NO LINKP`, `NO LINK`) if you want that behaviour.",
+              "- **Large-user postcodes and PO boxes.** The source assigns them a data zone, so SIMD is attached.",
+              "  This is source fidelity, not a linkage recommendation. The [SQL examples](LINKAGE_BY_ERA.md) follow",
+              "  small-user links in the chosen product, excluding unusable links and `NO LINKP`/`NO LINK`.",
+              "  Python keeps its separate own-record geography and sentinel-exclusion policy.",
               "- **Within-geography bands.** `simd{ed}_pw_hb_*` is computed within the health board in",
               "  `phs_dz{vintage}_hb`, which on a few records differs from the directory's own `HealthBoardArea2019Code`.",
               "  Use the PHS code with the PHS band.",
@@ -126,7 +129,7 @@ def render(schema: dict, registry, manifest: dict | None, name: str = "history")
     lines += ["", "### All columns in file order", "", "| # | Column | Type | Nullable | Source | Note |", "| ---: | --- | --- | --- | --- | --- |"]
     lines += [f"| {i} | `{f['name']}` | {f['type']} | {'yes' if f['nullable'] else 'no'} | {f['source']} | {f.get('note', '')} |"
               for i, f in enumerate(fields, 1)]
-    return "\n".join(lines) + "\n"
+    return "\n".join(line.rstrip() for line in lines) + "\n"
 
 
 def main(argv=None) -> int:

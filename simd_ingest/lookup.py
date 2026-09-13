@@ -1,8 +1,8 @@
 """Current/as-of record-level SIMD lookups, with explicit analyst choices.
 
-This API keeps its historical postcode policy and own-record large-user geography.
+This API uses current-only or date-valid records and own-record large-user geography.
 It is not equivalent to the latest-postcode, linked-small-user SQL examples; see
-docs/LINKAGE_BY_ERA.md. No runtime behaviour is changed by that SQL policy.
+docs/LINKAGE_BY_ERA.md. SSPL cannot answer date-valid or split-report questions.
 
 The guidance's method: choose the edition for the years of your data, choose the category
 and level, then match by postcode. This module does the matching and leaves the choices to
@@ -11,8 +11,9 @@ the analyst, who passes an edition and a measure explicitly.
     from simd_ingest import lookup
     t = lookup.load("results/postcode_simd.parquet")
     lookup.lookup(t, "G71 8BQ", edition="2020v2")                      # current only
-    lookup.lookup(t, "AB10 1BF", edition="2012", on="2012-06-01")      # at a date
-    lookup.attach(cohort, t, "postcode", "event_date", edition="2020v2")  # a whole frame
+    h = lookup.load("results/postcode_simd_history.parquet")
+    lookup.lookup(h, "AB10 1BF", edition="2012", on="2012-06-01")      # at a date
+    lookup.attach(cohort, h, "postcode", "event_date", edition="2020v2")  # a whole frame
 
 Split postcodes: NRS splits a postcode that straddles a boundary into A, B and C parts, each
 its own record, and the A part is the one with more addresses. By default, as in NRS's own
@@ -101,12 +102,15 @@ def load(path: str) -> pd.DataFrame:
     return t
 
 
-def _prepare(table: pd.DataFrame, dated: bool) -> pd.DataFrame:
+def _prepare(table: pd.DataFrame, dated: bool, split: str = "a_part") -> pd.DataFrame:
     """Refuse a dated question against a latest-life table; give a whole-postcode table the
     pc_base column the resolution rules expect (every record is its own whole postcode)."""
-    if dated and table.attrs.get("index_source") == "sspl":
+    is_sspl = table.attrs.get("index_source") == "sspl" or "sspl_release" in table
+    if dated and is_sspl:
         raise ValueError("This is the latest-postcode table (SSPL): it holds one life per postcode and cannot "
                          "answer a question about a date. Use the history table, postcode_simd_history.parquet.")
+    if is_sspl and split == "report":
+        raise ValueError("SSPL has no individual split parts to compare. Use the history table for split='report'.")
     if "pc_base" not in table:
         table = table.assign(pc_base=table["pc_norm"])
     return table
@@ -153,7 +157,7 @@ def lookup(table: pd.DataFrame, postcode: str, edition: str, measure: str = "pw_
     postcode or a full NRS key with its split suffix. PO boxes are excluded unless asked for.
     Split postcodes resolve to the A part unless split="report"."""
     _check_split(split)
-    table = scope(_prepare(table, on is not None), include_po_boxes, include_large_users)
+    table = scope(_prepare(table, on is not None, split), include_po_boxes, include_large_users)
     col = column(edition, measure)
     key = normalise_postcode(pd.Series([postcode])).iloc[0]
     when = None if on is None else pd.Timestamp(on)
@@ -185,7 +189,7 @@ def attach(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, date_co
     Split postcodes resolve to the A part unless split="report".
     """
     _check_split(split)
-    table = scope(_prepare(table, date_col is not None), include_po_boxes, include_large_users)
+    table = scope(_prepare(table, date_col is not None, split), include_po_boxes, include_large_users)
     col = column(edition, measure)
     ev = pd.DataFrame({"_row": range(len(events)),
                        "_key": normalise_postcode(events[postcode_col].astype("string").fillna("")).replace("", pd.NA)},
@@ -254,6 +258,7 @@ def attach_by_era(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, 
 
     Events before 1996 get status `no_edition`; the guidance points to Carstairs for them.
     """
+    _prepare(table, True, split)  # Refuse SSPL even when no event has a recommended edition.
     edition = edition_for(events[date_col])
     parts = []
     for ed in edition.dropna().unique():

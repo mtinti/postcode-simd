@@ -29,7 +29,7 @@ The sequence is in [pipeline.py](../simd_ingest/pipeline.py), `prepare`, `build`
 `write_output`; `TABLES` there names the two outputs. No alternate execution path, persisted
 intermediate tables or server. All steps run every time; hash-verified downloads can be reused.
 
-## Two tables, one question each
+## Two postcode products, separate edition and date policies
 
 | | Main table `postcode_simd.parquet` | History table `postcode_simd_history.parquet` |
 | --- | --- | --- |
@@ -37,13 +37,13 @@ intermediate tables or server. All steps run every time; hash-verified downloads
 | Grain | latest life of each whole postcode, deleted ones included | every life, NRS split parts kept |
 | Key | `pc_norm` | `pc_norm`, `introduced_on` |
 | Data-zone allocation | zone containing the 2022 output-area centroid (`oa2022_centroid`) | zone containing the postcode (`postcode_grid_reference`) |
-| Use for | present-day SIMD of a postcode; the latest-postcode SQL | SIMD valid on a date; era linkage; split parts |
+| Use for | latest-postcode SQL with a chosen edition or edition by event year | date-valid postcode matching; split parts; explicit SPD latest-postcode SQL |
 
 The allocation difference is the one to remember. NRS builds the SSPL so that every geography
 nests through 2022 output areas; its 2011 and 2001 data zones are therefore best fits of the
 2022 output area, and differ from the directory's on a few percent of postcodes. The build
-report section "Agreement between the two tables" counts the differences and the SIMD bands
-that change because of them. Neither table is corrected towards the other. `lookup.load`
+report section "Agreement between the two tables" counts observed differences and changed
+SIMD bands without isolating methodology from release changes. Neither table is corrected towards the other. `lookup.load`
 reads which product a table came from and refuses a dated question against the main table.
 
 ## The rules to review
@@ -114,7 +114,9 @@ and compares its SIMD values with the reference rows. In the history table use
 ambiguous base postcode.
 
 Analyst choices remain outside ingestion. The [two SQL examples](LINKAGE_BY_ERA.md) share
-latest-postcode selection, A-part resolution and linked-small-user geography; one uses a
-chosen SIMD edition and one uses event-year recommendations. The [Python helper](EXAMPLES.md)
+latest-postcode selection and linked-small-user geography; SSPL is the default, with an
+explicit SPD setup. SSPL already made splits whole on A; its B/C links cannot resolve.
+One query uses a chosen SIMD edition and one uses event-year recommendations, without
+selecting historical postcode lives. The [Python helper](EXAMPLES.md)
 keeps its separate current/as-of and own-record geography policy. Adding an edition does
 not silently change either consumer policy.
