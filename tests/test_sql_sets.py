@@ -12,7 +12,7 @@ import pandas as pd
 import pytest
 import yaml
 
-from simd_ingest.sql_examples import MEASURES, PRODUCTS, render, shared_block
+from simd_ingest.sql_examples import FILES, MEASURES, PRODUCTS, VARIANTS as FILE_OF, render, shared_block
 from support import ROOT, known_snapshot
 
 SQL = ROOT / "docs/sql"
@@ -22,8 +22,12 @@ VARIANTS = ("link_by_era", "link_latest")
 RAW = {name: [f["name"] for f in yaml.safe_load((ROOT / "simd_ingest" / spec["schema"]).read_text())["fields"]
               if f["source"] == spec["raw_source"]] for name, spec in PRODUCTS.items()}
 DEMO = {"link_by_era": "    SELECT 1 AS id, CAST('AB24 2TY' AS varchar(32)) AS postcode, 2020 AS analysis_year",
-        "link_latest": "    SELECT 1 AS id, CAST('AB24 2TY' AS varchar(32)) AS postcode"}
-CONTRACT = ["id", "postcode", "analysis_year", "postcode_key", "postcode_status", "simd_status",
+        "link_latest": "    SELECT 1 AS id, CAST('AB24 2TY' AS varchar(32)) AS postcode",
+        "link_as_of": "    SELECT 1 AS id, CAST('FK17 8DS' AS varchar(32)) AS postcode,\n"
+                      "           CAST('1975-06-01' AS date) AS address_date, 2020 AS analysis_year"}
+COHORT_COLUMNS = {"link_by_era": "id, postcode, analysis_year", "link_latest": "id, postcode",
+                  "link_as_of": "id, postcode, address_date, analysis_year"}
+CONTRACT = ["id", "postcode", "address_date", "analysis_year", "postcode_key", "postcode_status", "simd_status",
             "index_source", "index_release", "allocation", "simd_edition", "edition_policy", "data_zone_vintage",
             "matched_pc_norm", "matched_introduced_on", "matched_is_current", "matched_user_type",
             "requested_link_postcode", "simd_source_pc_norm", "simd_source_introduced_on", "simd_source_is_current",
@@ -39,14 +43,18 @@ def stored_values(seed: int) -> dict:
 
 
 def record(name, pc="AB11AA", *, base=None, intro="2010-01-01", live=True, user="small_user",
-           link="", split="N", seed=1, q=None) -> dict:
+           link="", split="N", seed=1, q=None, deleted=None) -> dict:
+    """One row. A deleted life ends 30 days after its introduction unless `deleted` names the day."""
+    if deleted is not None:
+        live = False
     row = {c: f"raw-{c}" for c in RAW[name]}
     row.update(Postcode=pc[:-3] + " " + pc[-3:], SplitIndicator=split, LinkedSmallUserPostcode=link,
                PostcodeType="L" if user == "large_user" else "S",
                DataZone2001Code=f"dz2001-{seed}", DataZone2011Code=f"dz2011-{seed}",
                IntermediateZone2001Code=f"iz2001-{seed}", IntermediateZone2011Code=f"iz2011-{seed}",
                pc_norm=pc, spd_user_type=user, introduced_on=pd.Timestamp(intro),
-               deleted_on=pd.NaT if live else pd.Timestamp(intro) + pd.Timedelta(days=30), is_current=live)
+               deleted_on=pd.NaT if live else pd.Timestamp(deleted) if deleted else pd.Timestamp(intro) + pd.Timedelta(days=30),
+               is_current=live)
     if name == "spd":
         row.update(pc_base=base or pc, spd_release="fixture-spd")
     else:
@@ -59,8 +67,9 @@ def record(name, pc="AB11AA", *, base=None, intro="2010-01-01", live=True, user=
     return row
 
 
-def inputs(postcode="AB1 1AA", year=2020) -> pd.DataFrame:
+def inputs(postcode="AB1 1AA", year=2020, on=None) -> pd.DataFrame:
     return pd.DataFrame({"id": [1], "postcode": pd.Series([postcode], dtype="string"),
+                         "address_date": pd.to_datetime(pd.Series([on])),
                          "analysis_year": pd.Series([year], dtype="Int64")})
 
 
@@ -78,9 +87,8 @@ def setup(con, name, rows):
 def run(con, name, variant, cohort, text=None) -> pd.DataFrame:
     sql = text or (SQL / name / f"{variant}.sql").read_text()
     assert sql.count(DEMO[variant]) == 1
-    columns = "id, postcode, analysis_year" if variant == "link_by_era" else "id, postcode"
     con.register("cohort", cohort)
-    return con.execute(sql.replace(DEMO[variant], f"    SELECT {columns} FROM cohort")).df()
+    return con.execute(sql.replace(DEMO[variant], f"    SELECT {COHORT_COLUMNS[variant]} FROM cohort")).df()
 
 
 def expect_edition(out, row, edition):
@@ -97,10 +105,15 @@ def expect_edition(out, row, edition):
 
 # --- the files themselves --------------------------------------------------------------
 
-@pytest.mark.parametrize("name", PRODUCTS)
-@pytest.mark.parametrize("variant", VARIANTS)
+@pytest.mark.parametrize("name,variant", [(n, v) for n, vs in FILES.items() for v in vs])
 def test_committed_file_matches_generator(name, variant):
-    assert (SQL / name / f"{variant}.sql").read_text() == render(name, "era" if variant == "link_by_era" else "latest")
+    assert (SQL / name / FILE_OF[variant]).read_text() == render(name, variant)
+    assert sorted(p.name for p in (SQL / name).glob("*.sql")) == sorted(FILE_OF[v] for v in FILES[name])
+
+
+def test_only_the_spd_set_can_answer_a_dated_question():
+    with pytest.raises(ValueError, match="one life"):
+        render("sspl", "asof")
 
 
 @pytest.mark.parametrize("name", PRODUCTS)
@@ -355,3 +368,116 @@ def test_real_tables_agree_on_the_worked_example_and_differ_only_by_allocation(r
     same_zone = both.data_zone_code_spd.eq(both.data_zone_code_sspl)
     assert both[same_zone].phs_pw_scotland_quintile_spd.eq(both[same_zone].phs_pw_scotland_quintile_sspl).all()
     assert 0 < (~same_zone).sum() < len(both) * 0.1
+
+
+# --- link_as_of.sql: the life valid on the address date (SPD only) -------------------------
+
+LIVES = [dict(intro="1973-08-01", deleted="1978-04-01", seed=1), dict(intro="1978-11-01", seed=2)]  # deleted, then re-used
+
+
+def as_of(con, rows, on, year=2020, postcode="AB1 1AA"):
+    setup(con, "spd", [record("spd", **r) for r in rows])
+    return run(con, "spd", "link_as_of", inputs(postcode, year, on)).iloc[0]
+
+
+@pytest.mark.parametrize("on,status,seed,previous,following", [
+    ("1975-06-01", "matched", 1, None, "1978-11-01"),
+    ("1973-08-01", "matched", 1, None, "1978-11-01"),          # the introduction day is inside the life
+    ("1978-03-31", "matched", 1, None, "1978-11-01"),          # the day before deletion is inside
+    ("1978-04-01", "between_lives", None, "1978-04-01", "1978-11-01"),  # the deletion day is not
+    ("1978-06-01", "between_lives", None, "1978-04-01", "1978-11-01"),
+    ("1978-11-01", "matched", 2, "1978-04-01", None),          # the re-introduction day starts the new life
+    ("1990-06-01", "matched", 2, "1978-04-01", None),
+    ("1970-01-01", "postcode_not_yet_introduced", None, None, "1973-08-01"),
+    (None, "missing_address_date", None, None, None),
+])
+def test_as_of_takes_the_life_containing_the_address_date(con, on, status, seed, previous, following):
+    out = as_of(con, LIVES, on)
+    assert (out.postcode_status, out.simd_status) == (status, "matched" if seed else status)
+    assert str(out.first_introduced_on.date()) == "1973-08-01"
+    assert (None if pd.isna(out.previous_life_deleted_on) else str(out.previous_life_deleted_on.date())) == previous
+    assert (None if pd.isna(out.next_life_introduced_on) else str(out.next_life_introduced_on.date())) == following
+    if seed:
+        expect_edition(out, record("spd", seed=seed), "2020v2")
+        assert out.matched_is_current == (seed == 2)
+    else:
+        assert pd.isna(out.matched_pc_norm) and pd.isna(out.simd_rank)
+
+
+def test_as_of_after_the_only_life_is_deleted_by_date(con):
+    life = [dict(intro="1973-08-01", deleted="1999-03-22")]
+    out = as_of(con, life, "2005-06-10")
+    assert (out.postcode_status, str(out.previous_life_deleted_on.date())) == ("postcode_deleted_by_date", "1999-03-22")
+    assert pd.isna(out.next_life_introduced_on)
+    assert as_of(con, life, "1999-03-22").postcode_status == "postcode_deleted_by_date"
+    assert as_of(con, life, "1999-03-21").postcode_status == "matched"
+    assert as_of(con, life, "2005-06-10", postcode="ZZ1 1ZZ").postcode_status == "not_found"
+
+
+def test_as_of_edition_comes_from_the_year_not_the_address_date(con):
+    out = as_of(con, LIVES, "1975-06-01", year=1975)
+    assert (out.postcode_status, out.simd_status, out.matched_is_current) == ("matched", "no_edition", False)
+    out = as_of(con, LIVES, "1975-06-01", year=2005)
+    expect_edition(out, record("spd", seed=1), "2006")
+
+
+@pytest.mark.parametrize("rows,on,key,status,has_simd", [
+    ([dict(pc="AB11AAA", base="AB11AA", split="Y"), dict(pc="AB11AAB", base="AB11AA", split="Y")], "2015-01-01", "AB11AAA", "a_part", True),
+    ([dict(pc="AB11AAA", base="AB11AA", split="Y", live=False), dict(pc="AB11AAB", base="AB11AA", split="Y")], "2015-01-01", "AB11AAB", "split_a_missing", False),
+    ([dict(), dict(pc="AB11AAA", base="AB11AA", split="Y")], "2015-01-01", "AB11AA", "ambiguous_postcode", False),
+    ([dict(live=False), dict(pc="AB11AAA", base="AB11AA", split="Y", intro="2012-01-01")], "2010-01-15", "AB11AA", "matched", True),
+])
+def test_as_of_split_parts_among_the_lives_valid_on_the_date(con, rows, on, key, status, has_simd):
+    out = as_of(con, rows, on)
+    assert (out.matched_pc_norm, out.postcode_status) == (key, status)
+    assert out.simd_status == ("matched" if has_simd else status)
+
+
+@pytest.mark.parametrize("on,status,source_seed", [
+    ("2011-01-01", "linked_small_user", 3), ("2016-01-01", "linked_small_user", 4), ("2012-06-01", "linked_small_user_not_found", None)])
+def test_as_of_large_user_link_uses_the_target_life_valid_on_the_date(con, on, status, source_seed):
+    rows = [dict(user="large_user", link="AB1 1AB", intro="2000-01-01", seed=9),
+            dict(pc="AB11AB", intro="2010-06-01", deleted="2012-01-01", seed=3),
+            dict(pc="AB11AB", intro="2015-01-01", seed=4)]
+    out = as_of(con, rows, on)
+    assert (out.matched_pc_norm, out.postcode_status) == ("AB11AA", status)
+    if source_seed:
+        assert out.simd_status == "matched" and out.simd_source_pc_norm == "AB11AB"
+        expect_edition(out, record("spd", seed=source_seed), "2020v2")
+    else:
+        assert out.simd_status == status and pd.isna(out.simd_source_pc_norm)
+
+
+def test_as_of_every_input_row_comes_back_once(con):
+    setup(con, "spd", [record("spd", **r) for r in LIVES])
+    cohort = pd.concat([inputs(on="1975-06-01"), inputs(on="1975-06-01"), inputs(on="1978-06-01"), inputs("ZZ1 1ZZ", on="1975-06-01")], ignore_index=True)
+    cohort["id"] = [1, 1, None, None]
+    out = run(con, "spd", "link_as_of", cohort)
+    assert len(out) == 4 and out.id.isna().sum() == 2
+    assert sorted(out.postcode_status) == ["between_lives", "matched", "matched", "not_found"]
+    assert list(out.columns[:len(CONTRACT)]) == CONTRACT and out.columns.str.lower().is_unique
+    assert run(con, "spd", "link_as_of", cohort.iloc[:0]).empty
+
+
+def test_as_of_real_recycled_and_deleted_postcodes(real):
+    cohort = pd.DataFrame({"id": range(1, 7), "postcode": ["FK17 8DS"] * 3 + ["TD9 7PQ"] * 3,
+                           "address_date": pd.to_datetime(["1975-06-01", "1978-06-01", "1990-06-01", "1990-05-15", "1999-03-22", "1970-01-01"]),
+                           "analysis_year": [2020] * 6})
+    real.register("cases", cohort)  # a registered frame would shadow the cohort view created below
+    sql = (SQL / "spd" / "link_as_of.sql").read_text().replace(DEMO["link_as_of"], "    SELECT id, postcode, address_date, analysis_year FROM cohort")
+    out = real.execute(sql.replace("FROM cohort", "FROM cases")).df().set_index("id").sort_index()
+    assert out.postcode_status.tolist() == ["matched", "between_lives", "matched", "matched", "postcode_deleted_by_date", "postcode_not_yet_introduced"]
+    assert out.loc[1, "data_zone_code"] == "S01013116" and out.loc[1, "phs_pw_scotland_quintile"] == 5 and not out.loc[1, "matched_is_current"]
+    assert out.loc[3, "data_zone_code"] == "S01013113" and out.loc[3, "phs_pw_scotland_quintile"] == 3 and out.loc[3, "matched_is_current"]
+    assert out.loc[4, "phs_pw_scotland_quintile"] == 3 and not out.loc[4, "matched_is_current"]
+    assert str(out.loc[5, "previous_life_deleted_on"].date()) == "1999-03-22"
+    # Every recorded life, asked on its own introduction day, is found and its values are traceable.
+    real.execute("CREATE OR REPLACE VIEW cohort AS SELECT pc_norm AS id, pc_base AS postcode, introduced_on AS address_date, 2020 AS analysis_year FROM postcode_simd_history WHERE deleted_on IS NULL OR deleted_on > introduced_on")
+    real.execute("CREATE OR REPLACE TABLE result AS " + sql)
+    total = real.execute("SELECT COUNT(*) FROM cohort").fetchone()[0]
+    assert real.execute("SELECT COUNT(*) FROM result").fetchone()[0] == total
+    assert real.execute("SELECT COUNT(*) FROM result WHERE postcode_status IN ('not_found','between_lives','postcode_deleted_by_date','postcode_not_yet_introduced','missing_address_date')").fetchone()[0] == 0
+    differences = " OR ".join([f"r.{out_} IS DISTINCT FROM p.simd2020v2_{suffix}" for out_, suffix in MEASURES] + ["r.data_zone_code IS DISTINCT FROM p.DataZone2011Code"])
+    assert real.execute(f"""SELECT COUNT(*) FROM result r JOIN postcode_simd_history p
+        ON p.pc_norm = r.simd_source_pc_norm AND p.introduced_on = r.simd_source_introduced_on
+        WHERE r.simd_status = 'matched' AND ({differences})""").fetchone()[0] == 0

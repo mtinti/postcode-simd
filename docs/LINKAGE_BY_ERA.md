@@ -14,7 +14,8 @@ does and which guidance it follows. The files are generated from the schemas by
 
 Each set has `link_by_era.sql` (edition by the year of the health data) and `link_latest.sql`
 (one edition throughout). Within a set the two files differ only in steps 1 to 3; the text
-from `-- BEGIN shared` to `-- END shared` is identical and a test checks it.
+from `-- BEGIN shared` to `-- END shared` is identical and a test checks it. The SPD set has
+a third query, `link_as_of.sql`, described after the steps.
 
 ## The steps
 
@@ -77,21 +78,66 @@ whether the SIMD columns can be used: a year problem first (`missing_year`, `inv
 keys are returned so the route can be reviewed, which covers the PHS checklist on p.25:
 index, edition, weighting, direction and level.
 
+## The dated query, SPD only
+
+A patient's postcode usually comes with the date it was recorded against the person, for
+example the CHI record's edit date. `link_as_of.sql` takes `id, postcode, address_date,
+analysis_year` and changes only steps 4 to 6:
+
+- **Step 4** takes the lives of the postcode that contain the address date, where a life runs
+  from `introduced_on` up to but not including `deleted_on`. A postcode deleted and later
+  re-used elsewhere is resolved to whichever life the date falls in.
+- **Step 5** applies the same A-part rule among those lives.
+- **Step 6** follows a large user's link to the small-user life valid on the same date.
+
+The edition still comes from `analysis_year`, because when a person lived at a postcode and
+which SIMD suits the health data are different questions. Pass the same year for both only
+as a stated choice.
+
+When no life contains the date, the query says where the date falls and returns the nearest
+lives as context (`first_introduced_on`, `previous_life_deleted_on`, `next_life_introduced_on`):
+
+| `postcode_status` | Meaning |
+| --- | --- |
+| `postcode_not_yet_introduced` | the date is before the postcode's first life |
+| `between_lives` | the date is in a gap between two lives |
+| `postcode_deleted_by_date` | the date is after the postcode's last life ended |
+| `missing_address_date` | no date was supplied |
+
+FK17 8DS was in use from August 1973 to April 1978 in S01013116 and again from November
+1978 in S01013113. Asked with the 2020v2 edition:
+
+| `address_date` | `postcode_status` | `matched_introduced_on` | `data_zone_code` | `phs_pw_scotland_quintile` |
+| --- | --- | --- | --- | --- |
+| 1975-06-01 | `matched`, life since ended | 1973-08-01 | S01013116 | 5 |
+| 1978-06-01 | `between_lives` | | | |
+| 1990-06-01 | `matched` | 1978-11-01 | S01013113 | 3 |
+
+`link_by_era.sql` would give quintile 3 for all three, because it takes the latest life.
+TD9 7PQ, one life deleted on 22 March 1999, is `matched` with `matched_is_current` false on
+15 May 1990, `postcode_deleted_by_date` on the deletion day itself, and
+`postcode_not_yet_introduced` on 1 January 1970.
+
+The Python API answers the same question for one postcode or a frame
+(`lookup.lookup(h, postcode, edition, on=date)`, `lookup.attach`, `lookup.attach_by_era`)
+with its own large-user policy, see [Examples](EXAMPLES.md).
+
 ## The output, the same in both sets
 
 | Group | Columns |
 | --- | --- |
-| Input | `id`, `postcode`, `analysis_year` (null in `link_latest.sql`), `postcode_key` |
+| Input | `id`, `postcode`, `address_date` (only `link_as_of.sql` fills it), `analysis_year` (null in `link_latest.sql`), `postcode_key` |
 | Statuses | `postcode_status`, `simd_status` |
 | Provenance | `index_source`, `index_release`, `allocation`, `simd_edition`, `edition_policy`, `data_zone_vintage` |
 | Keys | `matched_pc_norm`, `matched_introduced_on`, `matched_is_current`, `matched_user_type`, `requested_link_postcode`, `simd_source_pc_norm`, `simd_source_introduced_on`, `simd_source_is_current` |
 | Geography used | `data_zone_code`, `intermediate_zone_code`, `phs_hb_code`, `phs_hscp_code`, `phs_ca_code` |
 | Measures | `simd_rank`, `phs_pw_scotland_quintile`, `phs_pw_scotland_decile`, `phs_pw_hb_quintile`, `phs_pw_hb_decile`, `phs_pw_hscp_quintile`, `phs_pw_hscp_decile`, `phs_pw_ca_quintile`, `phs_pw_ca_decile`, `phs_pw_most15pc`, `phs_pw_least15pc`, `gov_uw_scotland_quintile`, `gov_uw_scotland_decile`, `gov_uw_scotland_vigintile`, `band_direction` |
-| Own-record context | the matched record's NRS fields as ingested, names unchanged except `Postcode`, returned as `matched_postcode`; the SPD set adds `matched_pc_base` |
+| Own-record context | the matched record's NRS fields as ingested, names unchanged except `Postcode`, returned as `matched_postcode`; the SPD set adds `matched_pc_base`, and `link_as_of.sql` the three nearest-life dates |
 
 `postcode_status` values: `matched`, `a_part`, `linked_small_user`, `linked_small_user_not_found`,
 `unlinked_large_user`, `po_box`, `split_a_missing` (SPD), `ambiguous_postcode` (SPD),
-`not_found`, `missing_postcode`. SIMD is present only for the first three.
+`not_found`, `missing_postcode`, plus the four dated statuses of `link_as_of.sql`. SIMD is
+present only for the first three.
 
 For a large user the own-record context holds its own data zone while `simd_source_pc_norm`
 names the small-user postcode that supplied the values. A deleted latest life is matched and

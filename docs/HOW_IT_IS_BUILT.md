@@ -117,7 +117,8 @@ Analyst choices remain outside ingestion. The [SQL sets](sql/README.md) are one 
 product, with no default: `docs/sql/spd/` reads the history table and selects the latest life
 and the A part itself; `docs/sql/sspl/` reads the main table, where NRS already did both.
 Both follow a large user's link to its small-user postcode, as PHS Appendix A describes, and
-both return the same columns. Each set chooses the SIMD edition either by the year of the
+both return the same columns. The SPD set also has `link_as_of.sql`, which uses the postcode
+life valid on the date the address was recorded. Each set chooses the SIMD edition either by the year of the
 health data (Table 4) or once for the whole study. The four files are generated from the
 schemas by `simd_ingest/sql_examples.py`, so a new edition regenerates them. The
 [Python helper](EXAMPLES.md) keeps its separate current/as-of and sentinel-exclusion policy.

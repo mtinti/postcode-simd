@@ -9,9 +9,14 @@ A study makes two choices, in this order. Neither has a default.
    health data (PHS v3.5 Table 4). `link_latest.sql` uses one edition throughout, edited on
    one marked line.
 
+The SPD set has a third query, `link_as_of.sql`, for a postcode that comes with the date it
+was recorded against the person: it uses the postcode life valid on that date, not the latest
+life, and still chooses the edition from the year of the health data. The SSPL cannot answer
+that question, because NRS kept one life per postcode.
+
 | Set | Import this file | As table | With key | The query does |
 | --- | --- | --- | --- | --- |
-| `spd/` | `results/postcode_simd_history.parquet` | `postcode_simd_history` | `(pc_norm, introduced_on)` | latest life, A part, large-user links, values |
+| `spd/` | `results/postcode_simd_history.parquet` | `postcode_simd_history` | `(pc_norm, introduced_on)` | latest life or the life on the address date, A part, large-user links, values |
 | `sspl/` | `results/postcode_simd.parquet` | `postcode_simd` | `pc_norm` | large-user links, values |
 
 Every query is standalone: no view, no other script, no other product. Each reads top to

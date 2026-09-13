@@ -1,6 +1,6 @@
 # Plan: two SQL sets, one per postcode product, no default
 
-Drafted 13 September 2026. Status: implemented on 13 September 2026 (version 2.1.0). The SSPL set follows large-user links: NRS publishes no guidance against it (checked 13 September 2026).
+Drafted 13 September 2026. Status: implemented on 13 September 2026 (version 2.1.0); `link_as_of.sql` added to the SPD set the same day (decision sql-as-of-address-date). The SSPL set follows large-user links: NRS publishes no guidance against it (checked 13 September 2026).
 
 ## Aim
 

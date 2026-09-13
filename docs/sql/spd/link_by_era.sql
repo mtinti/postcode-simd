@@ -18,7 +18,7 @@ requested AS (
     -- STEP 2. KEY. Uppercase and remove ASCII spaces, keeping the original text: the same rule
     -- as ingestion (project choice). Nothing is repaired and an NRS A/B/C suffix is not
     -- removed, so supply the ordinary postcode as a person writes it.
-    SELECT id, postcode, analysis_year,
+    SELECT id, postcode, CAST(NULL AS date) AS address_date, analysis_year,
            NULLIF(UPPER(REPLACE(postcode, ' ', '')), '') AS postcode_key
     FROM inputs
 ),
@@ -36,7 +36,7 @@ era AS (
     ) AS v(year_from, year_to, edition, data_zone_vintage)
 ),
 chosen AS (
-    SELECT r.id, r.postcode, r.analysis_year, r.postcode_key,
+    SELECT r.id, r.postcode, r.address_date, r.analysis_year, r.postcode_key,
            e.edition AS simd_edition, e.data_zone_vintage,
            'PHS v3.5 Table 4: edition by year of the health data' AS edition_policy,
            CASE
@@ -450,7 +450,7 @@ SELECT
     -- used: a year problem first, then a postcode problem, then a missing stored value.
     -- Product provenance and both keys are returned so the route can be reviewed
     -- (PHS checklist, p.25: state index, edition, weighting, direction and level).
-       s.id, s.postcode, s.analysis_year, s.postcode_key,
+       s.id, s.postcode, s.address_date, s.analysis_year, s.postcode_key,
        s.postcode_status,
        CASE
            WHEN s.edition_status <> 'ok' THEN s.edition_status
@@ -483,6 +483,7 @@ SELECT
        -- Own-record context: the matched record's NRS fields as ingested, names unchanged
        -- (Postcode as matched_postcode). For a large user these are its own fields, not the
        -- linked small user's; compare DataZone2011Code here with simd_source_pc_norm above.
+       -- link_as_of.sql first gives the nearest lives when no life contains the address date.
        s.matched_pc_base,
        s.matched_postcode,
        s.PostcodeDistrict,
