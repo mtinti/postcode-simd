@@ -2,9 +2,9 @@
 
     python -m simd_ingest.sql_examples          # rewrites docs/sql/spd/*.sql and docs/sql/sspl/*.sql
 
-Two sets, the same two queries, the same output contract:
+Two sets, the same queries, the same output contract:
 
-    docs/sql/spd/   reads postcode_simd_history (key pc_norm, introduced_on)
+    docs/sql/spd/   reads postcode_simd_history (key pc_norm, introduced_on); also link_as_of.sql
     docs/sql/sspl/  reads postcode_simd         (key pc_norm)
 
 Each query is standalone and reads top to bottom as numbered steps. The SPD set performs the
@@ -74,9 +74,14 @@ def _case(expr: str, branches: list, alias: str, quote=True) -> str:
     return "\n".join(lines)
 
 
+VARIANTS = {"era": "link_by_era.sql", "latest": "link_latest.sql", "asof": "link_as_of.sql"}
+FILES = {"spd": ("era", "latest", "asof"), "sspl": ("era", "latest")}
+
+
 def _header(name: str, p: dict, variant: str) -> str:
-    aim = ("edition chosen by the YEAR OF THE HEALTH DATA (PHS v3.5 Table 4, section 3.2.1.1)" if variant == "era"
-           else "ONE edition for the whole study (PHS v3.5 section 3.2.1.2)")
+    aim = {"era": "edition chosen by the YEAR OF THE HEALTH DATA (PHS v3.5 Table 4, section 3.2.1.1)",
+           "latest": "ONE edition for the whole study (PHS v3.5 section 3.2.1.2)",
+           "asof": "the postcode LIFE VALID ON THE ADDRESS DATE, edition by the year of the health data"}[variant]
     return f"""-- {name.upper()} SET, {p['product']}: {aim}.
 -- Reads {p['table']}, imported from {p['parquet']} with its natural key {p['key']}.
 -- Standalone: no view, no other script, no other postcode product. Nothing is recalculated.
@@ -91,6 +96,49 @@ def _header(name: str, p: dict, variant: str) -> str:
 
 def _inputs_and_edition(variant: str, editions: list) -> str:
     table4 = ",\n".join(f"        ({first}, {last}, '{ed}', {dict(editions)[ed]})" for first, last, ed in GUIDANCE_TABLE_4)
+    if variant == "asof":
+        return f"""WITH inputs AS (
+    -- STEP 1. INPUT. Replace this SELECT with:
+    --   SELECT id, postcode, address_date, analysis_year FROM your_cohort
+    -- address_date is the day the postcode was recorded against the person (for example the
+    -- CHI record's edit date): the postcode life valid on that day is the one used.
+    -- analysis_year is the year of the health data as an integer: it chooses the SIMD edition.
+    -- The two are different questions; pass the same year twice only as a stated choice.
+    SELECT 1 AS id, CAST('FK17 8DS' AS varchar(32)) AS postcode,
+           CAST('1975-06-01' AS date) AS address_date, 2020 AS analysis_year
+),
+requested AS (
+    -- STEP 2. KEY. Uppercase and remove ASCII spaces, keeping the original text: the same rule
+    -- as ingestion (project choice). Nothing is repaired and an NRS A/B/C suffix is not
+    -- removed, so supply the ordinary postcode as a person writes it. input_row keeps
+    -- duplicate input rows apart.
+    SELECT id, postcode, address_date, analysis_year,
+           NULLIF(UPPER(REPLACE(postcode, ' ', '')), '') AS postcode_key,
+           ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS input_row
+    FROM inputs
+),
+era AS (
+    -- STEP 3. EDITION. PHS v3.5 Table 4, printed p.17: the year of the health data chooses the
+    -- SIMD edition, and the edition fixes the data-zone vintage. Before 1996 there is no SIMD;
+    -- the guidance points to Carstairs, which this table does not carry.
+    SELECT * FROM (VALUES
+{table4}
+    ) AS v(year_from, year_to, edition, data_zone_vintage)
+),
+chosen AS (
+    SELECT r.id, r.postcode, r.address_date, r.analysis_year, r.postcode_key, r.input_row,
+           e.edition AS simd_edition, e.data_zone_vintage,
+           'PHS v3.5 Table 4: edition by year of the health data' AS edition_policy,
+           CASE
+               WHEN r.analysis_year IS NULL THEN 'missing_year'
+               WHEN r.analysis_year < 1 OR r.analysis_year > 9999 THEN 'invalid_year'
+               WHEN e.edition IS NULL THEN 'no_edition'
+               ELSE 'ok'
+           END AS edition_status
+    FROM requested r
+    LEFT JOIN era e ON r.analysis_year BETWEEN e.year_from AND e.year_to
+),
+"""
     if variant == "era":
         return f"""WITH inputs AS (
     -- STEP 1. INPUT. Replace this SELECT with: SELECT id, postcode, analysis_year FROM your_cohort
@@ -102,7 +150,7 @@ requested AS (
     -- STEP 2. KEY. Uppercase and remove ASCII spaces, keeping the original text: the same rule
     -- as ingestion (project choice). Nothing is repaired and an NRS A/B/C suffix is not
     -- removed, so supply the ordinary postcode as a person writes it.
-    SELECT id, postcode, analysis_year,
+    SELECT id, postcode, CAST(NULL AS date) AS address_date, analysis_year,
            NULLIF(UPPER(REPLACE(postcode, ' ', '')), '') AS postcode_key
     FROM inputs
 ),
@@ -115,7 +163,7 @@ era AS (
     ) AS v(year_from, year_to, edition, data_zone_vintage)
 ),
 chosen AS (
-    SELECT r.id, r.postcode, r.analysis_year, r.postcode_key,
+    SELECT r.id, r.postcode, r.address_date, r.analysis_year, r.postcode_key,
            e.edition AS simd_edition, e.data_zone_vintage,
            'PHS v3.5 Table 4: edition by year of the health data' AS edition_policy,
            CASE
@@ -138,7 +186,7 @@ requested AS (
     -- STEP 2. KEY. Uppercase and remove ASCII spaces, keeping the original text: the same rule
     -- as ingestion (project choice). Nothing is repaired and an NRS A/B/C suffix is not
     -- removed, so supply the ordinary postcode as a person writes it.
-    SELECT id, postcode, CAST(NULL AS integer) AS analysis_year,
+    SELECT id, postcode, CAST(NULL AS date) AS address_date, CAST(NULL AS integer) AS analysis_year,
            NULLIF(UPPER(REPLACE(postcode, ' ', '')), '') AS postcode_key
     FROM inputs
 ),
@@ -154,7 +202,7 @@ era AS (
     ) AS v(edition, data_zone_vintage)
 ),
 chosen AS (
-    SELECT r.id, r.postcode, r.analysis_year, r.postcode_key,
+    SELECT r.id, r.postcode, r.address_date, r.analysis_year, r.postcode_key,
            e.edition AS simd_edition, e.data_zone_vintage,
            'PHS v3.5 section 3.2.1.2: one edition throughout' AS edition_policy,
            CASE WHEN e.edition IS NULL THEN 'unknown_edition' ELSE 'ok' END AS edition_status
@@ -254,6 +302,94 @@ matched AS (
 """
 
 
+def _g_columns(editions: list) -> str:
+    """The geography record's columns, aliased, for a join that cannot use g.* safely."""
+    cols = ["g.pc_norm AS source_pc_norm", "g.introduced_on AS source_introduced_on", "g.is_current AS source_is_current"]
+    cols += [f"g.DataZone{v}Code AS source_dz{v}" for v in _vintages(editions)]
+    cols += [f"g.IntermediateZone{v}Code AS source_iz{v}" for v in _vintages(editions)]
+    cols += [f"g.phs_dz{v}_{g}" for v in _vintages(editions) for g in GEOGRAPHY]
+    cols += [f"g.simd{ed}_{suffix}" for ed, _ in editions for _, suffix in MEASURES]
+    return ",\n           ".join(cols)
+
+
+def _selection_spd_asof(editions: list, raw: list) -> str:
+    return f"""lives_on_date AS (
+    -- STEP 4. LIFE VALID ON THE ADDRESS DATE (SPD only). A postcode life runs from
+    -- introduced_on up to but not including deleted_on. Take every life of the ordinary
+    -- postcode that contains the address date. A postcode can be deleted and later re-used
+    -- elsewhere; the address date decides which life the record belongs to. A record deleted
+    -- on the address date is not valid on it. Same-day records are never valid.
+    SELECT c.input_row, p.*,
+           DENSE_RANK() OVER (
+               PARTITION BY c.input_row
+               ORDER BY CASE WHEN p.pc_norm = p.pc_base OR RIGHT(p.pc_norm, 1) = 'A' THEN 0 ELSE 1 END,
+                        p.introduced_on DESC
+           ) AS priority
+    FROM chosen c
+    JOIN postcode_simd_history p
+      ON p.pc_base = c.postcode_key
+     AND p.introduced_on <= c.address_date
+     AND (p.deleted_on IS NULL OR p.deleted_on > c.address_date)
+),
+candidates AS (
+    -- STEP 5. SPLIT PARTS (SPD only). Among the lives valid on the date, PHS "lookups include
+    -- only the A part" and NRS uses A because it "contains more addresses": prefer the whole
+    -- record or the A part, then the newest introduction (project choice). A postcode whose
+    -- only valid part is B or C gets split_a_missing and no SIMD; two equally good records get
+    -- ambiguous_postcode and no SIMD.
+    SELECT l.*,
+           COUNT(*) OVER (PARTITION BY l.input_row) AS candidate_count,
+           ROW_NUMBER() OVER (PARTITION BY l.input_row ORDER BY l.pc_norm) AS candidate_number
+    FROM lives_on_date l
+    WHERE l.priority = 1
+),
+representative AS (
+    SELECT * FROM candidates WHERE candidate_number = 1
+),
+key_lives AS (
+    -- When no life contains the date, say where the date falls relative to the lives that
+    -- exist: before the first life, after the last, or in a gap between two lives.
+    SELECT c.input_row,
+           MIN(p.introduced_on) AS first_introduced_on,
+           MAX(CASE WHEN p.deleted_on IS NOT NULL AND p.deleted_on <= c.address_date THEN p.deleted_on END) AS previous_life_deleted_on,
+           MIN(CASE WHEN p.introduced_on > c.address_date THEN p.introduced_on END) AS next_life_introduced_on
+    FROM chosen c
+    JOIN postcode_simd_history p ON p.pc_base = c.postcode_key
+    GROUP BY c.input_row
+),
+matched AS (
+    -- STEP 6. LARGE USERS. PHS v3.5 Appendix A, p.30: a large-user postcode has no boundary;
+    -- where NRS could link it to a small-user postcode, that postcode supplies the geography;
+    -- a PO box (NO LINKP) or an unlinked large user (NO LINK) gets none. The linked small-user
+    -- record must itself be valid on the address date, by its exact key including any A/B/C
+    -- suffix. A small user supplies its own geography. Never the large user's own zone, never
+    -- another product, never a chain through a second large user.
+    SELECT c.*,
+           r.pc_norm AS matched_pc_norm, r.introduced_on AS matched_introduced_on,
+           r.is_current AS matched_is_current, r.spd_user_type AS matched_user_type,
+           r.LinkedSmallUserPostcode AS requested_link_postcode,
+           r.candidate_count AS matched_candidate_count, r.spd_release AS index_release,
+           r.pc_base AS matched_pc_base,
+           k.first_introduced_on, k.previous_life_deleted_on, k.next_life_introduced_on,
+           {_raw_context(raw)},
+           {_g_columns(editions)}
+    FROM chosen c
+    LEFT JOIN representative r ON r.input_row = c.input_row
+    LEFT JOIN key_lives k ON k.input_row = c.input_row
+    LEFT JOIN postcode_simd_history g
+      ON g.spd_user_type = 'small_user'
+     AND g.pc_norm = CASE
+             WHEN r.candidate_count > 1 THEN NULL
+             WHEN r.pc_norm <> r.pc_base AND RIGHT(r.pc_norm, 1) <> 'A' THEN NULL
+             WHEN r.spd_user_type = 'small_user' THEN r.pc_norm
+             ELSE UPPER(REPLACE(r.LinkedSmallUserPostcode, ' ', ''))
+         END
+     AND g.introduced_on <= c.address_date
+     AND (g.deleted_on IS NULL OR g.deleted_on > c.address_date)
+),
+"""
+
+
 def _selection_sspl(editions: list, raw: list) -> str:
     return f"""-- STEPS 4 AND 5 ARE NOT NEEDED. NRS built the SSPL with "only the latest version" of each
 -- postcode and made split postcodes whole: "the original A part of the split postcode is
@@ -299,7 +435,7 @@ matched AS (
 """
 
 
-def _values_and_report(name: str, p: dict, editions: list, raw: list) -> str:
+def _values_and_report(name: str, p: dict, editions: list, raw: list, variant: str = "era") -> str:
     vintages = _vintages(editions)
     selects = [_case("m.data_zone_vintage", [(v, f"m.source_dz{v}") for v in vintages], "data_zone_code", quote=False),
                _case("m.data_zone_vintage", [(v, f"m.source_iz{v}") for v in vintages], "intermediate_zone_code", quote=False)]
@@ -310,7 +446,28 @@ def _values_and_report(name: str, p: dict, editions: list, raw: list) -> str:
     measures = ",\n".join(selects)
     nulls = " OR ".join([f"s.{out} IS NULL" for out, _ in MEASURES] + ["s.data_zone_code IS NULL"]
                         + [f"s.phs_{g}_code IS NULL" for g in GEOGRAPHY])
-    if name == "spd":
+    if name == "spd" and variant == "asof":
+        postcode_status = """           CASE
+               WHEN s.postcode_key IS NULL THEN 'missing_postcode'
+               WHEN s.first_introduced_on IS NULL THEN 'not_found'
+               WHEN s.matched_pc_norm IS NULL AND s.address_date IS NULL THEN 'missing_address_date'
+               WHEN s.matched_pc_norm IS NULL AND s.address_date < s.first_introduced_on THEN 'postcode_not_yet_introduced'
+               WHEN s.matched_pc_norm IS NULL AND s.next_life_introduced_on IS NOT NULL THEN 'between_lives'
+               WHEN s.matched_pc_norm IS NULL THEN 'postcode_deleted_by_date'
+               WHEN s.matched_candidate_count > 1 THEN 'ambiguous_postcode'
+               WHEN s.matched_pc_norm <> s.matched_pc_base AND RIGHT(s.matched_pc_norm, 1) <> 'A' THEN 'split_a_missing'
+               WHEN s.matched_user_type = 'large_user'
+                    AND UPPER(REPLACE(COALESCE(s.requested_link_postcode, ''), ' ', '')) = 'NOLINKP' THEN 'po_box'
+               WHEN s.matched_user_type = 'large_user'
+                    AND UPPER(REPLACE(COALESCE(s.requested_link_postcode, ''), ' ', '')) IN ('', 'NOLINK') THEN 'unlinked_large_user'
+               WHEN s.source_pc_norm IS NULL THEN 'linked_small_user_not_found'
+               WHEN s.matched_user_type = 'large_user' THEN 'linked_small_user'
+               WHEN s.matched_pc_norm <> s.matched_pc_base THEN 'a_part'
+               ELSE 'matched'
+           END AS postcode_status"""
+        extra_context = ("s.first_introduced_on, s.previous_life_deleted_on, s.next_life_introduced_on,\n       "
+                         "s.matched_pc_base,\n       ")
+    elif name == "spd":
         postcode_status = """           CASE
                WHEN s.postcode_key IS NULL THEN 'missing_postcode'
                WHEN s.matched_pc_norm IS NULL THEN 'not_found'
@@ -369,7 +526,7 @@ SELECT
     -- used: a year problem first, then a postcode problem, then a missing stored value.
     -- Product provenance and both keys are returned so the route can be reviewed
     -- (PHS checklist, p.25: state index, edition, weighting, direction and level).
-       s.id, s.postcode, s.analysis_year, s.postcode_key,
+       s.id, s.postcode, s.address_date, s.analysis_year, s.postcode_key,
        s.postcode_status,
        CASE
            WHEN s.edition_status <> 'ok' THEN s.edition_status
@@ -389,6 +546,7 @@ SELECT
        -- Own-record context: the matched record's NRS fields as ingested, names unchanged
        -- (Postcode as matched_postcode). For a large user these are its own fields, not the
        -- linked small user's; compare DataZone2011Code here with simd_source_pc_norm above.
+       -- link_as_of.sql first gives the nearest lives when no life contains the address date.
        {extra_context}{context}
 FROM reported s;
 """
@@ -400,9 +558,14 @@ def render(name: str, variant: str) -> str:
     editions = _editions(registry)
     schema = yaml.safe_load((PACKAGE / p["schema"]).read_text())
     raw = [f["name"] for f in schema["fields"] if f["source"] == p["raw_source"]]
+    if variant == "asof":
+        if name != "spd":
+            raise ValueError("Only the SPD set can answer a dated question: the SSPL holds one life per postcode")
+        return (_header(name, p, variant) + "\n" + _inputs_and_edition(variant, editions)
+                + _selection_spd_asof(editions, raw) + _values_and_report(name, p, editions, raw, variant))
     selection = _selection_spd(editions, raw) if name == "spd" else _selection_sspl(editions, raw)
     return (_header(name, p, variant) + "\n" + _inputs_and_edition(variant, editions)
-            + SHARED_BEGIN + "\n" + selection + _values_and_report(name, p, editions, raw).rstrip("\n")
+            + SHARED_BEGIN + "\n" + selection + _values_and_report(name, p, editions, raw, variant).rstrip("\n")
             + "\n" + SHARED_END + "\n")
 
 
@@ -414,8 +577,8 @@ def main(argv=None) -> int:
     out = Path(argv[0]) if argv else ROOT / "docs" / "sql"
     for name in PRODUCTS:
         (out / name).mkdir(parents=True, exist_ok=True)
-        for variant in ("era", "latest"):
-            path = out / name / ("link_by_era.sql" if variant == "era" else "link_latest.sql")
+        for variant in FILES[name]:
+            path = out / name / VARIANTS[variant]
             path.write_text(render(name, variant))
             print(f"wrote {path}")
     return 0

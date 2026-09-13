@@ -110,7 +110,9 @@ guidance they follow, and returns the same columns: statuses, product provenance
 keys, the edition's data zone and PHS geography codes, all 14 stored measures, and the matched
 record's own fields as context. The SPD set selects the latest life and the A part itself;
 the SSPL set does not, because NRS did. Both attach a large user's SIMD through its linked
-small-user postcode, as PHS does, and give PO boxes none. The step-by-step commentary is in
+small-user postcode, as PHS does, and give PO boxes none. The SPD set adds `link_as_of.sql`
+for a postcode recorded with a date: it uses the postcode life valid on that date, which is
+how a deleted or re-used postcode is resolved correctly. The step-by-step commentary is in
 [LINKAGE_BY_ERA.md](docs/LINKAGE_BY_ERA.md).
 
 The [Python helpers](docs/EXAMPLES.md) read either table: current lookups against the main

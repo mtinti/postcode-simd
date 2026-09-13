@@ -31,8 +31,9 @@ of that edition from the record that supplies the geography. The SPD set selects
 life and the A part; the SSPL set does not, because NRS did. Both follow a large user's link
 to its small-user postcode and give PO boxes and unlinked large users no SIMD, as PHS
 Appendix A describes; NRS publishes nothing against following the link, and its SPD
-dictionary calls PO-box grid references low quality. A dated historical-record question
-belongs to the separate Python API, which uses SPD validity intervals and own-record geography.
+dictionary calls PO-box grid references low quality. A dated question, which postcode life
+was valid when the address was recorded, is answered by `link_as_of.sql` in the SPD set and
+by the Python API, both from the SPD validity intervals; the SSPL cannot answer it.
 
 Using an event year to choose a SIMD edition does **not** require historical postcode
 selection: the SQL era query uses the latest postcode with a Table 4 edition. Conversely,
