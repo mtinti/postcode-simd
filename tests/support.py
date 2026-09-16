@@ -50,6 +50,7 @@ def write_config(temp: Path, source: Path, decisions: Path) -> Path:
 source_manifest: {ROOT / 'simd_ingest' / 'sources.yaml'}
 spd_schema: {ROOT / 'simd_ingest' / 'spd_schema.yaml'}
 sspl_schema: {ROOT / 'simd_ingest' / 'sspl_schema.yaml'}
+export_contract: {ROOT / 'simd_ingest' / 'export_contract.yaml'}
 decisions: {decisions}
 output_schema: {ROOT / 'simd_ingest' / 'output_schema.yaml'}
 output_schema_history: {ROOT / 'simd_ingest' / 'output_schema_history.yaml'}

@@ -38,8 +38,13 @@ MEASURES = [
 ]
 VINTAGE = {e: 2011 if e in ("2016", "2020v2") else 2001 for e in EDITIONS}
 VARIANTS = ("link_by_era", "link_latest")
+# Independently stated: the coordinate columns the export contract withholds from both the CSV
+# and the SQL results. The test states them, the generator reads the contract.
+EXCLUDED = {"spd": ["GridReferenceEasting", "GridReferenceNorthing", "Latitude", "Longitude"],
+            "sspl": ["GridReferenceEasting", "GridReferenceNorthing"]}
 RAW = {name: [f["name"] for f in yaml.safe_load((ROOT / "simd_ingest" / spec["schema"]).read_text())["fields"]
-              if f["source"] == spec["raw_source"]] for name, spec in PRODUCTS.items()}
+              if f["source"] == spec["raw_source"] and f["name"] not in EXCLUDED[name]]
+       for name, spec in PRODUCTS.items()}
 DEMO = {"link_by_era": "    SELECT 1 AS id, CAST('AB24 2TY' AS varchar(32)) AS postcode, 2020 AS analysis_year",
         "link_latest": "    SELECT 1 AS id, CAST('AB24 2TY' AS varchar(32)) AS postcode",
         "link_as_of": "    SELECT 1 AS id, CAST('FK17 8DS' AS varchar(32)) AS postcode,\n"
@@ -186,7 +191,8 @@ def test_common_output_core_and_product_specific_context(con, name, variant):
         context[:0] = ["first_introduced_on", "previous_life_deleted_on", "next_life_introduced_on"]
     assert list(out.columns[len(CONTRACT):]) == context
     assert len(CONTRACT) == 41
-    assert len(out.columns) == (110 if variant == "link_as_of" else 107 if name == "spd" else 91)
+    assert len(out.columns) == (106 if variant == "link_as_of" else 103 if name == "spd" else 89)
+    assert not set(EXCLUDED[name]) & set(out.columns)
 
 
 # --- steps 1 to 3: input, key, edition ---------------------------------------------------

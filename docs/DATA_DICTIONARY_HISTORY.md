@@ -6,7 +6,7 @@ containing the postcode's own grid reference. For one row per whole postcode see
 [DATA_DICTIONARY.md](DATA_DICTIONARY.md). Generated from `simd_ingest/output_schema_history.yaml`; do not edit by hand.
 
 Current build: 247,773 rows by 162 columns, history index release 2026_2,
-allocation `postcode_grid_reference`, built 2026-09-13T17:04:01Z. Parquet SHA256 `89f93c0c93a64fb06b60a9dfe2cb667610552f87e865979d139f674c15699234`; rows-only fingerprint
+allocation `postcode_grid_reference`, built 2026-09-16T11:34:28Z. Parquet SHA256 `0d495d84a7293a54aa8eed1a7c8a9e0cc85f7d757477ea16d74e7b0db012052e`; rows-only fingerprint
 `59369357e44e45a5ac74b217692fd8e4799fd0aafc3b04e4e2c255abf722dc97`. The file hash also covers the embedded provenance metadata,
 so it changes when the decision log changes; compare fingerprints under the same pinned runtime.
 
@@ -59,6 +59,39 @@ the same guidance describes for pre-1996 data is not included.
   Use the PHS code with the PHS band.
 - **Directory columns are text.** Every original column keeps its source text, including leading
   zeros and blanks. A blank is `""`; a column absent from that user type is null.
+
+## The CSV rendering
+
+Every build also writes `results/postcode_simd_history.csv.gz`, the form in which this table is shared.
+It carries 158 of the 162 columns in the same order: `GridReferenceEasting`, `GridReferenceNorthing`, `Latitude`, `Longitude` are not exported.
+
+  Do not carry coordinate fields into outputs whose purpose is deprivation and area context. A project data-minimisation choice, not an anonymisation guarantee.
+
+  NRS supplies its index and lookup products under the Open Government Licence and restricts "postcode boundaries and grid references" separately, but its licensing page does not settle which governs a grid reference column inside an index file. Removal is a conservative project policy pending confirmation from NRS or HIC information governance.
+
+The Parquet keeps them, so read it directly if you need a grid reference.
+
+Comma separated with RFC 4180 quoting, UTF-8 without a byte order mark, LF line endings
+and gzip compression. Dates are `YYYY-MM-DD`, `is_current` is `1` or `0`, and every other
+value is written exactly as stored, so leading zeros survive. Load every column as text
+first, keeping literal values such as `NA`, and restore the declared types afterwards.
+
+### An empty cell
+
+CSV writes the same empty cell for a null and for a source blank, so read it from the
+column and the record type, never from the cell alone.
+
+| For a record whose `spd_user_type` is | these columns are structural nulls |
+| --- | --- |
+| `large_user` | `CensusHouseholdCount2022`, `CensusPopulationCount2022`, `CensusHouseholdCount2011`, `CensusPopulationCount2011`, `CensusHouseholdCount2001`, `CensusPopulationCount2001`, `CensusHouseholdCount1991`, `CensusPopulationCount1991`, `NeverDigitised` |
+| `small_user` | `LinkedSmallUserPostcode` |
+
+An empty cell in one of those columns for any other record is a source blank.
+
+An empty `deleted_on` is a null and agrees with `is_current`. The source text column
+`DateOfDeletion` stays blank. Every other empty cell is a source blank.
+
+`results/CSV_README.txt` beside the files carries the attribution every source requires.
 
 ## Sources
 

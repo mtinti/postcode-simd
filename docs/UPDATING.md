@@ -78,7 +78,10 @@ never just to clear a failing regression.
    Regenerate the data dictionary after reviewing the resulting manifest.
 6. Separately review analyst edition-by-year recommendations and consumer schema imports.
    Ingestion supports explicitly selecting the new edition; it does not infer a new
-   recommendation from the edition's date. Regenerate the five SQL files with
+   recommendation from the edition's date. The CSV and the SQL results follow
+   `simd_ingest/export_contract.yaml`; review the columns it withholds if NRS changes its
+   licensing or if information governance rules differently. Regenerate the database scripts
+   with `python -m simd_ingest.sql_check`, and the five SQL files with
    `python -m simd_ingest.sql_examples`: the edition branches and vintage cases come from the
    registry and schemas, and a test fails while a committed file is stale. Table 4's year
    ranges live in `lookup.py` and are reviewed separately against the guidance.

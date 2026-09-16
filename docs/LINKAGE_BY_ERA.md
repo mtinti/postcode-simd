@@ -140,8 +140,8 @@ with its own large-user policy, see [Examples](EXAMPLES.md).
 ## The output: common core, different context
 
 The first 41 columns, from `id` through `band_direction`, are identical in name and order
-across all five queries. Own-record context follows and differs by product: 91 total columns
-for SSPL, 107 for SPD era/latest and 110 for SPD as-of. Select common columns explicitly by
+across all five queries. Own-record context follows and differs by product: 89 total columns
+for SSPL, 103 for SPD era/latest and 106 for SPD as-of. Select common columns explicitly by
 name when combining results; the full outputs are not interchangeable via `SELECT *` or
 positional `UNION ALL`.
 
@@ -153,7 +153,7 @@ positional `UNION ALL`.
 | Keys | `matched_pc_norm`, `matched_introduced_on`, `matched_is_current`, `matched_user_type`, `requested_link_postcode`, `simd_source_pc_norm`, `simd_source_introduced_on`, `simd_source_is_current` |
 | Geography used | `data_zone_code`, `intermediate_zone_code`, `phs_hb_code`, `phs_hscp_code`, `phs_ca_code` |
 | Measures | `simd_rank`, `phs_pw_scotland_quintile`, `phs_pw_scotland_decile`, `phs_pw_hb_quintile`, `phs_pw_hb_decile`, `phs_pw_hscp_quintile`, `phs_pw_hscp_decile`, `phs_pw_ca_quintile`, `phs_pw_ca_decile`, `phs_pw_most15pc`, `phs_pw_least15pc`, `gov_uw_scotland_quintile`, `gov_uw_scotland_decile`, `gov_uw_scotland_vigintile`, `band_direction` |
-| Own-record context | the matched record's NRS fields as ingested, names unchanged except `Postcode`, returned as `matched_postcode`; the SPD set adds `matched_pc_base`, and `link_as_of.sql` the three nearest-life dates |
+| Own-record context | the matched record's NRS fields as ingested, names unchanged except `Postcode`, returned as `matched_postcode`; the SPD set adds `matched_pc_base`, and `link_as_of.sql` the three nearest-life dates. The grid reference and coordinate columns are not returned, as `simd_ingest/export_contract.yaml` withholds them from every export; the Parquet keeps them |
 
 `postcode_status` values: `matched`, `a_part`, `linked_small_user`, `linked_small_user_not_found`,
 `unlinked_large_user`, `po_box`, `split_a_missing` (SPD), `ambiguous_postcode` (SPD),
@@ -185,9 +185,47 @@ they differ, the allocation methods described in [How it is built](HOW_IT_IS_BUI
 relevant context, not proof of the cause. Tests check same-zone quintile agreement and each
 query's fidelity to its own source; they do not isolate why the source products differ.
 
+## Loading the tables into SQL Server
+
+The shared CSVs import with two generated scripts, both produced by
+`python -m simd_ingest.sql_check` from the output schemas and the export contract:
+
+1. Decompress `results/postcode_simd.csv.gz` and `results/postcode_simd_history.csv.gz`, and
+   check their SHA-256 values against `results/manifest.json` before loading anything.
+2. Edit the two paths in [import_csv.sql](sql/import_csv.sql) and run it. It stages each file
+   as text, then restores the declared types into `postcode_simd` and `postcode_simd_history`
+   with their natural keys.
+3. Paste this build's row counts and digest totals from the manifest into the marked block of
+   [check_loaded_digest.sql](sql/check_loaded_digest.sql) and run it. It reports one row per
+   check and raises an error if any fails.
+
+Three things about the import are worth knowing before you adapt it.
+
+- **An empty field arrives as NULL**, in every column, whatever it meant in the file. The
+  recipe puts it back: a blank where the source had a blank, a null only where the column does
+  not apply to that record type. Without that step the main table fails to load at all, because
+  most of its text columns do not accept null.
+- **Never let an empty string reach a date.** SQL Server makes it 1900-01-01 as a `datetime`
+  and raises an error as a `date`. The recipe converts an empty deletion date to NULL first.
+- **`CODEPAGE` is not supported on Linux**, so the encoding is declared as a UTF-8 collation on
+  the staging columns instead. `FORMAT = 'CSV'` is also required: without it the field
+  terminator defaults to a tab.
+
+The check establishes that the declared columns, types, nullability and order are present, the
+natural key is unique and not null, no text contains the characters the digest frames with, the
+row count matches, and the recomputed digest matches the build's. The digest truncates each
+SHA-256 to eight bytes and adds the results, so collisions and cancelling changes are possible:
+it detects accidental corruption and is neither an exact comparison nor a signature.
+
+Verified on SQL Server 2022 Developer Edition 16.0.4252.3: both tables imported, all ten checks
+passed with the digests matching the build, and eight deliberate corruptions were each caught,
+including a lost leading zero, a blank turned into a null and the reverse, an empty deletion
+date turned into 1900-01-01, truncated text, a changed band, a deleted row and a column altered
+to accept null. The five lookup queries ran there unchanged and gave their documented answers.
+
 ## What is not claimed
 
-The queries are tested on DuckDB; SQL Server syntax is intended but not verified. Neither
+The queries run on DuckDB and on SQL Server 2022; no other version is verified. Neither
 set has been compared with PHS's own postcode-level lookup, which is not published openly.
 The representative order in step 5, applying linked-small-user geography to SSPL and its
 suffix reading in step 6, and date-valid selection are project choices, stated as such in

@@ -25,3 +25,4 @@ or intermediate-table cache is required.
 | `GitHub_Plan.md` | 11 September | Publishing this repository. |
 | `SSPL_Main_Table_Plan.md` | 12 September | Historical proposal; option A implemented, then corrected and refreshed to SSPL 2026/2. See its correction notice and the current runbook. |
 | `SQL_Two_Products_Plan.md` | 13 September | Historical proposal, implemented in 2.1.0; review corrections clarify shared core versus raw context and guidance versus project interpretations. See the current SQL guide. |
+| `Exports_Plan.md` | 16 September | The shared CSV rendering, coordinate-free SQL output and the database load check. Implemented in 2.2.0. |

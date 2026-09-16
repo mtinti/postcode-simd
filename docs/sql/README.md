@@ -31,7 +31,7 @@ project choice. The five files are generated from the schemas by
 them; a test fails if a committed file drifts from the generator.
 
 All five queries share the first **41 columns**, through `band_direction`. They then append
-different own-record context: **91 columns** in SSPL, **107** in SPD era/latest, **110** in
+different own-record context: **89 columns** in SSPL, **103** in SPD era/latest, **106** in
 SPD as-of. To combine products, select the shared columns by name; do not use `SELECT *` or
 a positional union of the full results. The columns and statuses are described in
 [LINKAGE_BY_ERA.md](../LINKAGE_BY_ERA.md).
@@ -41,7 +41,13 @@ Applying that rule to SSPL is a project interpretation of PHS Appendix A: it doe
 explicitly settle overriding geography already allocated in SSPL. Own-record geography is
 kept as context; exact equivalence to PHS's postcode-level lookup remains unverified.
 
-Run one, from the repository root, with DuckDB:
+Two further generated scripts load the shared CSVs into SQL Server and check the result:
+[import_csv.sql](import_csv.sql) stages each file as text and restores the declared types, and
+[check_loaded_digest.sql](check_loaded_digest.sql) verifies the structure, the key and the row
+digest the build recorded. Both come from `python -m simd_ingest.sql_check`. The recipe and
+what it does and does not establish are in [LINKAGE_BY_ERA.md](../LINKAGE_BY_ERA.md).
+
+Run one of the five lookups, from the repository root, with DuckDB:
 
 ```python
 from pathlib import Path

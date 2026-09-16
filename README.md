@@ -60,6 +60,9 @@ automatically.
 - `results/postcode_simd.parquet`: the main table, keyed by `pc_norm`.
 - `results/postcode_simd_history.parquet`: the history table, keyed by `(pc_norm, introduced_on)`.
   Release is metadata/an attribute of each table, not part of its key.
+- `results/postcode_simd.csv.gz` and `results/postcode_simd_history.csv.gz`: the same rows as a
+  gzipped CSV, the form in which a table is shared. They omit the grid reference and coordinate
+  columns, which the Parquet keeps. `results/CSV_README.txt` carries the attribution.
 - `results/BUILD_REPORT.md`: the human review entry point, including the agreement between the two tables.
 - `results/manifest.json`: all checks, observations, input pins and both tables' fingerprints.
 - `results/runs/<run-id>/`: retained configuration/source/schema/decision snapshots,
@@ -144,9 +147,11 @@ See [Docker](docs/DOCKER.md) for offline and audit commands.
 `cli.py` handles arguments; `pipeline.py` contains the single build sequence.
 `core/sspl.py` and `core/spd.py` read the two postcode products, `phs.py`, `govscot.py`,
 `join.py` and `output.py` contain the shared data rules, and `core/agreement.py` compares the
-two tables. `sources.yaml` declares sources and editions, `sspl_schema.yaml` and
+two tables. `core/text_output.py` writes the shared CSV and the digest a database load is checked against.
+`sources.yaml` declares sources and editions, `sspl_schema.yaml` and
 `spd_schema.yaml` declare the postcode file headers, `output_schema.yaml` and
-`output_schema_history.yaml` declare the saved tables, and `decisions.yaml` records policy.
+`output_schema_history.yaml` declare the saved tables, `export_contract.yaml` says what leaves
+the build, and `decisions.yaml` records policy.
 Tests include synthetic postcode refreshes of both products, a new SIMD edition/vintage,
 corrupted inputs and saved files; downloaded-data tests also pin both tables' rows-only
 fingerprints.

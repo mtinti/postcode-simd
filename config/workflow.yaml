@@ -3,6 +3,7 @@
 source_manifest: simd_ingest/sources.yaml
 spd_schema: simd_ingest/spd_schema.yaml
 sspl_schema: simd_ingest/sspl_schema.yaml
+export_contract: simd_ingest/export_contract.yaml   # what the CSV and SQL examples leave out
 decisions: simd_ingest/decisions.yaml
 output_schema: simd_ingest/output_schema.yaml            # main table, from the SSPL
 output_schema_history: simd_ingest/output_schema_history.yaml  # history table, from the SPD

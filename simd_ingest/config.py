@@ -10,8 +10,8 @@ def load_config(path: Path) -> dict:
     path = Path(path).resolve()
     cfg = yaml.safe_load(path.read_text())
     root = path.parent.parent
-    for key in ("source_manifest", "spd_schema", "sspl_schema", "decisions", "output_schema", "output_schema_history",
-                "cache_root", "results_root"):
+    for key in ("source_manifest", "spd_schema", "sspl_schema", "export_contract", "decisions",
+                "output_schema", "output_schema_history", "cache_root", "results_root"):
         cfg[key] = root / cfg[key]
     cfg["source_roots"] = {k: root / v for k, v in cfg["source_roots"].items()}
     cfg["source_mode"] = os.environ.get("SIMD_SOURCE_MODE", cfg["source_mode"])

@@ -141,12 +141,19 @@ def project(tmp: Path, release="test-1", extra_edition=False) -> Path:
                 f["name"] = f["name"].replace("2020v2", "future").replace("2011", "2022")
             schema["fields"].extend(new_fields)
             schema["version"] = "test-extension"
+    contract = yaml.safe_load((ROOT / "simd_ingest/export_contract.yaml").read_text())
+    # The fixture has no coordinates; exclude a column that exists, so exclusion is exercised.
+    contract["tables"]["main"]["exclude"] = ["PostcodeDistrict"] if "PostcodeDistrict" in sspl_headers else []
+    contract["tables"]["history"]["exclude"] = []
+    contract["tables"]["history"]["structural_nulls"] = {"large_user": ["NeverDigitised"],
+                                                         "small_user": ["LinkedSmallUserPostcode"]}
     for filename, data in (("sources.yaml", raw), ("spd_schema.yaml", spd_schema), ("sspl_schema.yaml", sspl_schema),
                            ("output_schema.yaml", main), ("output_schema_history.yaml", history),
-                           ("decisions.yaml", {"decisions": []})):
-        (tmp / filename).write_text(yaml.safe_dump(data, sort_keys=False))
+                           ("export_contract.yaml", contract), ("decisions.yaml", {"decisions": []})):
+        (tmp / filename).write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True))
     config = dict(source_manifest=str(tmp / "sources.yaml"), spd_schema=str(tmp / "spd_schema.yaml"),
-                  sspl_schema=str(tmp / "sspl_schema.yaml"), output_schema=str(tmp / "output_schema.yaml"),
+                  sspl_schema=str(tmp / "sspl_schema.yaml"), export_contract=str(tmp / "export_contract.yaml"),
+                  output_schema=str(tmp / "output_schema.yaml"),
                   output_schema_history=str(tmp / "output_schema_history.yaml"), decisions=str(tmp / "decisions.yaml"),
                   source_mode="offline", source_roots={"offline": str(sources), "download": str(sources)},
                   cache_root=str(tmp / "cache"), results_root=str(tmp / "results"))
