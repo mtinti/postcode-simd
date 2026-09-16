@@ -1,7 +1,8 @@
 # Plan: what leaves the building, a CSV rendering of each table and coordinate-free SQL output
 
-Revised 16 September 2026 after review of the compact load-check approach. Not yet implemented;
-this document specifies the work, not completed checks.
+Implemented on 16 September 2026 in version 2.2.0. Kept as the record of what was decided and
+why; the current contract is simd_ingest/export_contract.yaml, the recipe and its verification
+are in docs/LINKAGE_BY_ERA.md, and the decisions are shared-exports and database-load-check.
 
 ## Aim
 
