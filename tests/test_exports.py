@@ -292,3 +292,45 @@ def test_attribution_names_every_publisher_and_both_releases(manifest, contract)
         assert ", ".join(columns) in text
     if known_snapshot(manifest, "history"):
         assert manifest["tables"]["history"]["csv"]["sha256"] in text
+
+
+# --- the generated database scripts -----------------------------------------------------------
+
+def test_generated_database_scripts_match_the_generator():
+    from simd_ingest import sql_check
+    assert (ROOT / "docs/sql/import_csv.sql").read_text() == sql_check.render_import()
+    assert (ROOT / "docs/sql/check_loaded_digest.sql").read_text() == sql_check.render()
+
+
+def test_generated_database_scripts_never_mention_an_excluded_column(contract):
+    for name in ("import_csv.sql", "check_loaded_digest.sql"):
+        text = (ROOT / "docs/sql" / name).read_text()
+        for columns in COORDINATES.values():
+            for column in columns:
+                assert f"[{column}]" not in text, (name, column)
+
+
+def test_the_import_recipe_restores_every_structural_null_rule(contract):
+    """Every column the contract calls a structural null gets a CASE on the record type, and
+    every other text column gets an empty string. A missed rule would silently turn the
+    reader's NULL into a null the source never had."""
+    text = (ROOT / "docs/sql/import_csv.sql").read_text()
+    for table, spec in contract["tables"].items():
+        schema = output.load_schema(ROOT / "simd_ingest" / SCHEMA_OF[table])
+        kinds = {f["name"]: f["type"] for f in schema["fields"]}
+        role = spec.get("role_column", "spd_user_type")
+        structural = {c: r for r, cols in (spec.get("structural_nulls") or {}).items() for c in cols}
+        for column in tx.exported_columns(schema, contract, table):
+            if kinds[column] != "string":
+                continue
+            if column in structural:
+                assert f"CASE WHEN [{role}] = '{structural[column]}' THEN NULL ELSE ISNULL([{column}], N'') END" in text
+            else:
+                assert f"ISNULL([{column}], N'')" in text
+
+
+def test_the_check_script_states_what_it_cannot_establish():
+    text = (ROOT / "docs/sql/check_loaded_digest.sql").read_text()
+    assert "collisions and cancelling changes are possible" in text
+    assert "not a proof of identity" not in text.split("SET NOCOUNT")[1]  # the claim belongs in the header
+    assert "THROW" in text and "a skipped check is not a pass" in text.lower()
