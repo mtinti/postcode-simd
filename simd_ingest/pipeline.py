@@ -21,7 +21,7 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from .core import output, report as build_report
+from .core import output, report as build_report, text_output
 from .core.agreement import compare_tables
 from .core.changes import compare_snapshot
 from .core.checks import Report
@@ -40,7 +40,9 @@ TABLES = {
     "history": {"file": "postcode_simd_history.parquet", "schema": "output_schema_history", "index": "spd"},
     "main": {"file": "postcode_simd.parquet", "schema": "output_schema", "index": "sspl"},
 }
-CONTRACTS = ("source_manifest", "spd_schema", "sspl_schema", "output_schema", "output_schema_history", "decisions")
+CONTRACTS = ("source_manifest", "spd_schema", "sspl_schema", "export_contract",
+             "output_schema", "output_schema_history", "decisions")
+ATTRIBUTION = "CSV_README.txt"
 
 
 def prepare(cfg: dict, mode: str, report: Report, *, audit=False):
@@ -131,8 +133,15 @@ def write_output(cfg: dict, registry, schemas: dict, mode: str, tables: dict, in
                                          decisions_sha256=decisions_sha, label=f"readback.{name}")
             info[name]["path"] = str(results / spec["file"])
         report.require()
+        contract = text_output.load_contract(cfg["export_contract"])
+        for name in TABLES:
+            info[name]["csv"] = write_export(tables[name], schemas[name], contract, name, staging, report)
+        report.require()
         contracts = {f"{key}_sha256": sha256(cfg[key]) for key in ("spd_schema", "sspl_schema")}
+        contracts["export_contract_sha256"] = contract["sha256"]
         man = output.manifest(registry, decisions_sha, contracts, mode, info, report, extra)
+        (staging / ATTRIBUTION).write_text(text_output.attribution_text(contract, registry, man))
+        man["attribution"] = {"file": ATTRIBUTION, "sha256": sha256(staging / ATTRIBUTION)}
         narrative = build_report.render(report, registry, tables, info, mode, indices, simd, gov)
         (staging / "manifest.json").write_text(json.dumps(man, indent=2))
         (staging / "BUILD_REPORT.md").write_text(narrative)
@@ -140,13 +149,30 @@ def write_output(cfg: dict, registry, schemas: dict, mode: str, tables: dict, in
             run = Path(extra["run_record"])
             shutil.copyfile(staging / "manifest.json", run / "manifest.json")
             shutil.copyfile(staging / "BUILD_REPORT.md", run / "BUILD_REPORT.md")
-        # Each replacement is atomic on its own; the set is not one transaction.
-        for spec in TABLES.values():
+        # Each replacement is atomic on its own; the set is not one transaction. The manifest
+        # goes last, so a manifest naming a set of hashes is evidence they were all written.
+        for name, spec in TABLES.items():
             (staging / spec["file"]).replace(results / spec["file"])
-        (staging / "manifest.json").replace(manifest_path)
+            (staging / info[name]["csv"]["file"]).replace(results / info[name]["csv"]["file"])
+        (staging / ATTRIBUTION).replace(results / ATTRIBUTION)
         (staging / "BUILD_REPORT.md").replace(results / "BUILD_REPORT.md")
+        (staging / "manifest.json").replace(manifest_path)
     for name in info:
         info[name].update(manifest=str(manifest_path), build_report=str(results / "BUILD_REPORT.md"))
+    return info
+
+
+def write_export(table: pd.DataFrame, schema: dict, contract: dict, name: str,
+                 staging: Path, report: Report) -> dict:
+    """The CSV rendering of one table, checked cell for cell, plus the digest a database load
+    is verified against. Both come from the accepted table, never from a re-read of the file."""
+    columns = text_output.exported_columns(schema, contract, name)
+    rendered = text_output.render(table, schema, columns, contract)
+    path = staging / contract["tables"][name]["file"]
+    info = text_output.write_csv(rendered, contract, path)
+    text_output.readback_csv(path, rendered, contract, report, f"csv.{name}")
+    info["excluded"] = list(contract["tables"][name]["exclude"])
+    info["digest"] = text_output.row_digest(rendered, contract)
     return info
 
 
@@ -181,9 +207,25 @@ def build(cfg: dict, mode: str, report: Report) -> dict:
         (run / "run.json").write_text(json.dumps(record, indent=2))
 
 
+def audit_export(cfg: dict, schema: dict, contract: dict, name: str, recorded: dict, report: Report) -> None:
+    """Recompute each CSV's hash from the file, and its digest from the verified saved table."""
+    path = cfg["results_root"] / recorded["file"]
+    report.equal(f"audit.{name}.csv_hash", sha256(path), recorded["sha256"])
+    report.require()
+    saved = pd.read_parquet(cfg["results_root"] / TABLES[name]["file"])
+    columns = text_output.exported_columns(schema, contract, name)
+    report.equal(f"audit.{name}.csv_columns", columns, list(pd.read_csv(path, nrows=0).columns))
+    report.equal(f"audit.{name}.csv_digest_version", recorded["digest"]["version"], contract["digest"]["version"])
+    report.require()
+    digest = text_output.row_digest(text_output.render(saved, schema, columns, contract), contract)
+    report.equal(f"audit.{name}.csv_digest", {k: digest[k] for k in ("rows", "total")},
+                 {k: recorded["digest"][k] for k in ("rows", "total")})
+
+
 def audit(cfg: dict, mode: str, report: Report) -> None:
     registry, phs, gov, indices = prepare(cfg, mode, report, audit=True)
     schemas = load_schemas(cfg)
+    contract = text_output.load_contract(cfg["export_contract"])
     man = json.loads((cfg["results_root"] / "manifest.json").read_text())
     simd, gov_all = pd.concat(phs.values(), ignore_index=True), pd.concat(gov.values(), ignore_index=True)
     for name, spec in TABLES.items():
@@ -191,6 +233,9 @@ def audit(cfg: dict, mode: str, report: Report) -> None:
                                registry, report, decisions_sha256=sha256(cfg["decisions"]), label=f"readback.{name}")
         report.equal(f"audit.{name}.manifest_hash_matches_file", info["sha256"], man["tables"][name]["sha256"])
         report.equal(f"audit.{name}.schema_matches", schemas[name]["sha256"], man["tables"][name]["schema_sha256"])
+        audit_export(cfg, schemas[name], contract, name, man["tables"][name]["csv"], report)
+    report.equal("audit.attribution_hash", sha256(cfg["results_root"] / ATTRIBUTION), man["attribution"]["sha256"])
+    report.equal("audit.export_contract_matches", contract["sha256"], man["export_contract_sha256"])
     report.equal("audit.registry_matches", registry.sha256, man["registry_sha256"])
     for key in ("spd_schema", "sspl_schema"):
         report.equal(f"audit.{key}_matches", sha256(cfg[key]), man[f"{key}_sha256"])

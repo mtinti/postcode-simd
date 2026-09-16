@@ -123,7 +123,8 @@ def test_failed_readback_leaves_previous_publication_untouched(sample, tmp_path,
     manifest = tmp_path / "manifest.json"
     manifest.write_text(json.dumps({"previous": True}))
     cfg = {"results_root": tmp_path, "decisions": sample["decisions"],
-           "spd_schema": ROOT / "simd_ingest/spd_schema.yaml", "sspl_schema": ROOT / "simd_ingest/sspl_schema.yaml"}
+           "spd_schema": ROOT / "simd_ingest/spd_schema.yaml", "sspl_schema": ROOT / "simd_ingest/sspl_schema.yaml",
+           "export_contract": ROOT / "simd_ingest/export_contract.yaml"}
     original_write = output.write_table
 
     def corrupt_after_write(table, schema, path, metadata):

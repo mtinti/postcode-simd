@@ -140,8 +140,8 @@ with its own large-user policy, see [Examples](EXAMPLES.md).
 ## The output: common core, different context
 
 The first 41 columns, from `id` through `band_direction`, are identical in name and order
-across all five queries. Own-record context follows and differs by product: 91 total columns
-for SSPL, 107 for SPD era/latest and 110 for SPD as-of. Select common columns explicitly by
+across all five queries. Own-record context follows and differs by product: 89 total columns
+for SSPL, 103 for SPD era/latest and 106 for SPD as-of. Select common columns explicitly by
 name when combining results; the full outputs are not interchangeable via `SELECT *` or
 positional `UNION ALL`.
 
@@ -153,7 +153,7 @@ positional `UNION ALL`.
 | Keys | `matched_pc_norm`, `matched_introduced_on`, `matched_is_current`, `matched_user_type`, `requested_link_postcode`, `simd_source_pc_norm`, `simd_source_introduced_on`, `simd_source_is_current` |
 | Geography used | `data_zone_code`, `intermediate_zone_code`, `phs_hb_code`, `phs_hscp_code`, `phs_ca_code` |
 | Measures | `simd_rank`, `phs_pw_scotland_quintile`, `phs_pw_scotland_decile`, `phs_pw_hb_quintile`, `phs_pw_hb_decile`, `phs_pw_hscp_quintile`, `phs_pw_hscp_decile`, `phs_pw_ca_quintile`, `phs_pw_ca_decile`, `phs_pw_most15pc`, `phs_pw_least15pc`, `gov_uw_scotland_quintile`, `gov_uw_scotland_decile`, `gov_uw_scotland_vigintile`, `band_direction` |
-| Own-record context | the matched record's NRS fields as ingested, names unchanged except `Postcode`, returned as `matched_postcode`; the SPD set adds `matched_pc_base`, and `link_as_of.sql` the three nearest-life dates |
+| Own-record context | the matched record's NRS fields as ingested, names unchanged except `Postcode`, returned as `matched_postcode`; the SPD set adds `matched_pc_base`, and `link_as_of.sql` the three nearest-life dates. The grid reference and coordinate columns are not returned, as `simd_ingest/export_contract.yaml` withholds them from every export; the Parquet keeps them |
 
 `postcode_status` values: `matched`, `a_part`, `linked_small_user`, `linked_small_user_not_found`,
 `unlinked_large_user`, `po_box`, `split_a_missing` (SPD), `ambiguous_postcode` (SPD),

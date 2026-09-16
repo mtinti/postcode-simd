@@ -359,3 +359,39 @@ decisions:
       Microsoft Learn: bit (Transact-SQL), CASE (Transact-SQL), WITH common_table_expression
       (Transact-SQL), ROW_NUMBER (Transact-SQL). tests/test_sql_sets.py exercises generated
       queries in DuckDB; these checks do not establish SQL Server runtime compatibility.
+
+  - id: shared-exports
+    date: 2026-09-16
+    status: implemented
+    decision: >-
+      Every build writes a gzipped CSV of each table beside the Parquet, and one contract,
+      simd_ingest/export_contract.yaml, governs both it and the SQL examples. The contract
+      withholds GridReferenceEasting and GridReferenceNorthing from both tables and Latitude
+      and Longitude from the history table, so neither the CSV nor a linkage result carries a
+      coordinate; the Parquet keeps every column and its schemas are unchanged. CSV is comma
+      separated with RFC 4180 quoting, UTF-8 without a byte order mark, LF endings and gzip
+      written with no name or timestamp, so the same rows give the same bytes. Dates are
+      YYYY-MM-DD, is_current is 1 or 0, and all other values are written exactly as stored.
+      A null and a source blank are the same empty cell, resolved by table, column and record
+      type, which the dictionaries state and the contract records. The build also records a
+      row digest per table, computed from the accepted table rather than from a re-read of the
+      file, so a database load can be checked after import. Each CSV is read back cell for cell
+      before publication; results/CSV_README.txt carries every publisher's attribution; the
+      manifest is written last and records every hash; audit recomputes them.
+    reason: >-
+      The CSV is how the table is shown to the team, so it is the copy most likely to leave the
+      building and the one that should carry the least. Withholding coordinates is a project
+      data-minimisation choice first: a linkage result is one row per patient, and a grid
+      reference is a precise location where a data zone is not. It is also conservative about
+      licensing, since NRS restricts "postcode boundaries and grid references" separately from
+      its openly licensed index and lookups but does not say which governs a coordinate column
+      inside an index file. That reading is unconfirmed and is on the list of questions for
+      Research Data Scotland. Excluding the columns from the SQL as well keeps one policy
+      rather than a footgun for anyone who imports the CSV under the table name the queries use.
+    evidence: >-
+      tests/test_exports.py states the renderings independently of the writer and covers the
+      empty-cell rules, leading zeros, quoting, non-ASCII and supplementary characters,
+      determinism, structural damage and the corruptions a load introduces. Reserved framing
+      characters are rejected in source text rather than stripped. On SPD 2026/2 and SSPL
+      2026/2 the CSVs are 8.3 MB and 7.2 MB gzipped, and both rows-only fingerprints are
+      unchanged; the Parquet file hashes change because this entry changes the decision log.

@@ -8,7 +8,7 @@ postcode-in-zone allocation see the history table, [DATA_DICTIONARY_HISTORY.md](
 Generated from `simd_ingest/output_schema.yaml`; do not edit by hand.
 
 Current build: 230,103 rows by 146 columns, main index release 2026_2,
-allocation `oa2022_centroid`, built 2026-09-13T17:04:01Z. Parquet SHA256 `f4f2c96b35d5a14511328d632e8499ed6bfecef0908104724fd08aaf6074e1b2`; rows-only fingerprint
+allocation `oa2022_centroid`, built 2026-09-16T11:15:57Z. Parquet SHA256 `3e2eae514df9e28987a1739c9c9edce2533522dc633d2a3a592d80a3b555927a`; rows-only fingerprint
 `9515021d99099b437950960380313e6fac7a9a6393858c4d6115fef43a94e564`. The file hash also covers the embedded provenance metadata,
 so it changes when the decision log changes; compare fingerprints under the same pinned runtime.
 
@@ -62,6 +62,34 @@ the same guidance describes for pre-1996 data is not included.
   Use the PHS code with the PHS band.
 - **Directory columns are text.** Every original column keeps its source text, including leading
   zeros and blanks. A blank is `""`; a column absent from that user type is null.
+
+## The CSV rendering
+
+Every build also writes `results/postcode_simd.csv.gz`, the form in which this table is shared.
+It carries 144 of the 146 columns in the same order: `GridReferenceEasting`, `GridReferenceNorthing` are not exported.
+
+  Do not carry coordinate fields into outputs whose purpose is deprivation and area context. A project data-minimisation choice, not an anonymisation guarantee.
+
+  NRS supplies its index and lookup products under the Open Government Licence and restricts "postcode boundaries and grid references" separately, but its licensing page does not settle which governs a grid reference column inside an index file. Removal is a conservative project policy pending confirmation from NRS or HIC information governance.
+
+The Parquet keeps them, so read it directly if you need a grid reference.
+
+Comma separated with RFC 4180 quoting, UTF-8 without a byte order mark, LF line endings
+and gzip compression. Dates are `YYYY-MM-DD`, `is_current` is `1` or `0`, and every other
+value is written exactly as stored, so leading zeros survive. Load every column as text
+first, keeping literal values such as `NA`, and restore the declared types afterwards.
+
+### An empty cell
+
+CSV writes the same empty cell for a null and for a source blank, so read it from the
+column and the record type, never from the cell alone.
+
+This table comes from a single source file, so every text empty is a source blank.
+
+An empty `deleted_on` is a null and agrees with `is_current`. The source text column
+`DateOfDeletion` stays blank. Every other empty cell is a source blank.
+
+`results/CSV_README.txt` beside the files carries the attribution every source requires.
 
 ## Sources
 

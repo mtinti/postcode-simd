@@ -164,7 +164,8 @@ def readback(path: Path, schema: dict, index: pd.DataFrame, simd: pd.DataFrame, 
 
 def manifest(registry: Registry, decisions_sha256: str, contract_sha256: dict, mode: str,
              tables: dict, report: Report, extra: dict) -> dict:
-    """`tables` maps each table name to its readback result; `contract_sha256` the header contracts."""
+    """`tables` maps each table name to its readback result, including its `csv` entry;
+    `contract_sha256` the header and export contracts."""
     return {
         "built_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "spd_release": registry.spd_release,

@@ -31,7 +31,7 @@ project choice. The five files are generated from the schemas by
 them; a test fails if a committed file drifts from the generator.
 
 All five queries share the first **41 columns**, through `band_direction`. They then append
-different own-record context: **91 columns** in SSPL, **107** in SPD era/latest, **110** in
+different own-record context: **89 columns** in SSPL, **103** in SPD era/latest, **106** in
 SPD as-of. To combine products, select the shared columns by name; do not use `SELECT *` or
 a positional union of the full results. The columns and statuses are described in
 [LINKAGE_BY_ERA.md](../LINKAGE_BY_ERA.md).

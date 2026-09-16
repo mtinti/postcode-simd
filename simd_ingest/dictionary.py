@@ -17,6 +17,7 @@ import yaml
 
 from .core.output import BAND_CONVENTION
 from .core.sources import load_registry
+from .core.text_output import load_contract
 
 PACKAGE = Path(__file__).resolve().parent  # the schema and registry ship inside the package
 
@@ -39,7 +40,40 @@ TABLES = {
 }
 
 
-def render(schema: dict, registry, manifest: dict | None, name: str = "history") -> str:
+def csv_section(contract: dict, name: str, fields: list) -> list:
+    """How the shared CSV renders this table. Generated, so it cannot drift from the contract."""
+    spec = contract["tables"][name]
+    kept = len(fields) - len(spec["exclude"])
+    lines = ["## The CSV rendering", "",
+             f"Every build also writes `results/{spec['file']}`, the form in which this table is shared.",
+             f"It carries {kept} of the {len(fields)} columns in the same order: "
+             + (f"`{'`, `'.join(spec['exclude'])}` are not exported." if spec["exclude"] else "nothing is excluded."), ""]
+    if spec["exclude"]:
+        lines += ["  " + contract["exclude_reasons"]["minimisation"].strip().replace("\n", " "), "",
+                  "  " + contract["exclude_reasons"]["licensing"].strip().replace("\n", " "), "",
+                  "The Parquet keeps them, so read it directly if you need a grid reference.", ""]
+    lines += ["Comma separated with RFC 4180 quoting, UTF-8 without a byte order mark, LF line endings",
+              "and gzip compression. Dates are `YYYY-MM-DD`, `is_current` is `1` or `0`, and every other",
+              "value is written exactly as stored, so leading zeros survive. Load every column as text",
+              "first, keeping literal values such as `NA`, and restore the declared types afterwards.", "",
+              "### An empty cell", "",
+              "CSV writes the same empty cell for a null and for a source blank, so read it from the",
+              "column and the record type, never from the cell alone.", ""]
+    nulls = spec.get("structural_nulls") or {}
+    if nulls:
+        lines += ["| For a record whose `" + spec.get("role_column", "spd_user_type") + "` is | these columns are structural nulls |",
+                  "| --- | --- |"]
+        lines += [f"| `{role}` | `{'`, `'.join(columns)}` |" for role, columns in nulls.items()]
+        lines += ["", "An empty cell in one of those columns for any other record is a source blank.", ""]
+    else:
+        lines += ["This table comes from a single source file, so every text empty is a source blank.", ""]
+    lines += ["An empty `deleted_on` is a null and agrees with `is_current`. The source text column",
+              "`DateOfDeletion` stays blank. Every other empty cell is a source blank.", "",
+              "`results/CSV_README.txt` beside the files carries the attribution every source requires.", ""]
+    return lines
+
+
+def render(schema: dict, registry, manifest: dict | None, name: str = "history", contract: dict | None = None) -> str:
     fields = schema["fields"]
     by_source = Counter(f["source"] for f in fields)
     editions = [e["key"] for e in registry.phs_editions]
@@ -113,6 +147,8 @@ def render(schema: dict, registry, manifest: dict | None, name: str = "history")
               "  Use the PHS code with the PHS band.",
               "- **Directory columns are text.** Every original column keeps its source text, including leading",
               "  zeros and blanks. A blank is `\"\"`; a column absent from that user type is null.", ""]
+    if contract:
+        lines += csv_section(contract, name, fields)
     lines += ["## Sources", "", "| Publisher | Object | SHA256 |", "| --- | --- | --- |"]
     lines += [f"| {o.publisher} | {o.url.rsplit('/', 1)[-1]} | `{o.sha256[:16]}…` |" for o in registry.objects]
     lines += ["", f"Licences: " + "; ".join(f"{k}: {v}" for k, v in registry.licences.items()), ""]
@@ -137,13 +173,14 @@ def render(schema: dict, registry, manifest: dict | None, name: str = "history")
 def main(argv=None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     registry = load_registry(PACKAGE / "sources.yaml")
+    contract = load_contract(PACKAGE / "export_contract.yaml")
     man_path = Path(argv[0] if argv else "results/manifest.json")  # relative to the working directory
     manifest = json.loads(man_path.read_text()) if man_path.is_file() else None
     for name, spec in TABLES.items():
         schema = yaml.safe_load((PACKAGE / spec["schema"]).read_text())
         out = Path(spec["out"])
         out.parent.mkdir(exist_ok=True)
-        out.write_text(render(schema, registry, manifest, name))
+        out.write_text(render(schema, registry, manifest, name, contract))
         print(f"wrote {out}")
     return 0
 

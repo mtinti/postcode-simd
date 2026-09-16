@@ -1,0 +1,73 @@
+# What leaves the build: the CSV rendering of each table, and the columns that neither the CSV
+# nor the SQL examples carry. The Parquet keeps every column and is not governed by this file,
+# so its schemas and their hashes are unaffected. Version 1, 16 September 2026.
+version: 1
+
+# The CSV dialect. LF is a deliberate variation from RFC 4180, which specifies CRLF.
+dialect:
+  delimiter: ','
+  quoting: minimal          # RFC 4180 quoting, applied only where a value needs it
+  encoding: utf-8           # no byte order mark
+  line_ending: "\n"
+  compression: gzip         # written with mtime 0, so the same rows give the same bytes
+
+# How a value becomes text. Only the schema's date32, bool and integer fields are converted;
+# the original date-text columns of the source are written exactly as they are stored.
+values:
+  date: '%Y-%m-%d'
+  boolean: ['0', '1']       # false, true
+  empty: ''                 # a null and a source blank are the same empty cell in CSV
+
+# Columns not exported, and why. Two reasons of different standing, recorded separately.
+exclude_reasons:
+  minimisation: >-
+    Do not carry coordinate fields into outputs whose purpose is deprivation and area context.
+    A project data-minimisation choice, not an anonymisation guarantee.
+  licensing: >-
+    NRS supplies its index and lookup products under the Open Government Licence and restricts
+    "postcode boundaries and grid references" separately, but its licensing page does not settle
+    which governs a grid reference column inside an index file. Removal is a conservative
+    project policy pending confirmation from NRS or HIC information governance.
+
+tables:
+  main:
+    file: postcode_simd.csv.gz
+    exclude: [GridReferenceEasting, GridReferenceNorthing]
+    # Every text empty is a source blank, for both user types: the lookup is a single file.
+    structural_nulls: {}
+  history:
+    file: postcode_simd_history.csv.gz
+    exclude: [GridReferenceEasting, GridReferenceNorthing, Latitude, Longitude]
+    # A column that exists in only one of the two directory files is null for the other's
+    # records. Read by spd_user_type: for a row of the named type these columns are structural
+    # nulls; an empty cell in them for any other row is a source blank.
+    structural_nulls:
+      large_user: [CensusHouseholdCount2022, CensusPopulationCount2022, CensusHouseholdCount2011,
+                   CensusPopulationCount2011, CensusHouseholdCount2001, CensusPopulationCount2001,
+                   CensusHouseholdCount1991, CensusPopulationCount1991, NeverDigitised]
+      small_user: [LinkedSmallUserPostcode]
+    role_column: spd_user_type
+
+# The row digest that a database load is checked against. Computed from the accepted table,
+# never from a re-read of the CSV, so an import mistake cannot appear on both sides.
+# Compact and probabilistic: truncating each hash to eight bytes and adding the results permits
+# collisions and cancelling changes. It detects accidental corruption; it is not a proof of
+# identity and not a signature.
+digest:
+  version: 1
+  hash: sha256
+  null_marker: "\0"     # 0x00 in UTF-8; a blank stays empty, so the two differ
+  separator: "\x1F"       # 0x1F in UTF-8, between fields in contract order
+  reserved: ["\0", "\x1F"]   # rejected in source text on both sides, never stripped
+  prefix_bytes: 8
+  signed: true              # the prefix is read big-endian, two's complement
+  total: decimal_string     # so a JSON reader cannot round it
+
+# Acknowledgements every source requires. Review the statements and the year on a refresh:
+# https://www.nrscotland.gov.uk/publications/geography-products-licensing-and-pricing/
+attribution:
+  - Contains NRS data © Crown copyright and database right 2026
+  - Incorporates data from PAF® the copyright in which is owned by Royal Mail Group Limited
+    and/or Royal Mail Group plc
+  - Contains Public Health Scotland SIMD data, licensed under the Open Government Licence v3.0
+  - Contains Scottish Government SIMD data, licensed under the Open Government Licence
