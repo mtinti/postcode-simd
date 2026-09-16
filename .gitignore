@@ -13,3 +13,6 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .DS_Store
+
+# Site-specific plumbing and filled-in scripts: never committed.
+local/
