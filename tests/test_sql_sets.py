@@ -633,13 +633,16 @@ def test_the_walkthrough_gives_the_same_answers_as_the_generated_dated_query(rea
 
     def run(name):
         sql = (SQL / "spd" / name).read_text()
-        demo = re.search(r"    SELECT 1 AS id,.*?\n(?=\),)", sql, re.S)
+        # The generated file demonstrates one row, the walkthrough three, so accept either shape.
+        demo = re.search(r"    SELECT (?:1 AS id,|\* FROM \(VALUES).*?\n(?=\),)", sql, re.S)
         assert demo, f"{name}: no input block to replace"
         return real.execute(sql.replace(demo.group(0), cohort)).df()
 
     shared = ["id", "analysis_year", "postcode_status", "simd_edition", "matched_pc_norm", "matched_is_current",
               "simd_source_pc_norm", "data_zone_code", "simd_rank",
-              "phs_pw_scotland_quintile", "phs_pw_scotland_decile"]
+              "phs_pw_scotland_quintile", "phs_pw_scotland_decile",
+              "gov_uw_scotland_quintile", "gov_uw_scotland_decile",
+              "UrbanRural6Fold2022Code", "UrbanRural8Fold2022Code"]
     full = run("link_as_of.sql")[shared].sort_values("id").reset_index(drop=True)
     short = run("walkthrough_as_of.sql")[shared].sort_values("id").reset_index(drop=True)
     pd.testing.assert_frame_equal(full, short)

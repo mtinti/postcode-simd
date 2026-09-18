@@ -1,9 +1,10 @@
 -- A short, readable version of link_as_of.sql, for reviewing the logic before trusting it.
 --
--- Same steps, same rules, but it returns only the rank and the two within-Scotland bands, so
--- the whole thing fits on a screen or two. link_as_of.sql is the complete query: it returns
--- all fourteen measures, the local PHS geography and every original postcode field, and it is
--- generated from the output schema so it cannot drift from the table. Use this one to check
+-- Same steps, same rules, but it returns only the rank, both publishers' within-Scotland
+-- quintile and decile, and the urban-rural classification, so the whole thing fits on a screen
+-- or two. link_as_of.sql is the complete query: it returns all fourteen measures, the bands
+-- within health board, partnership and council area, and every original postcode field, and it
+-- is generated from the output schema so it cannot drift from the table. Use this one to check
 -- that the logic is what you want, and that one to produce values.
 --
 -- Input: one row per event, with the postcode recorded for it and the date that postcode was
@@ -16,17 +17,27 @@
 -- Qualify the table name if it is not in your default schema.
 
 WITH input AS (
-    -- STEP 1. The cohort. EDIT THIS. Replace it with a select from your own table, for example
+    -- STEP 1. The cohort. EDIT THESE THREE ROWS, or replace the whole block with a select from
+    -- your own table, for example
     --   SELECT LINK_NO, POSTCODE, CAST(ADMISSION_DATE AS date), CAST(NULL AS int)
     --   FROM ISD_SMR.dbo.SMR01
-    -- The address date is the only date you have to supply. analysis_year is an override and
-    -- null is the normal case: see step 3. The two rows here show both ways round.
-    SELECT 1 AS id, CAST('AB11 5FA' AS varchar(32)) AS postcode,
-           CAST('2015-06-01' AS date) AS address_date, CAST(NULL AS int) AS analysis_year
-    -- An address held in 1975, read on a modern classification: only an override can ask for
-    -- that, because 1975 is before SIMD began.
-    UNION ALL SELECT 2, CAST('FK17 8DS' AS varchar(32)),
-           CAST('1975-06-01' AS date), 2020
+    --
+    -- id             anything identifying the row; it is returned untouched
+    -- postcode       as written, with or without the space
+    -- address_date   the date that postcode was this person's address
+    -- analysis_year  leave NULL and the SIMD edition comes from the year of the address date,
+    --                which is what a single event date means. Set it only to force one
+    --                edition, as row 3 does.
+    --
+    -- Row 1 reads the data zone this postcode had in 2005, not the one it has now. Row 2 is
+    -- the ordinary case, and the two publishers put it in different bands: quintile 3 weighted
+    -- by population, 4 by data zone. Row 3 needs its override, because deriving would give
+    -- 1975 and SIMD did not exist then.
+    SELECT * FROM (VALUES
+        (1, 'AB11 5FA', CAST('2005-06-10' AS date), CAST(NULL AS int)),
+        (2, 'AB21 0SB', CAST('2015-06-01' AS date), CAST(NULL AS int)),
+        (3, 'FK17 8DS', CAST('1975-06-01' AS date), 2020)
+    ) AS v(id, postcode, address_date, analysis_year)
 ),
 request AS (
     -- STEP 2. The join key: uppercase, remove spaces, keep the original text. This is the rule
@@ -71,7 +82,10 @@ lives AS (
     -- data zone of a place the patient never lived.
     SELECT c.id, c.address_date,
            p.pc_norm, p.pc_base, p.introduced_on, p.deleted_on, p.is_current,
-           p.spd_user_type, p.LinkedSmallUserPostcode
+           p.spd_user_type, p.LinkedSmallUserPostcode,
+           -- Rurality travels with the matched record itself, not with the data zone: see the
+           -- note at the end of step 6.
+           p.UrbanRural6Fold2022Code, p.UrbanRural8Fold2022Code
     FROM chosen c
     JOIN postcode_simd_history p
       ON p.pc_base = c.postcode_key
@@ -124,7 +138,13 @@ source AS (
            g.simd2016_pw_scotland_quintile, g.simd2020v2_pw_scotland_quintile,
            g.simd2004_pw_scotland_decile, g.simd2006_pw_scotland_decile,
            g.simd2009v2_pw_scotland_decile, g.simd2012_pw_scotland_decile,
-           g.simd2016_pw_scotland_decile, g.simd2020v2_pw_scotland_decile
+           g.simd2016_pw_scotland_decile, g.simd2020v2_pw_scotland_decile,
+           g.simd2004_uw_scotland_quintile, g.simd2006_uw_scotland_quintile,
+           g.simd2009v2_uw_scotland_quintile, g.simd2012_uw_scotland_quintile,
+           g.simd2016_uw_scotland_quintile, g.simd2020v2_uw_scotland_quintile,
+           g.simd2004_uw_scotland_decile, g.simd2006_uw_scotland_decile,
+           g.simd2009v2_uw_scotland_decile, g.simd2012_uw_scotland_decile,
+           g.simd2016_uw_scotland_decile, g.simd2020v2_uw_scotland_decile
     FROM matched m
     LEFT JOIN postcode_simd_history g
       ON g.spd_user_type = 'small_user'
@@ -139,6 +159,19 @@ source AS (
 -- edition, because ingestion already turned the 2004 and 2006 bands the right way round.
 -- postcode_status says what happened to the postcode; simd_status says whether the numbers can
 -- be used. Only matched, a_part and linked_small_user carry a value.
+--
+-- Two bandings are returned because the publishers band the same ranks differently. PHS splits
+-- them so each band holds a fifth or a tenth of the POPULATION, and its guidance expects those
+-- for health analysis. The Scottish Government splits the DATA ZONES themselves, equal counts
+-- of zones, which is what SIMD's own published files carry. They disagree for many postcodes,
+-- so report which one you used and never mix them in one measure.
+--
+-- Rurality is the Scottish Government Urban Rural Classification as published in the release
+-- that was downloaded, the 2022 one, for every address date: it is NOT a vintage matched to
+-- the SIMD edition, so a 2005 address gets today's classification of that postcode. It also
+-- comes from the matched record itself rather than from the record that supplied the data
+-- zone, so a large user reports the rurality of its own grid reference, which for a PO box is
+-- the sorting office. Read it beside matched_user_type.
 SELECT c.id, c.postcode, c.address_date, c.analysis_year, c.edition AS simd_edition,
        CASE
            WHEN c.postcode_key IS NULL                   THEN 'missing_postcode'
@@ -186,7 +219,25 @@ SELECT c.id, c.postcode, c.address_date, c.analysis_year, c.edition AS simd_edit
                       WHEN '2012'   THEN s.simd2012_pw_scotland_decile
                       WHEN '2016'   THEN s.simd2016_pw_scotland_decile
                       WHEN '2020v2' THEN s.simd2020v2_pw_scotland_decile END AS phs_pw_scotland_decile,
-       '1 = most deprived, PHS population weighted, within Scotland' AS band_convention
+       CASE c.edition WHEN '2004'   THEN s.simd2004_uw_scotland_quintile
+                      WHEN '2006'   THEN s.simd2006_uw_scotland_quintile
+                      WHEN '2009v2' THEN s.simd2009v2_uw_scotland_quintile
+                      WHEN '2012'   THEN s.simd2012_uw_scotland_quintile
+                      WHEN '2016'   THEN s.simd2016_uw_scotland_quintile
+                      WHEN '2020v2' THEN s.simd2020v2_uw_scotland_quintile END AS gov_uw_scotland_quintile,
+       CASE c.edition WHEN '2004'   THEN s.simd2004_uw_scotland_decile
+                      WHEN '2006'   THEN s.simd2006_uw_scotland_decile
+                      WHEN '2009v2' THEN s.simd2009v2_uw_scotland_decile
+                      WHEN '2012'   THEN s.simd2012_uw_scotland_decile
+                      WHEN '2016'   THEN s.simd2016_uw_scotland_decile
+                      WHEN '2020v2' THEN s.simd2020v2_uw_scotland_decile END AS gov_uw_scotland_decile,
+       m.UrbanRural6Fold2022Code,
+       m.UrbanRural8Fold2022Code,
+       CASE m.UrbanRural6Fold2022Code
+           WHEN '1' THEN 'Large urban area'      WHEN '2' THEN 'Other urban area'
+           WHEN '3' THEN 'Accessible small town' WHEN '4' THEN 'Remote small town'
+           WHEN '5' THEN 'Accessible rural'      WHEN '6' THEN 'Remote rural' END AS urban_rural_6fold,
+       '1 = most deprived; phs_* weighted by population, gov_* by data zone; within Scotland' AS band_convention
 FROM chosen c
 LEFT JOIN matched m ON m.id = c.id
 LEFT JOIN bounds  b ON b.id = c.id

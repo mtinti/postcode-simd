@@ -464,3 +464,30 @@ decisions:
       with analysis_year 2020 still reads the 1973 life, S01013116, on SIMD 2020v2. The
       walkthrough's demo carries one row of each kind. tests/test_sql_sets.py covers the
       default, the override, and both inputs missing at once.
+
+  - id: walkthrough-both-bandings-and-rurality
+    date: 2026-09-18
+    status: implemented
+    decision: >-
+      The walkthrough returns the Scottish Government unweighted quintile and decile beside the
+      PHS population-weighted ones, and the 6-fold and 8-fold urban-rural codes with a label for
+      the 6-fold. The unweighted bands come from the record that supplied the data zone; the
+      rurality comes from the matched record itself, which is what the generated query does, so
+      a large user reports its own point location rather than that of the small-user postcode it
+      links to. Its demo input became three rows, and the equivalence test now compares these
+      four columns too.
+    reason: >-
+      A reader validating the logic has to see that the same rank produces two different bands:
+      PHS splits so each band holds a fifth or a tenth of the population, the Scottish Government
+      splits the data zones themselves, and a report that mixes them is wrong in a way nothing
+      else catches. Rurality is routinely crossed with deprivation, and holding it next to the
+      band makes its one limitation visible: the directory carries a single 2022 classification,
+      so a historical address is described by today's categories even though its data zone and
+      SIMD are read at the right vintage.
+    evidence: >-
+      Of 162,049 current postcodes with a 2020v2 band, 5,615 fall in a different quintile and
+      12,216 in a different decile under the two bandings. The demo's second row, AB21 0SB on
+      1 June 2015, is quintile 3 weighted by population and 4 by data zone, decile 6 against 7.
+      The 6-fold labels are the Scottish Government classification and nest exactly as the two
+      columns do in the data: code 4 covers 8-fold 4 and 5, code 5 covers 6, code 6 covers 7
+      and 8. The NRS dictionary documents only the ranges, 1 to 6 and 1 to 8.
