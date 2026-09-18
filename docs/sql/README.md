@@ -46,6 +46,12 @@ returning only the rank and the two within-Scotland bands. Read it to satisfy yo
 is right, then use the generated query to produce values. A test runs both on the built table and
 requires them to agree case for case, so the short one cannot quietly drift.
 
+Both dated queries take one date per row. The address date selects the postcode life, and its
+year selects the SIMD edition, so an episode needs only its own date. `analysis_year` is an
+override for the cases where those two differ: hold it constant to compare a long period on a
+single classification, or set it to the year of the health data when the address was recorded
+at another time.
+
 Two further generated scripts load the shared CSVs into SQL Server and check the result:
 [import_csv.sql](import_csv.sql) stages each file as text and restores the declared types, and
 [check_loaded_digest.sql](check_loaded_digest.sql) verifies the structure, the key and the row

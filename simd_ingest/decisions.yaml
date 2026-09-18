@@ -432,3 +432,35 @@ decisions:
       UTF-8 collation on the staging columns; HASHBYTES over an nvarchar expression hashes
       UTF-16, so the text is converted to varchar with a binary UTF-8 collation first; and
       CONCAT_WS drops a NULL argument, so every column is wrapped before framing.
+
+  - id: sql-as-of-year-from-address-date
+    date: 2026-09-18
+    status: implemented
+    decision: >-
+      In the dated query analysis_year becomes an override rather than a required input.
+      The requested step now settles it as COALESCE(analysis_year, YEAR(address_date)), so a
+      cohort supplies id, postcode and address_date and the SIMD edition follows the year that
+      date falls in. A non-null analysis_year still wins, unchanged, and the year the query
+      reports is the one it used. missing_year therefore now means neither was given, while a
+      null address date is still reported on its own as missing_address_date. This supersedes
+      the part of sql-as-of-address-date that required both inputs; the life-selection rules
+      are untouched.
+    reason: >-
+      For the usual source the two are one date: an SMR01 episode's admission date is both the
+      address date and the year of the event, so requiring the year twice invited a mismatch
+      without offering anything. Deriving makes the common case right by construction and each
+      row gets the edition current when it happened. Keeping the override preserves the case
+      that motivated separating them, PHS v3.5 section 3.2.1.2, where one classification is
+      held across a long comparison, and the case where the address was recorded at a different
+      time from the health event. It is the same pattern the latest-life queries already use
+      for their single EDIT EDITION line: the default is the ordinary reading and the
+      alternative is explicit.
+    evidence: >-
+      Both the generated query and the hand-written walkthrough were changed together and the
+      equivalence test now carries five rows with a null year among its fifteen cases. On the
+      built SPD table the derived rows report 2015, 2019, 1975, 2005 and 2008 and select SIMD
+      2016, 2020v2, none, 2006 and 2009v2, the third showing that deriving a year before 1996
+      leaves no edition, which is where the override earns its place: FK17 8DS on 1 June 1975
+      with analysis_year 2020 still reads the 1973 life, S01013116, on SIMD 2020v2. The
+      walkthrough's demo carries one row of each kind. tests/test_sql_sets.py covers the
+      default, the override, and both inputs missing at once.

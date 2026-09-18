@@ -86,9 +86,10 @@ index, edition, weighting, direction and level.
 
 ## The dated query, SPD only
 
-`link_as_of.sql` takes `id, postcode, address_date, analysis_year`. The date must relate to
-that person's address; a general CHI record edit date must not be assumed to be a residence
-date without checking its meaning. This is a **project policy** for selecting postcode lives,
+`link_as_of.sql` takes `id, postcode, address_date, analysis_year`, of which only the first
+three have to be supplied: leave `analysis_year` null and the year of the address date chooses
+the edition. The date must relate to that person's address; a general CHI record edit date
+must not be assumed to be a residence date without checking its meaning. This is a **project policy** for selecting postcode lives,
 not a claim that PHS mandates dated matching. It changes the postcode selection in steps 4 to 6:
 
 - **Step 4** takes the lives of the postcode that contain the address date, where a life runs
@@ -97,8 +98,12 @@ not a claim that PHS mandates dated matching. It changes the postcode selection 
 - **Step 5** applies the same A-part rule among those lives.
 - **Step 6** follows a large user's link to the small-user life valid on the same date.
 
-The edition still comes from `analysis_year`, because when a person lived at a postcode and
-which SIMD suits the health data are different questions. Use a health-event date as
+For an episode the address date and the year of the health data are the same date, so one
+input serves both and each row gets the edition current when it happened. Where they are not
+the same, `analysis_year` overrides: pass one constant year for every row to hold a single
+classification across a long comparison, which is section 3.2.1.2 of the guidance, or pass the
+year of the health data where the address was recorded at a different time from the event.
+The status `missing_year` now means neither was given. Use a health-event date as
 `address_date` only if it describes the address being linked, and record that assumption.
 
 Each distinct normalised postcode/address-date pair is resolved once, then joined back to

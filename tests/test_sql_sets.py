@@ -48,8 +48,8 @@ RAW = {name: [f["name"] for f in yaml.safe_load((ROOT / "simd_ingest" / spec["sc
        for name, spec in PRODUCTS.items()}
 DEMO = {"link_by_era": "    SELECT 1 AS id, CAST('AB24 2TY' AS varchar(32)) AS postcode, 2020 AS analysis_year",
         "link_latest": "    SELECT 1 AS id, CAST('AB24 2TY' AS varchar(32)) AS postcode",
-        "link_as_of": "    SELECT 1 AS id, CAST('FK17 8DS' AS varchar(32)) AS postcode,\n"
-                      "           CAST('1975-06-01' AS date) AS address_date, 2020 AS analysis_year"}
+        "link_as_of": "    SELECT 1 AS id, CAST('AB11 5FA' AS varchar(32)) AS postcode,\n"
+                      "           CAST('2005-06-10' AS date) AS address_date, CAST(NULL AS int) AS analysis_year"}
 COHORT_COLUMNS = {"link_by_era": "id, postcode, analysis_year", "link_latest": "id, postcode",
                   "link_as_of": "id, postcode, address_date, analysis_year"}
 CONTRACT = ["id", "postcode", "address_date", "analysis_year", "postcode_key", "postcode_status", "simd_status",
@@ -488,11 +488,28 @@ def test_as_of_after_the_only_life_is_deleted_by_date(con):
     assert as_of(con, life, "2005-06-10", postcode="ZZ1 1ZZ").postcode_status == "not_found"
 
 
-def test_as_of_edition_comes_from_the_year_not_the_address_date(con):
-    out = as_of(con, LIVES, "1975-06-01", year=1975)
+def test_as_of_the_edition_year_defaults_to_the_address_date_and_can_be_overridden(con):
+    """analysis_year is an override. Left null, the year of the address date chooses the
+    edition, which is what a single event date means. Set, it wins, which is how PHS v3.5
+    section 3.2.1.2 holds one edition across a long period."""
+    out = as_of(con, LIVES, "2005-06-10", year=None)          # derived: 2005 -> SIMD 2006
+    assert out.analysis_year == 2005
+    expect_edition(out, record("spd", seed=2), "2006")
+    out = as_of(con, LIVES, "1975-06-01", year=None)          # derived: before SIMD began
+    assert (out.analysis_year, out.postcode_status, out.simd_status) == (1975, "matched", "no_edition")
+    out = as_of(con, LIVES, "1975-06-01", year=1975)          # the same answer, asked for
     assert (out.postcode_status, out.simd_status, out.matched_is_current) == ("matched", "no_edition", False)
-    out = as_of(con, LIVES, "1975-06-01", year=2005)
+    out = as_of(con, LIVES, "1975-06-01", year=2005)          # the override reaches a 1975 life
+    assert out.analysis_year == 2005
     expect_edition(out, record("spd", seed=1), "2006")
+
+
+def test_as_of_with_no_year_and_no_address_date_still_reports_both_problems(con):
+    """Nothing to derive from: the postcode cannot be placed in time and neither can the
+    edition, and each is reported in its own status rather than one masking the other."""
+    out = as_of(con, LIVES, None, year=None)
+    assert (out.postcode_status, out.simd_status) == ("missing_address_date", "missing_year")
+    assert pd.isna(out.analysis_year) and pd.isna(out.simd_rank)
 
 
 @pytest.mark.parametrize("rows,on,key,status,has_simd", [
@@ -600,12 +617,18 @@ def test_as_of_real_recycled_and_deleted_postcodes(real):
 def test_the_walkthrough_gives_the_same_answers_as_the_generated_dated_query(real):
     """docs/sql/spd/walkthrough_as_of.sql is written by hand so that a reviewer can read the
     logic. It returns fewer columns, but the ones it returns must agree case for case."""
+    # A year of None leaves analysis_year null, which is the normal input: both queries must
+    # then derive the edition from the address date and still agree.
     cases = [("FK17 8DS", "1975-06-01", 2020), ("FK17 8DS", "1978-06-01", 2020),
              ("FK17 8DS", "1990-06-01", 2020), ("FK17 8DS", "1996-06-01", 1996),
              ("AB24 2TY", "2019-11-20", 2019), ("TD9 7PQ", "1990-05-15", 1990),
              ("TD9 7PQ", "2005-01-10", 2005), ("G71 8BQ", "2020-01-01", 2020),
-             ("EH1 1AA", "1993-04-01", 1993), ("ZZ1 1ZZ", "2020-01-01", 2020)]
-    rows = ",\n        ".join(f"({n}, '{p}', DATE '{d}', {y})" for n, (p, d, y) in enumerate(cases, 1))
+             ("EH1 1AA", "1993-04-01", 1993), ("ZZ1 1ZZ", "2020-01-01", 2020),
+             ("AB11 5FA", "2015-06-01", None), ("AB24 2TY", "2019-11-20", None),
+             ("FK17 8DS", "1975-06-01", None), ("TD9 7PQ", "2005-01-10", None),
+             ("G71 8BQ", "2008-07-01", None)]
+    rows = ",\n        ".join(f"({n}, '{p}', DATE '{d}', {'CAST(NULL AS INTEGER)' if y is None else y})"
+                              for n, (p, d, y) in enumerate(cases, 1))
     cohort = f"    SELECT * FROM (VALUES\n        {rows}\n    ) AS v(id, postcode, address_date, analysis_year)\n"
 
     def run(name):
@@ -614,7 +637,7 @@ def test_the_walkthrough_gives_the_same_answers_as_the_generated_dated_query(rea
         assert demo, f"{name}: no input block to replace"
         return real.execute(sql.replace(demo.group(0), cohort)).df()
 
-    shared = ["id", "postcode_status", "simd_edition", "matched_pc_norm", "matched_is_current",
+    shared = ["id", "analysis_year", "postcode_status", "simd_edition", "matched_pc_norm", "matched_is_current",
               "simd_source_pc_norm", "data_zone_code", "simd_rank",
               "phs_pw_scotland_quintile", "phs_pw_scotland_decile"]
     full = run("link_as_of.sql")[shared].sort_values("id").reset_index(drop=True)
@@ -623,3 +646,11 @@ def test_the_walkthrough_gives_the_same_answers_as_the_generated_dated_query(rea
     # The cases must actually exercise the interesting branches, or agreeing proves little.
     assert set(full.postcode_status) >= {"matched", "a_part", "linked_small_user",
                                          "between_lives", "postcode_deleted_by_date", "not_found"}
+    # The derived rows really were derived: the reported year is the year of the address date,
+    # and one of them lands before SIMD began, where deriving leaves no edition to use.
+    derived = full[full.id > 10]
+    assert list(derived.analysis_year) == [2015, 2019, 1975, 2005, 2008]
+    assert [None if pd.isna(v) else v for v in derived.simd_edition] == \
+        ["2016", "2020v2", None, "2006", "2009v2"]
+    # The override is what makes the same 1975 address readable on a modern classification.
+    assert full.loc[full.id == 1, "simd_edition"].iloc[0] == "2020v2"

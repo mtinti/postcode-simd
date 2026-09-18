@@ -11,19 +11,26 @@
 
 WITH inputs AS (
     -- STEP 1. INPUT. Replace this SELECT with:
-    --   SELECT id, postcode, address_date, analysis_year FROM your_cohort
+    --   SELECT id, postcode, address_date, CAST(NULL AS int) AS analysis_year FROM your_cohort
     -- address_date must relate to this person's address; do not assume a general record edit
-    -- date is a residence date. Selecting a life on that date is a project policy.
-    -- analysis_year is the year of the health data as an integer: it chooses the SIMD edition.
-    -- Use a health-event date as address_date only if it describes the address being linked.
-    SELECT 1 AS id, CAST('FK17 8DS' AS varchar(32)) AS postcode,
-           CAST('1975-06-01' AS date) AS address_date, 2020 AS analysis_year
+    -- date is a residence date. Selecting a life on that date is a project policy. For an
+    -- SMR01 episode the admission date is both the address date and the year of the event.
+    -- analysis_year is an OVERRIDE, and null is the normal case: leave it null and the SIMD
+    -- edition comes from the year of the address date. Set it to one constant for every row to
+    -- hold a single edition across a whole trend, which PHS v3.5 section 3.2.1.2 describes.
+    -- This row derives its edition: 2005 selects SIMD 2006, and the address date selects the
+    -- life this postcode had then, which is not its current one.
+    SELECT 1 AS id, CAST('AB11 5FA' AS varchar(32)) AS postcode,
+           CAST('2005-06-10' AS date) AS address_date, CAST(NULL AS int) AS analysis_year
 ),
 requested AS (
     -- STEP 2. KEY. Uppercase and remove ASCII spaces, keeping the original text: the same rule
     -- as ingestion (project choice). Nothing is repaired and an NRS A/B/C suffix is not
     -- removed, so supply the ordinary postcode as a person writes it. Duplicate inputs stay.
-    SELECT id, postcode, address_date, analysis_year,
+    SELECT id, postcode, address_date,
+           -- The override, or the year the address date falls in. One input covers the usual
+           -- case; the reported analysis_year below is whichever was used.
+           COALESCE(analysis_year, YEAR(address_date)) AS analysis_year,
            NULLIF(UPPER(REPLACE(postcode, ' ', '')), '') AS postcode_key
     FROM inputs
 ),

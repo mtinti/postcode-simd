@@ -8,6 +8,7 @@
 --
 -- Input: one row per event, with the postcode recorded for it and the date that postcode was
 -- the person's address. For SMR01 both come from the episode: POSTCODE and ADMISSION_DATE.
+-- That one date does two jobs: it picks the postcode life, and its year picks the SIMD edition.
 -- Output: one row per input row. Nothing is ever dropped; a row that cannot be resolved comes
 -- back with a status saying why and no SIMD.
 --
@@ -16,17 +17,25 @@
 
 WITH input AS (
     -- STEP 1. The cohort. EDIT THIS. Replace it with a select from your own table, for example
-    --   SELECT LINK_NO, POSTCODE, CAST(ADMISSION_DATE AS date), YEAR(ADMISSION_DATE)
+    --   SELECT LINK_NO, POSTCODE, CAST(ADMISSION_DATE AS date), CAST(NULL AS int)
     --   FROM ISD_SMR.dbo.SMR01
-    SELECT 1 AS id, CAST('FK17 8DS' AS varchar(32)) AS postcode,
-           CAST('1975-06-01' AS date) AS address_date, 2020 AS analysis_year
+    -- The address date is the only date you have to supply. analysis_year is an override and
+    -- null is the normal case: see step 3. The two rows here show both ways round.
+    SELECT 1 AS id, CAST('AB11 5FA' AS varchar(32)) AS postcode,
+           CAST('2015-06-01' AS date) AS address_date, CAST(NULL AS int) AS analysis_year
+    -- An address held in 1975, read on a modern classification: only an override can ask for
+    -- that, because 1975 is before SIMD began.
+    UNION ALL SELECT 2, CAST('FK17 8DS' AS varchar(32)),
+           CAST('1975-06-01' AS date), 2020
 ),
 request AS (
     -- STEP 2. The join key: uppercase, remove spaces, keep the original text. This is the rule
     -- the table itself was built with, so the two agree. Nothing is repaired and no A/B/C
     -- suffix is stripped: a postcode that is wrong must fail to match rather than quietly
     -- match something else.
-    SELECT id, postcode, address_date, analysis_year,
+    -- analysis_year is settled here so the rest of the query has one year to work with.
+    SELECT id, postcode, address_date,
+           COALESCE(analysis_year, YEAR(address_date)) AS analysis_year,
            NULLIF(UPPER(REPLACE(postcode, ' ', '')), '') AS postcode_key
     FROM input
 ),
@@ -34,7 +43,11 @@ era AS (
     -- STEP 3. PHS deprivation guidance v3.5, Table 4, printed page 17. The year of the health
     -- data chooses the SIMD edition, and the edition fixes the data-zone vintage to read it
     -- through. Before 1996 there is no SIMD and the guidance points to Carstairs instead.
-    -- Pass one constant year for every row if you want a single edition throughout.
+    -- That year comes from the address date, which for an episode is the year of the event, so
+    -- each row gets the edition current when it happened. Section 3.2.1.2 of the guidance
+    -- describes the other option: to compare across a long period on one fixed classification,
+    -- pass a constant analysis_year for every row and it overrides the derived one. The value
+    -- reported below is whichever year was actually used.
     SELECT * FROM (VALUES
         (1996, 2003, '2004',   2001),
         (2004, 2006, '2006',   2001),
