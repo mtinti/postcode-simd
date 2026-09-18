@@ -6,6 +6,7 @@ compatibility or equivalence to PHS's own postcode-level lookup.
 """
 
 import json
+import re
 
 import duckdb
 import pandas as pd
@@ -132,7 +133,8 @@ def expect_edition(out, row, edition):
 @pytest.mark.parametrize("name,variant", [(n, v) for n, vs in FILES.items() for v in vs])
 def test_committed_file_matches_generator(name, variant):
     assert (SQL / name / FILE_OF[variant]).read_text() == render(name, variant)
-    assert sorted(p.name for p in (SQL / name).glob("*.sql")) == sorted(FILE_OF[v] for v in FILES[name])
+    generated = sorted(p.name for p in (SQL / name).glob("*.sql") if not p.name.startswith("walkthrough"))
+    assert generated == sorted(FILE_OF[v] for v in FILES[name])
 
 
 @pytest.mark.parametrize("name", PRODUCTS)
@@ -593,3 +595,31 @@ def test_as_of_real_recycled_and_deleted_postcodes(real):
     assert real.execute(f"""SELECT COUNT(*) FROM result r JOIN postcode_simd_history p
         ON p.pc_norm = r.simd_source_pc_norm AND p.introduced_on = r.simd_source_introduced_on
         WHERE r.simd_status = 'matched' AND ({differences})""").fetchone()[0] == 0
+
+
+def test_the_walkthrough_gives_the_same_answers_as_the_generated_dated_query(real):
+    """docs/sql/spd/walkthrough_as_of.sql is written by hand so that a reviewer can read the
+    logic. It returns fewer columns, but the ones it returns must agree case for case."""
+    cases = [("FK17 8DS", "1975-06-01", 2020), ("FK17 8DS", "1978-06-01", 2020),
+             ("FK17 8DS", "1990-06-01", 2020), ("FK17 8DS", "1996-06-01", 1996),
+             ("AB24 2TY", "2019-11-20", 2019), ("TD9 7PQ", "1990-05-15", 1990),
+             ("TD9 7PQ", "2005-01-10", 2005), ("G71 8BQ", "2020-01-01", 2020),
+             ("EH1 1AA", "1993-04-01", 1993), ("ZZ1 1ZZ", "2020-01-01", 2020)]
+    rows = ",\n        ".join(f"({n}, '{p}', DATE '{d}', {y})" for n, (p, d, y) in enumerate(cases, 1))
+    cohort = f"    SELECT * FROM (VALUES\n        {rows}\n    ) AS v(id, postcode, address_date, analysis_year)\n"
+
+    def run(name):
+        sql = (SQL / "spd" / name).read_text()
+        demo = re.search(r"    SELECT 1 AS id,.*?\n(?=\),)", sql, re.S)
+        assert demo, f"{name}: no input block to replace"
+        return real.execute(sql.replace(demo.group(0), cohort)).df()
+
+    shared = ["id", "postcode_status", "simd_edition", "matched_pc_norm", "matched_is_current",
+              "simd_source_pc_norm", "data_zone_code", "simd_rank",
+              "phs_pw_scotland_quintile", "phs_pw_scotland_decile"]
+    full = run("link_as_of.sql")[shared].sort_values("id").reset_index(drop=True)
+    short = run("walkthrough_as_of.sql")[shared].sort_values("id").reset_index(drop=True)
+    pd.testing.assert_frame_equal(full, short)
+    # The cases must actually exercise the interesting branches, or agreeing proves little.
+    assert set(full.postcode_status) >= {"matched", "a_part", "linked_small_user",
+                                         "between_lives", "postcode_deleted_by_date", "not_found"}

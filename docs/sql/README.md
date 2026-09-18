@@ -41,6 +41,11 @@ Applying that rule to SSPL is a project interpretation of PHS Appendix A: it doe
 explicitly settle overriding geography already allocated in SSPL. Own-record geography is
 kept as context; exact equivalence to PHS's postcode-level lookup remains unverified.
 
+`spd/walkthrough_as_of.sql` is the dated query written short, with every step and its reason,
+returning only the rank and the two within-Scotland bands. Read it to satisfy yourself the logic
+is right, then use the generated query to produce values. A test runs both on the built table and
+requires them to agree case for case, so the short one cannot quietly drift.
+
 Two further generated scripts load the shared CSVs into SQL Server and check the result:
 [import_csv.sql](import_csv.sql) stages each file as text and restores the declared types, and
 [check_loaded_digest.sql](check_loaded_digest.sql) verifies the structure, the key and the row
