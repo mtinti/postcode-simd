@@ -120,8 +120,21 @@ interpretation of PHS Appendix A, not verified parity with PHS's own lookup.
 [NRS recommends SSPL for statistical production and SPD for operational/administrative use](https://www.nrscotland.gov.uk/publications/geography-scottish-statistics-postcode-lookup-information-note/);
 the project keeps this choice explicit. The SPD set adds `link_as_of.sql` for a reliable
 address date: it selects the postcode life valid on that date, not historical administrative
-or rurality snapshots. The step-by-step commentary is in
-[LINKAGE_BY_ERA.md](docs/LINKAGE_BY_ERA.md).
+or rurality snapshots. It needs only the address date: the year of that date chooses the
+edition, and `analysis_year` is an optional override for holding one edition across a study.
+The step-by-step commentary is in [LINKAGE_BY_ERA.md](docs/LINKAGE_BY_ERA.md).
+
+To review the logic before trusting it, read
+[walkthrough_as_of.sql](docs/sql/spd/walkthrough_as_of.sql): the dated query written short,
+every step with its reason, returning the rank, both publishers' bands and the urban-rural
+class. A test requires it to agree with the generated query case for case.
+
+To load the shared CSVs into SQL Server, [import_csv.sql](docs/sql/import_csv.sql) stages and
+types each file and [check_loaded_digest.sql](docs/sql/check_loaded_digest.sql) verifies the
+structure, the key, the row count and the row digest the build recorded.
+`tests/ground_truth.csv` holds 360 boundary cases, a data zone at the edge of every quintile
+and decile for every edition and both publishers, each with a postcode, for testing a loaded
+table or a new query; regenerate it with `python -m simd_ingest.ground_truth --seed 2026`.
 
 The [Python helpers](docs/EXAMPLES.md) read either table: current lookups against the main
 table, current or as-of lookups against the history table, with own-record geography and an
