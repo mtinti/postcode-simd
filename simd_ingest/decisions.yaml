@@ -491,3 +491,32 @@ decisions:
       The 6-fold labels are the Scottish Government classification and nest exactly as the two
       columns do in the data: code 4 covers 8-fold 4 and 5, code 5 covers 6, code 6 covers 7
       and 8. The NRS dictionary documents only the ranges, 1 to 6 and 1 to 8.
+
+  - id: split-suffix-derived-from-key
+    date: 2026-09-20
+    status: implemented
+    decision: >-
+      The NRS split suffix is derived once, as the key minus its base, and every ranking and
+      status reads that: part_of() in core/spd.py for pandas, _part() and _tier() in the SQL
+      generator, and a part column in the walkthrough. The order among candidates is the whole
+      record ranked as A, so whole and A tie and the newest wins between them, then B, then C,
+      then any later suffix in letter order. Only a whole record or an A part supplies values;
+      a B or C part is still refused with split_a_missing. Two deliberate changes follow. The
+      walkthrough now withholds geography for an ambiguous postcode and for a B or C part, as
+      the generated queries always did, so its status and its empty values agree. And when
+      only B and C are live, B is the reported part rather than the pair being called
+      ambiguous, in both the SQL and the build comparison.
+    reason: >-
+      The A-part rule was tested with the last character of pc_norm in six places. That only
+      worked because a whole-record test always ran in front of it: whole postcodes end in A,
+      B and C too, so the test was one reordering away from misreading them as parts. The
+      B-then-C order decides only which part is reported as matched, never which value is
+      used, because neither part may supply one.
+    evidence: >-
+      G71 8BQB is a whole postcode ending in B and resolves as one. NRS introduces and retires
+      the parts together: no date in the SPD 2026/2 directory has a B or C part valid without
+      its A, so nothing on the real table resolves differently, and the rebuilt tables keep
+      their fingerprints. Two agreement cases in tests/test_agreement.py pin the whole
+      postcode ending in B and the B-and-C-only case. Commit 413c024. Column counts quoted in
+      sql-two-products and sql-as-of-address-date, 91, 107 and 110, predate shared-exports,
+      which removed the coordinate columns: the queries now return 89, 103 and 106.

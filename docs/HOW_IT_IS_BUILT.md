@@ -118,8 +118,8 @@ product, with no default: `docs/sql/spd/` reads the history table and selects th
 and the A part itself; `docs/sql/sspl/` reads the main table, where NRS already did both.
 Both follow a large user's link to its small-user postcode; applying that rule to SSPL is a
 project interpretation of PHS Appendix A, which does not settle overriding its own allocated
-geography. Both share 41 core columns, followed by product-specific context (91 columns for
-SSPL, 107 for SPD era/latest, 110 for SPD as-of). The SPD set also has `link_as_of.sql`, which
+geography. Both share 41 core columns, followed by product-specific context (89 columns for
+SSPL, 103 for SPD era/latest, 106 for SPD as-of). The SPD set also has `link_as_of.sql`, which
 uses the postcode life valid on a reliable address date, not historical administrative or
 rurality snapshots. Each set chooses the SIMD edition either by the year of the
 health data (Table 4) or once for the whole study. NRS recommends SSPL for statistical production

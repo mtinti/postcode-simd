@@ -111,8 +111,8 @@ edition from the year of the health data by PHS Table 4, and `link_latest.sql`, 
 one edition throughout. Every query is standalone, written as numbered steps that name the
 guidance or project choice. All five queries share 41 core columns: statuses, product provenance,
 both record keys, the edition's data and intermediate zones and PHS geography codes, and all
-14 stored measures. Product-specific own-record context follows (91 total columns for SSPL,
-107 for SPD era/latest, 110 for SPD as-of); select shared columns by name when combining results.
+14 stored measures. Product-specific own-record context follows (89 total columns for SSPL,
+103 for SPD era/latest, 106 for SPD as-of); select shared columns by name when combining results.
 The SPD set selects the latest life and the A part itself;
 the SSPL set does not, because NRS did. Both attach a large user's SIMD through its linked
 small-user postcode and give PO boxes none. Applying that rule to SSPL is a project
