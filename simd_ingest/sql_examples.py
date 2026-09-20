@@ -238,6 +238,19 @@ def _raw_context(raw: list) -> str:
     return ",\n           ".join("r.Postcode AS matched_postcode" if c == "Postcode" else f"r.{c}" for c in raw)
 
 
+def _part(alias: str) -> str:
+    """The NRS split suffix of a record: '' for a whole postcode, else A, B or C. Derived from
+    the key and its base rather than from the last character, because whole postcodes end in
+    A, B and C too (G71 8BQB is a whole postcode)."""
+    return f"SUBSTRING({alias}.pc_norm, LEN({alias}.pc_base) + 1, 10)"
+
+
+def _tier(alias: str) -> str:
+    """Ranking tier for split resolution: the whole record ranks as A, so whole and A tie and
+    the newest wins between them; then B, then C, then any later suffix in letter order."""
+    return f"CASE WHEN {_part(alias)} = '' THEN 'A' ELSE {_part(alias)} END"
+
+
 def _selection_spd(editions: list, raw: list) -> str:
     return f"""latest_lives AS (
     -- STEP 4. LATEST LIFE (SPD only). The directory keeps every life of a postcode. PHS's
@@ -255,14 +268,17 @@ latest AS (
 ranked AS (
     -- STEP 5. SPLIT PARTS (SPD only). An ordinary postcode can be several A/B/C rows. PHS
     -- "lookups include only the A part"; NRS uses A because it "contains more addresses".
-    -- Project choice for the order: a live record first, then the whole record or the A
-    -- part, then the newest introduction. A postcode whose best record is a B or C part gets
-    -- no SIMD (split_a_missing); two equally good records get none either (ambiguous_postcode).
+    -- Project choice for the order: a live record first, then the whole record ranked as A,
+    -- then B, then C, then the newest introduction. A postcode whose best record is a B or C
+    -- part gets no SIMD (split_a_missing); two equally good records get none either
+    -- (ambiguous_postcode). NRS introduces and retires the parts together, so in the current
+    -- directory a B or C part has never been the only live one; the order is kept for the day
+    -- it is.
     SELECT l.*,
            DENSE_RANK() OVER (
                PARTITION BY l.pc_base
                ORDER BY CASE WHEN l.is_current = 1 THEN 0 ELSE 1 END,
-                        CASE WHEN l.pc_norm = l.pc_base OR RIGHT(l.pc_norm, 1) = 'A' THEN 0 ELSE 1 END,
+                        {_tier('l')},
                         l.introduced_on DESC
            ) AS priority
     FROM latest l
@@ -304,7 +320,7 @@ matched AS (
     LEFT JOIN representative r ON r.pc_base = c.postcode_key
     LEFT JOIN geography_source g ON g.source_key = CASE
         WHEN r.candidate_count > 1 THEN NULL
-        WHEN r.pc_norm <> r.pc_base AND RIGHT(r.pc_norm, 1) <> 'A' THEN NULL
+        WHEN {_part('r')} NOT IN ('', 'A') THEN NULL
         WHEN r.spd_user_type = 'small_user' THEN r.pc_norm
         ELSE UPPER(REPLACE(r.LinkedSmallUserPostcode, ' ', ''))
     END
@@ -338,7 +354,7 @@ lives_on_date AS (
     SELECT c.postcode_key AS requested_key, c.address_date AS requested_date, p.*,
            DENSE_RANK() OVER (
                PARTITION BY c.postcode_key, c.address_date
-               ORDER BY CASE WHEN p.pc_norm = p.pc_base OR RIGHT(p.pc_norm, 1) = 'A' THEN 0 ELSE 1 END,
+               ORDER BY {_tier('p')},
                         p.introduced_on DESC
            ) AS priority
     FROM lookup_requests c
@@ -349,10 +365,11 @@ lives_on_date AS (
 ),
 candidates AS (
     -- STEP 5. SPLIT PARTS (SPD only). Among the lives valid on the date, PHS "lookups include
-    -- only the A part" and NRS uses A because it "contains more addresses": prefer the whole
-    -- record or the A part, then the newest introduction (project choice). A postcode whose
-    -- only valid part is B or C gets split_a_missing and no SIMD; two equally good records get
-    -- ambiguous_postcode and no SIMD.
+    -- only the A part" and NRS uses A because it "contains more addresses": the whole record
+    -- ranks as A, then B, then C, then the newest introduction (project choice). A postcode
+    -- whose only valid part is B or C gets split_a_missing and no SIMD; two equally good
+    -- records get ambiguous_postcode and no SIMD. NRS introduces and retires the parts
+    -- together, so no date in the current directory has a B or C part valid without A.
     SELECT l.*,
            COUNT(*) OVER (PARTITION BY l.requested_key, l.requested_date) AS candidate_count,
            ROW_NUMBER() OVER (PARTITION BY l.requested_key, l.requested_date ORDER BY l.pc_norm) AS candidate_number
@@ -398,7 +415,7 @@ matched AS (
       ON g.spd_user_type = 'small_user'
      AND g.pc_norm = CASE
              WHEN r.candidate_count > 1 THEN NULL
-             WHEN r.pc_norm <> r.pc_base AND RIGHT(r.pc_norm, 1) <> 'A' THEN NULL
+             WHEN {_part('r')} NOT IN ('', 'A') THEN NULL
              WHEN r.spd_user_type = 'small_user' THEN r.pc_norm
              ELSE UPPER(REPLACE(r.LinkedSmallUserPostcode, ' ', ''))
          END
@@ -473,14 +490,14 @@ def _values_and_report(name: str, p: dict, editions: list, raw: list, variant: s
                WHEN s.matched_pc_norm IS NULL AND s.next_life_introduced_on IS NOT NULL THEN 'between_lives'
                WHEN s.matched_pc_norm IS NULL THEN 'postcode_deleted_by_date'
                WHEN s.matched_candidate_count > 1 THEN 'ambiguous_postcode'
-               WHEN s.matched_pc_norm <> s.matched_pc_base AND RIGHT(s.matched_pc_norm, 1) <> 'A' THEN 'split_a_missing'
+               WHEN SUBSTRING(s.matched_pc_norm, LEN(s.matched_pc_base) + 1, 10) NOT IN ('', 'A') THEN 'split_a_missing'
                WHEN s.matched_user_type = 'large_user'
                     AND UPPER(REPLACE(COALESCE(s.requested_link_postcode, ''), ' ', '')) = 'NOLINKP' THEN 'po_box'
                WHEN s.matched_user_type = 'large_user'
                     AND UPPER(REPLACE(COALESCE(s.requested_link_postcode, ''), ' ', '')) IN ('', 'NOLINK') THEN 'unlinked_large_user'
                WHEN s.source_pc_norm IS NULL THEN 'linked_small_user_not_found'
                WHEN s.matched_user_type = 'large_user' THEN 'linked_small_user'
-               WHEN s.matched_pc_norm <> s.matched_pc_base THEN 'a_part'
+               WHEN SUBSTRING(s.matched_pc_norm, LEN(s.matched_pc_base) + 1, 10) = 'A' THEN 'a_part'
                ELSE 'matched'
            END AS postcode_status"""
         extra_context = ("s.first_introduced_on, s.previous_life_deleted_on, s.next_life_introduced_on,\n       "
@@ -490,14 +507,14 @@ def _values_and_report(name: str, p: dict, editions: list, raw: list, variant: s
                WHEN s.postcode_key IS NULL THEN 'missing_postcode'
                WHEN s.matched_pc_norm IS NULL THEN 'not_found'
                WHEN s.matched_candidate_count > 1 THEN 'ambiguous_postcode'
-               WHEN s.matched_pc_norm <> s.matched_pc_base AND RIGHT(s.matched_pc_norm, 1) <> 'A' THEN 'split_a_missing'
+               WHEN SUBSTRING(s.matched_pc_norm, LEN(s.matched_pc_base) + 1, 10) NOT IN ('', 'A') THEN 'split_a_missing'
                WHEN s.matched_user_type = 'large_user'
                     AND UPPER(REPLACE(COALESCE(s.requested_link_postcode, ''), ' ', '')) = 'NOLINKP' THEN 'po_box'
                WHEN s.matched_user_type = 'large_user'
                     AND UPPER(REPLACE(COALESCE(s.requested_link_postcode, ''), ' ', '')) IN ('', 'NOLINK') THEN 'unlinked_large_user'
                WHEN s.source_pc_norm IS NULL THEN 'linked_small_user_not_found'
                WHEN s.matched_user_type = 'large_user' THEN 'linked_small_user'
-               WHEN s.matched_pc_norm <> s.matched_pc_base THEN 'a_part'
+               WHEN SUBSTRING(s.matched_pc_norm, LEN(s.matched_pc_base) + 1, 10) = 'A' THEN 'a_part'
                ELSE 'matched'
            END AS postcode_status"""
         extra_context = "s.matched_pc_base,\n       "

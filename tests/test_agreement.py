@@ -28,6 +28,11 @@ def sql_representatives(history: pd.DataFrame) -> pd.DataFrame:
       dict(pc="AB11AAC", base="AB11AA", split="Y", intro="1978-05-01", live=False)], "AB11AAA", "resolved"),
     ([dict(pc="AB11AAA", base="AB11AA", split="Y"), dict(pc="AB11AAB", base="AB11AA", split="Y", intro="2020-01-01")], "AB11AAA", "resolved"),
     ([dict(live=False), dict(pc="AB11AAB", base="AB11AA", split="Y")], "AB11AAB", "split_a_missing"),
+    # Only B and C live: B is preferred over C as the reported part, and neither carries a value.
+    ([dict(live=False), dict(pc="AB11AAC", base="AB11AA", split="Y"), dict(pc="AB11AAB", base="AB11AA", split="Y")],
+     "AB11AAB", "split_a_missing"),
+    # A whole postcode that happens to end in B is a whole postcode, not a B part.
+    ([dict(pc="G718BQB", base="G718BQB")], "G718BQB", "resolved"),
     ([dict(), dict(pc="AB11AAA", base="AB11AA", split="Y")], "AB11AA", "ambiguous_postcode"),
     ([dict(live=False), dict(intro="2020-01-01", user="large_user", link="NO LINK")], "AB11AA", "resolved"),
 ])

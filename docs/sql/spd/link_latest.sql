@@ -64,14 +64,17 @@ latest AS (
 ranked AS (
     -- STEP 5. SPLIT PARTS (SPD only). An ordinary postcode can be several A/B/C rows. PHS
     -- "lookups include only the A part"; NRS uses A because it "contains more addresses".
-    -- Project choice for the order: a live record first, then the whole record or the A
-    -- part, then the newest introduction. A postcode whose best record is a B or C part gets
-    -- no SIMD (split_a_missing); two equally good records get none either (ambiguous_postcode).
+    -- Project choice for the order: a live record first, then the whole record ranked as A,
+    -- then B, then C, then the newest introduction. A postcode whose best record is a B or C
+    -- part gets no SIMD (split_a_missing); two equally good records get none either
+    -- (ambiguous_postcode). NRS introduces and retires the parts together, so in the current
+    -- directory a B or C part has never been the only live one; the order is kept for the day
+    -- it is.
     SELECT l.*,
            DENSE_RANK() OVER (
                PARTITION BY l.pc_base
                ORDER BY CASE WHEN l.is_current = 1 THEN 0 ELSE 1 END,
-                        CASE WHEN l.pc_norm = l.pc_base OR RIGHT(l.pc_norm, 1) = 'A' THEN 0 ELSE 1 END,
+                        CASE WHEN SUBSTRING(l.pc_norm, LEN(l.pc_base) + 1, 10) = '' THEN 'A' ELSE SUBSTRING(l.pc_norm, LEN(l.pc_base) + 1, 10) END,
                         l.introduced_on DESC
            ) AS priority
     FROM latest l
@@ -269,7 +272,7 @@ matched AS (
     LEFT JOIN representative r ON r.pc_base = c.postcode_key
     LEFT JOIN geography_source g ON g.source_key = CASE
         WHEN r.candidate_count > 1 THEN NULL
-        WHEN r.pc_norm <> r.pc_base AND RIGHT(r.pc_norm, 1) <> 'A' THEN NULL
+        WHEN SUBSTRING(r.pc_norm, LEN(r.pc_base) + 1, 10) NOT IN ('', 'A') THEN NULL
         WHEN r.spd_user_type = 'small_user' THEN r.pc_norm
         ELSE UPPER(REPLACE(r.LinkedSmallUserPostcode, ' ', ''))
     END
@@ -428,14 +431,14 @@ reported AS (
                WHEN s.postcode_key IS NULL THEN 'missing_postcode'
                WHEN s.matched_pc_norm IS NULL THEN 'not_found'
                WHEN s.matched_candidate_count > 1 THEN 'ambiguous_postcode'
-               WHEN s.matched_pc_norm <> s.matched_pc_base AND RIGHT(s.matched_pc_norm, 1) <> 'A' THEN 'split_a_missing'
+               WHEN SUBSTRING(s.matched_pc_norm, LEN(s.matched_pc_base) + 1, 10) NOT IN ('', 'A') THEN 'split_a_missing'
                WHEN s.matched_user_type = 'large_user'
                     AND UPPER(REPLACE(COALESCE(s.requested_link_postcode, ''), ' ', '')) = 'NOLINKP' THEN 'po_box'
                WHEN s.matched_user_type = 'large_user'
                     AND UPPER(REPLACE(COALESCE(s.requested_link_postcode, ''), ' ', '')) IN ('', 'NOLINK') THEN 'unlinked_large_user'
                WHEN s.source_pc_norm IS NULL THEN 'linked_small_user_not_found'
                WHEN s.matched_user_type = 'large_user' THEN 'linked_small_user'
-               WHEN s.matched_pc_norm <> s.matched_pc_base THEN 'a_part'
+               WHEN SUBSTRING(s.matched_pc_norm, LEN(s.matched_pc_base) + 1, 10) = 'A' THEN 'a_part'
                ELSE 'matched'
            END AS postcode_status
     FROM selected s

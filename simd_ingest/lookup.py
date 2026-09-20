@@ -30,7 +30,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from .core.spd import normalise_postcode
+from .core.spd import normalise_postcode, part_of
 
 # PHS deprivation guidance for analysts v3.5, table 4: years of health data -> edition.
 # A recommendation. Nothing in this module calls it for you.
@@ -143,7 +143,7 @@ def _resolve(valid: pd.DataFrame, col: str, split: str) -> tuple:
     if len(valid) == 1:
         return UNIQUE, valid[col].iloc[0]
     if split == "a_part":
-        a = valid[(valid["pc_norm"] != valid["pc_base"]) & valid["pc_norm"].str.endswith("A")]
+        a = valid[part_of(valid) == "A"]
         if len(a) == 1:
             return A_PART, a[col].iloc[0]
     values = valid[col].unique()
@@ -211,7 +211,7 @@ def attach(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, date_co
     else:
         valid = known & m["is_current"].fillna(False).astype(bool)
     v = m[valid]
-    a = v[(v["pc_norm"] != v["pc_base"]) & v["pc_norm"].str.endswith("A")]
+    a = v[part_of(v) == "A"]
     rows = range(len(events))
     summary = pd.DataFrame({"n_known": known.groupby(m["_row"]).sum(),
                             "n_valid": v.groupby("_row").size().reindex(rows, fill_value=0),

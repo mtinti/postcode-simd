@@ -82,6 +82,9 @@ lives AS (
     -- data zone of a place the patient never lived.
     SELECT c.id, c.address_date,
            p.pc_norm, p.pc_base, p.introduced_on, p.deleted_on, p.is_current,
+           -- The NRS split suffix: '' for a whole postcode, else A, B or C. Taken from the key
+           -- and its base, not the last character: whole postcodes end in A, B and C too.
+           SUBSTRING(p.pc_norm, LEN(p.pc_base) + 1, 10) AS part,
            p.spd_user_type, p.LinkedSmallUserPostcode,
            -- Rurality travels with the matched record itself, not with the data zone: see the
            -- note at the end of step 6.
@@ -95,13 +98,15 @@ lives AS (
 ranked AS (
     -- STEP 5. A postcode that straddles a boundary is held by NRS as separate A, B and C parts,
     -- each with its own data zone. The input has no suffix, so something must choose. PHS uses
-    -- the A part, because it holds more addresses. Prefer the whole record or the A part, then
-    -- the newest. Count the candidates as well, so an unresolvable tie is reported rather than
-    -- settled arbitrarily.
+    -- the A part, because it holds more addresses. Rank the whole record as A, so whole and A
+    -- tie and the newest wins between them; then B, then C; then the newest. Only a whole
+    -- record or an A part carries a value (step 6), so the B-then-C order decides which part
+    -- is reported as matched, not which value is used. NRS introduces and retires the parts
+    -- together: no date in the current directory has a B or C part valid without A. Count the
+    -- candidates as well, so an unresolvable tie is reported rather than settled arbitrarily.
     SELECT l.*,
            ROW_NUMBER() OVER (PARTITION BY l.id
-               ORDER BY CASE WHEN l.pc_norm = l.pc_base OR RIGHT(l.pc_norm, 1) = 'A'
-                             THEN 0 ELSE 1 END,
+               ORDER BY CASE WHEN l.part = '' THEN 'A' ELSE l.part END,
                         l.introduced_on DESC, l.pc_norm) AS preference,
            COUNT(*) OVER (PARTITION BY l.id) AS candidates
     FROM lives l
@@ -126,7 +131,9 @@ source AS (
     -- no data zone to speak of. PHS Appendix A, printed page 30, takes the geography from the
     -- small-user postcode NRS linked it to, and gives none to a PO box. The linked record must
     -- itself be valid on the same date. Never fall back to the large user's own zone, and never
-    -- follow a link to another large user.
+    -- follow a link to another large user. An ambiguous postcode and a B or C part supply no
+    -- geography at all, so their status and their empty values agree; the generated queries
+    -- do the same.
     SELECT m.id,
            g.pc_norm       AS source_pc_norm,
            g.is_current    AS source_is_current,
@@ -148,7 +155,9 @@ source AS (
     FROM matched m
     LEFT JOIN postcode_simd_history g
       ON g.spd_user_type = 'small_user'
-     AND g.pc_norm = CASE WHEN m.spd_user_type = 'small_user' THEN m.pc_norm
+     AND g.pc_norm = CASE WHEN m.candidates > 1 AND m.part = '' THEN NULL
+                          WHEN m.part NOT IN ('', 'A')           THEN NULL
+                          WHEN m.spd_user_type = 'small_user'    THEN m.pc_norm
                           ELSE UPPER(REPLACE(m.LinkedSmallUserPostcode, ' ', '')) END
      AND g.introduced_on <= m.address_date
      AND (g.deleted_on IS NULL OR g.deleted_on > m.address_date)
@@ -181,8 +190,8 @@ SELECT c.id, c.postcode, c.address_date, c.analysis_year, c.edition AS simd_edit
                                                          THEN 'postcode_not_yet_introduced'
            WHEN m.id IS NULL AND b.next_life IS NOT NULL THEN 'between_lives'
            WHEN m.id IS NULL                             THEN 'postcode_deleted_by_date'
-           WHEN m.candidates > 1 AND m.pc_norm = m.pc_base THEN 'ambiguous_postcode'
-           WHEN m.pc_norm <> m.pc_base AND RIGHT(m.pc_norm, 1) <> 'A' THEN 'split_a_missing'
+           WHEN m.candidates > 1 AND m.part = ''         THEN 'ambiguous_postcode'
+           WHEN m.part NOT IN ('', 'A')                  THEN 'split_a_missing'
            WHEN m.spd_user_type = 'large_user'
                 AND UPPER(REPLACE(COALESCE(m.LinkedSmallUserPostcode, ''), ' ', '')) = 'NOLINKP'
                                                          THEN 'po_box'
@@ -191,7 +200,7 @@ SELECT c.id, c.postcode, c.address_date, c.analysis_year, c.edition AS simd_edit
                                                          THEN 'unlinked_large_user'
            WHEN s.source_pc_norm IS NULL                 THEN 'linked_small_user_not_found'
            WHEN m.spd_user_type = 'large_user'            THEN 'linked_small_user'
-           WHEN m.pc_norm <> m.pc_base                    THEN 'a_part'
+           WHEN m.part = 'A'                             THEN 'a_part'
            ELSE 'matched'
        END AS postcode_status,
        m.pc_norm       AS matched_pc_norm,

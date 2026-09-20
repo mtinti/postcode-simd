@@ -175,3 +175,14 @@ def build_postcode_index(registry: Registry, root: Path, report: Report, schema:
     frames = {spec["role"]: read_index_file(spec, registry, root, report, schema) for spec in registry.spd_files}
     report.require()
     return union_index(frames["small_user"], frames["large_user"], registry, report, schema)
+
+
+def part_of(table: pd.DataFrame) -> pd.Series:
+    """The NRS split suffix of each record: '' for a whole postcode, else A, B or C.
+
+    Derived from the key and its base, never from the last character: whole postcodes end in
+    A, B and C too (G71 8BQB is a whole postcode). This is the one definition the SQL
+    generator, the lookup helpers and the build comparison all follow.
+    """
+    return pd.Series([n[len(b):] for n, b in zip(table["pc_norm"], table["pc_base"])],
+                     index=table.index, dtype="string")

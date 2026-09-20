@@ -46,8 +46,8 @@ types. This is not matching on an address date; use `link_as_of.sql` for that qu
 
 **Step 5, split parts, SPD only.** An ordinary postcode can be several A, B and C rows. PHS
 "lookups include only the A part"; NRS uses A because it "contains more addresses". The
-order of preference is a project choice: a live record first, then the whole record or the A
-part, then the newest introduction. A postcode whose best record is a B or C part gets
+order of preference is a project choice: a live record first, then the whole record ranked as A,
+then B, then C, then the newest introduction. A postcode whose best record is a B or C part gets
 `split_a_missing` and no SIMD; two equally good records get `ambiguous_postcode` and no
 SIMD. The SSPL already holds one whole row per postcode with `SplitIndicator` Y where it was
 split, reported as `a_part`.

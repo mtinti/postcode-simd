@@ -11,26 +11,28 @@ from __future__ import annotations
 import pandas as pd
 
 from .sources import Registry
+from .spd import part_of
 
 
 def latest_per_postcode(history: pd.DataFrame) -> pd.DataFrame:
     """The SPD SQL's representative policy, before following any large-user link.
 
-    Newest life per full key, then live, whole/A, newest introduction. Ties and missing A
-    are kept for diagnostics but excluded from value comparisons.
+    Newest life per full key, then live, then the whole record ranked as A, then B, then C,
+    then newest introduction. Ties and a best record that is a B or C part are kept for
+    diagnostics but excluded from value comparisons.
     """
     h = history.copy()
     h["_intro"] = pd.to_datetime(h["introduced_on"])
     h = h.sort_values("_intro", ascending=False, kind="stable").drop_duplicates("pc_norm")
-    h["_eligible"] = h["pc_norm"].eq(h["pc_base"]) | h["pc_norm"].str.endswith("A")
-    priority = ["pc_base", "is_current", "_eligible", "_intro"]
+    h["_tier"] = part_of(h).replace("", "A")
+    priority = ["pc_base", "is_current", "_tier", "_intro"]
     h["_ties"] = h.groupby(priority)["pc_norm"].transform("size")
-    latest = h.sort_values(priority + ["pc_norm"], ascending=[True, False, False, False, True],
+    latest = h.sort_values(priority + ["pc_norm"], ascending=[True, False, True, False, True],
                            kind="stable").drop_duplicates("pc_base").copy()
     latest["comparison_status"] = "resolved"
-    latest.loc[~latest["_eligible"], "comparison_status"] = "split_a_missing"
+    latest.loc[latest["_tier"].ne("A"), "comparison_status"] = "split_a_missing"
     latest.loc[latest["_ties"].gt(1), "comparison_status"] = "ambiguous_postcode"
-    return latest.set_index("pc_base").drop(columns=["_intro", "_eligible", "_ties"])
+    return latest.set_index("pc_base").drop(columns=["_intro", "_tier", "_ties"])
 
 
 def compare_tables(main: pd.DataFrame, history: pd.DataFrame, registry: Registry) -> dict:

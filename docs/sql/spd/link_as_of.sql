@@ -75,7 +75,7 @@ lives_on_date AS (
     SELECT c.postcode_key AS requested_key, c.address_date AS requested_date, p.*,
            DENSE_RANK() OVER (
                PARTITION BY c.postcode_key, c.address_date
-               ORDER BY CASE WHEN p.pc_norm = p.pc_base OR RIGHT(p.pc_norm, 1) = 'A' THEN 0 ELSE 1 END,
+               ORDER BY CASE WHEN SUBSTRING(p.pc_norm, LEN(p.pc_base) + 1, 10) = '' THEN 'A' ELSE SUBSTRING(p.pc_norm, LEN(p.pc_base) + 1, 10) END,
                         p.introduced_on DESC
            ) AS priority
     FROM lookup_requests c
@@ -86,10 +86,11 @@ lives_on_date AS (
 ),
 candidates AS (
     -- STEP 5. SPLIT PARTS (SPD only). Among the lives valid on the date, PHS "lookups include
-    -- only the A part" and NRS uses A because it "contains more addresses": prefer the whole
-    -- record or the A part, then the newest introduction (project choice). A postcode whose
-    -- only valid part is B or C gets split_a_missing and no SIMD; two equally good records get
-    -- ambiguous_postcode and no SIMD.
+    -- only the A part" and NRS uses A because it "contains more addresses": the whole record
+    -- ranks as A, then B, then C, then the newest introduction (project choice). A postcode
+    -- whose only valid part is B or C gets split_a_missing and no SIMD; two equally good
+    -- records get ambiguous_postcode and no SIMD. NRS introduces and retires the parts
+    -- together, so no date in the current directory has a B or C part valid without A.
     SELECT l.*,
            COUNT(*) OVER (PARTITION BY l.requested_key, l.requested_date) AS candidate_count,
            ROW_NUMBER() OVER (PARTITION BY l.requested_key, l.requested_date ORDER BY l.pc_norm) AS candidate_number
@@ -291,7 +292,7 @@ matched AS (
       ON g.spd_user_type = 'small_user'
      AND g.pc_norm = CASE
              WHEN r.candidate_count > 1 THEN NULL
-             WHEN r.pc_norm <> r.pc_base AND RIGHT(r.pc_norm, 1) <> 'A' THEN NULL
+             WHEN SUBSTRING(r.pc_norm, LEN(r.pc_base) + 1, 10) NOT IN ('', 'A') THEN NULL
              WHEN r.spd_user_type = 'small_user' THEN r.pc_norm
              ELSE UPPER(REPLACE(r.LinkedSmallUserPostcode, ' ', ''))
          END
@@ -456,14 +457,14 @@ reported AS (
                WHEN s.matched_pc_norm IS NULL AND s.next_life_introduced_on IS NOT NULL THEN 'between_lives'
                WHEN s.matched_pc_norm IS NULL THEN 'postcode_deleted_by_date'
                WHEN s.matched_candidate_count > 1 THEN 'ambiguous_postcode'
-               WHEN s.matched_pc_norm <> s.matched_pc_base AND RIGHT(s.matched_pc_norm, 1) <> 'A' THEN 'split_a_missing'
+               WHEN SUBSTRING(s.matched_pc_norm, LEN(s.matched_pc_base) + 1, 10) NOT IN ('', 'A') THEN 'split_a_missing'
                WHEN s.matched_user_type = 'large_user'
                     AND UPPER(REPLACE(COALESCE(s.requested_link_postcode, ''), ' ', '')) = 'NOLINKP' THEN 'po_box'
                WHEN s.matched_user_type = 'large_user'
                     AND UPPER(REPLACE(COALESCE(s.requested_link_postcode, ''), ' ', '')) IN ('', 'NOLINK') THEN 'unlinked_large_user'
                WHEN s.source_pc_norm IS NULL THEN 'linked_small_user_not_found'
                WHEN s.matched_user_type = 'large_user' THEN 'linked_small_user'
-               WHEN s.matched_pc_norm <> s.matched_pc_base THEN 'a_part'
+               WHEN SUBSTRING(s.matched_pc_norm, LEN(s.matched_pc_base) + 1, 10) = 'A' THEN 'a_part'
                ELSE 'matched'
            END AS postcode_status
     FROM selected s

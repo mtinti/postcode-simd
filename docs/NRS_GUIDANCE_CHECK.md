@@ -56,7 +56,7 @@ to data-zone allocation.
 
 The build report compares source records and attached values, without following large-user
 links. SPD representatives follow the SQL ordering: newest life per full key; then live,
-whole/A, newest introduction. Missing-A and tied representatives are reported and excluded
+whole record ranked as A then B then C, newest introduction. Missing-A and tied representatives are reported and excluded
 from value comparisons. A deleted C part cannot displace a live A.
 
 Differences are observations, never acceptance gates. Allocation methods, release changes,

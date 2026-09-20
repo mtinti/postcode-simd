@@ -13,6 +13,7 @@ import pandas as pd
 
 from .checks import Report
 from .sources import Registry
+from .spd import part_of
 
 
 def _actual(report: Report, name: str, default=None):
@@ -204,7 +205,7 @@ def render(report: Report, registry: Registry, tables: dict, info: dict, mode: s
         if hist is not None:
             cand = hist[hist["pc_base"].eq(ex["pc_norm"]) & hist["is_current"]]
             if len(cand):
-                a_part = cand[cand["pc_norm"].str.endswith("A") & cand["pc_norm"].ne(cand["pc_base"])]
+                a_part = cand[part_of(cand) == "A"]
                 hrow = (a_part if len(a_part) else cand).iloc[0]
         vintages = sorted({e["dz_vintage"] for e in registry.phs_editions})
         L += [f"## Example: {ex['Postcode']}", "",
