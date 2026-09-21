@@ -35,7 +35,8 @@ CELL = 10_000
 # The 6-fold is the 8-fold with the remote and very remote classes merged. A polygon whose two
 # codes break this was mislabelled at source.
 NESTING = {1: 1, 2: 2, 3: 3, 4: 4, 5: 4, 6: 5, 7: 6, 8: 6}
-STATUS_OUTSIDE, STATUS_AMBIGUOUS = "outside_polygons", "ambiguous_polygons"
+STATUS_OUTSIDE, STATUS_AMBIGUOUS, STATUS_PO_BOX = "outside_polygons", "ambiguous_polygons", "po_box"
+SOURCE = "rurality"                                       # the schema source kind of these columns
 
 
 def column_names(key: str) -> tuple:
@@ -86,6 +87,32 @@ def read_version(entry: dict, root: Path, report: Report) -> gpd.GeoDataFrame | 
     report.observe(f"{label}.invalid_geometries_repaired", int((~g.geometry.is_valid).sum()))
     g["geometry"] = g.geometry.make_valid()
     return g if ok else None
+
+
+def expected_columns(registry: Registry) -> list:
+    """The columns attach_rurality returns, in order: per version the two codes, then the status."""
+    return [c for v in registry.rurality_versions for c in (*column_names(v["key"]), status_name(v["key"]))]
+
+
+def is_po_box(index: pd.DataFrame) -> pd.Series:
+    """A large user whose link is NO LINKP. NRS puts its grid reference at the Royal Mail sorting
+    or delivery office, so a class placed from that point describes the office, not an address."""
+    link = index["LinkedSmallUserPostcode"].astype("string").fillna("").str.upper().str.replace(" ", "", regex=False)
+    return ((index["spd_user_type"] == "large_user") & (link == "NOLINKP")).fillna(False)
+
+
+def attach_rurality(index: pd.DataFrame, registry: Registry, root: Path, report: Report) -> pd.DataFrame:
+    """classify(), then the one policy rule: a post-office box gets no derived class, in any
+    version, and says so in its status. Decided 21 September 2026. The directory's own 2022
+    columns are untouched and still carry whatever NRS published for the box."""
+    out = classify(index, registry, root, report)
+    boxes = is_po_box(index).to_numpy()
+    for version in registry.rurality_versions:
+        six, eight = column_names(version["key"])
+        out.loc[boxes, [six, eight]] = pd.NA
+        out.loc[boxes, status_name(version["key"])] = STATUS_PO_BOX
+    report.observe("rurality.po_boxes_withheld", int(boxes.sum()))
+    return out[expected_columns(registry)]
 
 
 class AreaLost(ValueError):

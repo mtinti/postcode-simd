@@ -520,3 +520,64 @@ decisions:
       postcode ending in B and the B-and-C-only case. Commit 413c024. Column counts quoted in
       sql-two-products and sql-as-of-address-date, 91, 107 and 110, predate shared-exports,
       which removed the coordinate columns: the queries now return 89, 103 and 106.
+
+  - id: rurality-by-version
+    date: 2026-09-21
+    status: implemented
+    decision: >-
+      The history table carries the Scottish Government Urban Rural Classification of all nine
+      published versions, 2003-2004 to 2022, for every postcode life: per version a 6-fold and
+      an 8-fold code and a status, 27 nullable columns appended to the 162 of
+      postcode_simd_wide_v1, which are unchanged and in the same order. The schema becomes
+      postcode_simd_wide_v2. Each life's own grid reference is placed in that version's pinned
+      polygons (core/rurality.py). A point in no polygon is null with status outside_polygons,
+      with no nearest-polygon fallback. A point on an edge between two classes is null with
+      ambiguous_polygons. A post-office box, a large user linked NO LINKP, is null in every
+      version with status po_box, because NRS puts its grid reference at the sorting or
+      delivery office. The two 2022 columns NRS publishes are kept exactly as supplied; the
+      derived 2022 columns sit beside them. The main table is unchanged: SSPL allocates from
+      output-area centroids and keeps one life per postcode, so it has no per-life point.
+    reason: >-
+      The directory carries one classification, the 2022 one, so a historical address was
+      described by today's categories while its data zone and SIMD were read at the right
+      vintage. About one life in nine has a different 6-fold class in a version before 2020
+      than the 2022 code it carries. Every version's polygons are still published, so one
+      postcode file and one method give every version without archived lookups. The status is
+      stored per row because a null can mean three different things and a count in the build
+      report cannot say which rows. Keeping the published columns beside the derived ones
+      leaves the validation permanently visible rather than overwriting a publisher's value.
+    evidence: >-
+      Gate fixed before the run at 99.5% for current small users and 99% for other cohorts
+      over 1,000 lives: point-in-polygon on the 2022 polygons reproduces NRS's published 2022
+      codes on 247,770 of 247,773 lives, 100% of current lives, and all three misses are
+      deleted lives outside every polygon, none a different class. In the built table the
+      derived 2022 codes equal the published ones on all 216,045 placed rows; 31,725 boxes are
+      withheld; outside_polygons is 3 to 34 per version except 767 non-box lives in 2005-2006,
+      whose coastline is drawn tighter. The original 162 columns keep fingerprint
+      59369357e44e45a5, now pinned as wide_v1_columns_fingerprint; the main table keeps
+      9515021d99099b43. Readback places every point again from the saved grid references, and
+      a test changes a 2005-2006 code, a 2013-2014 code and a 2022 status after writing and
+      requires each to be caught. Plan and feasibility result:
+      docs/plans/Rurality_By_Version_Plan.md.
+
+  - id: nullable-integers-and-never-blank-text
+    date: 2026-09-21
+    status: implemented
+    decision: >-
+      The writers now carry two kinds of column the tables never had. A nullable integer is
+      written to Parquet as a null, rendered in the CSV as an empty cell and in the digest as
+      the null marker, and restored on import with NULLIF, never as zero. A nullable text
+      column that is never blank is named under empty_is_null in the export contract, and the
+      import restores its empty cells as nulls; every other text column keeps its existing
+      rule, blank or structural null by record type.
+    reason: >-
+      The rurality codes are the first nullable integers and their statuses the first text
+      that is either a value or null. Without the rules an empty code would load as 0, a class
+      that does not exist, and an empty status would load as a blank, which the digest would
+      then report as corruption of a faithful load.
+    evidence: >-
+      Verified on SQL Server 2022 (16.0, RTM-CU24-GDR) in the local container with the shipped
+      import and check scripts: 230,103 and 247,773 rows, all ten checks pass, history digest
+      -3244194952865985434297 over 185 exported columns equal to the manifest's. The main
+      table's digest, 600732040592218046898, is unchanged. tests/test_exports.py requires the
+      NULLIF guard on every nullable integer and the rule on every empty_is_null column.

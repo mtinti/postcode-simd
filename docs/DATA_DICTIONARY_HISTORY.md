@@ -1,13 +1,13 @@
-# Data dictionary: postcode_simd_history, schema `postcode_simd_wide_v1`
+# Data dictionary: postcode_simd_history, schema `postcode_simd_wide_v2`
 
 The **history table**: one row per Scottish Postcode Directory (SPD) record, both user types, current and deleted,
 every life of every postcode, with all 6 SIMD editions attached. Data zones are the ones
 containing the postcode's own grid reference. For one row per whole postcode see the main table,
 [DATA_DICTIONARY.md](DATA_DICTIONARY.md). Generated from `simd_ingest/output_schema_history.yaml`; do not edit by hand.
 
-Current build: 247,773 rows by 162 columns, history index release 2026_2,
-allocation `postcode_grid_reference`, built 2026-09-16T11:34:28Z. Parquet SHA256 `0d495d84a7293a54aa8eed1a7c8a9e0cc85f7d757477ea16d74e7b0db012052e`; rows-only fingerprint
-`59369357e44e45a5ac74b217692fd8e4799fd0aafc3b04e4e2c255abf722dc97`. The file hash also covers the embedded provenance metadata,
+Current build: 247,773 rows by 189 columns, history index release 2026_2,
+allocation `postcode_grid_reference`, built 2026-09-21T18:51:28Z. Parquet SHA256 `5521fe9360b15f68efc4dfe8b2bb191be01bb2e9ff6f2381c824c6333adc8586`; rows-only fingerprint
+`ddb162ef89c7d52acf0e7ba83c1b7432ca3df209458e32479b38a09a34fc0174`. The file hash also covers the embedded provenance metadata,
 so it changes when the decision log changes; compare fingerprints under the same pinned runtime.
 
 ## Key
@@ -63,7 +63,7 @@ the same guidance describes for pre-1996 data is not included.
 ## The CSV rendering
 
 Every build also writes `results/postcode_simd_history.csv.gz`, the form in which this table is shared.
-It carries 158 of the 162 columns in the same order: `GridReferenceEasting`, `GridReferenceNorthing`, `Latitude`, `Longitude` are not exported.
+It carries 185 of the 189 columns in the same order: `GridReferenceEasting`, `GridReferenceNorthing`, `Latitude`, `Longitude` are not exported.
 
   Do not carry coordinate fields into outputs whose purpose is deprivation and area context. A project data-minimisation choice, not an anonymisation guarantee.
 
@@ -88,6 +88,8 @@ column and the record type, never from the cell alone.
 
 An empty cell in one of those columns for any other record is a source blank.
 
+These text columns are never blank, so an empty cell in one is a null for every record: `urbanrural2003_2004_status`, `urbanrural2005_2006_status`, `urbanrural2007_2008_status`, `urbanrural2009_2010_status`, `urbanrural2011_2012_status`, `urbanrural2013_2014_status`, `urbanrural2016_status`, `urbanrural2020_status`, `urbanrural2022_status`.
+
 An empty `deleted_on` is a null and agrees with `is_current`. The source text column
 `DateOfDeletion` stays blank. Every other empty cell is a source blank.
 
@@ -111,12 +113,21 @@ An empty `deleted_on` is a null and agrees with `is_current`. The source text co
 | maps_gov_scot | SG_SIMD_2012.zip | `c91aea4cbf39d116…` |
 | maps_gov_scot | SG_SIMD_2016.zip | `bffbec7c3f45da16…` |
 | maps_gov_scot | SG_SIMD_2020.zip | `33f166949c0e8a54…` |
+| maps_gov_scot | SG_UrbanRural_2003_2004.zip | `1389441b25a2804c…` |
+| maps_gov_scot | SG_UrbanRural_2005_2006.zip | `f792012c3f8b086a…` |
+| maps_gov_scot | SG_UrbanRural_2007_2008.zip | `9aa388730b66f81f…` |
+| maps_gov_scot | SG_UrbanRural_2009_2010.zip | `d5db1b102f4ce081…` |
+| maps_gov_scot | SG_UrbanRural_2011_2012.zip | `5f6f57badf3508c2…` |
+| maps_gov_scot | SG_UrbanRural_2013_2014.zip | `725ed5bb2b722848…` |
+| maps_gov_scot | SG_UrbanRural_2016.zip | `f44f3b22237bf43d…` |
+| maps_gov_scot | SG_UrbanRural_2020.zip | `5969d3377170c592…` |
+| maps_gov_scot | SG_UrbanRural_2022.zip | `1b18bce2d4201d5f…` |
 
 Licences: phs: Open Government Licence v3.0, stated in the PHS open data package metadata; nrs: NRS terms; confirm before redistributing copies of the index; maps_gov_scot: Open Government Licence, stated in each shapefile's .shp.xml
 
 ## Columns
 
-162 columns: 65 from the directory, 7 derived,
+189 columns: 65 from the directory, 7 derived,
 6 PHS geography, and 14 per edition for 6 editions.
 
 ### Per-edition SIMD columns
@@ -306,3 +317,30 @@ Licences: phs: Open Government Licence v3.0, stated in the PHS open data package
 | 160 | `simd2020v2_uw_scotland_quintile` | int8 | no | govscot | Scottish Government unweighted quintile; 1 = most deprived |
 | 161 | `simd2020v2_uw_scotland_decile` | int8 | no | govscot | Scottish Government unweighted decile; 1 = most deprived |
 | 162 | `simd2020v2_uw_scotland_vigintile` | int8 | no | govscot | Scottish Government unweighted vigintile; 1 = most deprived |
+| 163 | `urbanrural2003_2004_6fold` | int8 | yes | rurality | Scottish Government Urban Rural Classification 2003-2004, 6-fold, placed from this record's own grid reference; null where urbanrural2003_2004_status says why |
+| 164 | `urbanrural2003_2004_8fold` | int8 | yes | rurality | Scottish Government Urban Rural Classification 2003-2004, 8-fold, placed from this record's own grid reference; null where urbanrural2003_2004_status says why |
+| 165 | `urbanrural2003_2004_status` | string | yes | rurality | null where the 2003-2004 codes are present; otherwise outside_polygons, ambiguous_polygons or po_box |
+| 166 | `urbanrural2005_2006_6fold` | int8 | yes | rurality | Scottish Government Urban Rural Classification 2005-2006, 6-fold, placed from this record's own grid reference; null where urbanrural2005_2006_status says why |
+| 167 | `urbanrural2005_2006_8fold` | int8 | yes | rurality | Scottish Government Urban Rural Classification 2005-2006, 8-fold, placed from this record's own grid reference; null where urbanrural2005_2006_status says why |
+| 168 | `urbanrural2005_2006_status` | string | yes | rurality | null where the 2005-2006 codes are present; otherwise outside_polygons, ambiguous_polygons or po_box |
+| 169 | `urbanrural2007_2008_6fold` | int8 | yes | rurality | Scottish Government Urban Rural Classification 2007-2008, 6-fold, placed from this record's own grid reference; null where urbanrural2007_2008_status says why |
+| 170 | `urbanrural2007_2008_8fold` | int8 | yes | rurality | Scottish Government Urban Rural Classification 2007-2008, 8-fold, placed from this record's own grid reference; null where urbanrural2007_2008_status says why |
+| 171 | `urbanrural2007_2008_status` | string | yes | rurality | null where the 2007-2008 codes are present; otherwise outside_polygons, ambiguous_polygons or po_box |
+| 172 | `urbanrural2009_2010_6fold` | int8 | yes | rurality | Scottish Government Urban Rural Classification 2009-2010, 6-fold, placed from this record's own grid reference; null where urbanrural2009_2010_status says why |
+| 173 | `urbanrural2009_2010_8fold` | int8 | yes | rurality | Scottish Government Urban Rural Classification 2009-2010, 8-fold, placed from this record's own grid reference; null where urbanrural2009_2010_status says why |
+| 174 | `urbanrural2009_2010_status` | string | yes | rurality | null where the 2009-2010 codes are present; otherwise outside_polygons, ambiguous_polygons or po_box |
+| 175 | `urbanrural2011_2012_6fold` | int8 | yes | rurality | Scottish Government Urban Rural Classification 2011-2012, 6-fold, placed from this record's own grid reference; null where urbanrural2011_2012_status says why |
+| 176 | `urbanrural2011_2012_8fold` | int8 | yes | rurality | Scottish Government Urban Rural Classification 2011-2012, 8-fold, placed from this record's own grid reference; null where urbanrural2011_2012_status says why |
+| 177 | `urbanrural2011_2012_status` | string | yes | rurality | null where the 2011-2012 codes are present; otherwise outside_polygons, ambiguous_polygons or po_box |
+| 178 | `urbanrural2013_2014_6fold` | int8 | yes | rurality | Scottish Government Urban Rural Classification 2013-2014, 6-fold, placed from this record's own grid reference; null where urbanrural2013_2014_status says why |
+| 179 | `urbanrural2013_2014_8fold` | int8 | yes | rurality | Scottish Government Urban Rural Classification 2013-2014, 8-fold, placed from this record's own grid reference; null where urbanrural2013_2014_status says why |
+| 180 | `urbanrural2013_2014_status` | string | yes | rurality | null where the 2013-2014 codes are present; otherwise outside_polygons, ambiguous_polygons or po_box |
+| 181 | `urbanrural2016_6fold` | int8 | yes | rurality | Scottish Government Urban Rural Classification 2016, 6-fold, placed from this record's own grid reference; null where urbanrural2016_status says why |
+| 182 | `urbanrural2016_8fold` | int8 | yes | rurality | Scottish Government Urban Rural Classification 2016, 8-fold, placed from this record's own grid reference; null where urbanrural2016_status says why |
+| 183 | `urbanrural2016_status` | string | yes | rurality | null where the 2016 codes are present; otherwise outside_polygons, ambiguous_polygons or po_box |
+| 184 | `urbanrural2020_6fold` | int8 | yes | rurality | Scottish Government Urban Rural Classification 2020, 6-fold, placed from this record's own grid reference; null where urbanrural2020_status says why |
+| 185 | `urbanrural2020_8fold` | int8 | yes | rurality | Scottish Government Urban Rural Classification 2020, 8-fold, placed from this record's own grid reference; null where urbanrural2020_status says why |
+| 186 | `urbanrural2020_status` | string | yes | rurality | null where the 2020 codes are present; otherwise outside_polygons, ambiguous_polygons or po_box |
+| 187 | `urbanrural2022_6fold` | int8 | yes | rurality | Scottish Government Urban Rural Classification 2022, 6-fold, placed from this record's own grid reference; null where urbanrural2022_status says why |
+| 188 | `urbanrural2022_8fold` | int8 | yes | rurality | Scottish Government Urban Rural Classification 2022, 8-fold, placed from this record's own grid reference; null where urbanrural2022_status says why |
+| 189 | `urbanrural2022_status` | string | yes | rurality | null where the 2022 codes are present; otherwise outside_polygons, ambiguous_polygons or po_box |

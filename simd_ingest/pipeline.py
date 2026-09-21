@@ -21,7 +21,7 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from .core import output, report as build_report, text_output
+from .core import output, report as build_report, rurality, text_output
 from .core.agreement import compare_tables
 from .core.changes import compare_snapshot
 from .core.checks import Report
@@ -130,7 +130,8 @@ def write_output(cfg: dict, registry, schemas: dict, mode: str, tables: dict, in
             schema = schemas[name]
             output.write_table(tables[name], schema, candidate, output.table_metadata(registry, schema, decisions_sha))
             info[name] = output.readback(candidate, schema, indices[spec["index"]], simd, gov, registry, report,
-                                         decisions_sha256=decisions_sha, label=f"readback.{name}")
+                                         decisions_sha256=decisions_sha, label=f"readback.{name}",
+                                         source_root=(cfg.get("source_roots") or {}).get(mode))
             info[name]["path"] = str(results / spec["file"])
         report.require()
         contract = text_output.load_contract(cfg["export_contract"])
@@ -188,8 +189,13 @@ def build(cfg: dict, mode: str, report: Report) -> dict:
         tables = {}
         for name, spec in TABLES.items():
             print(f"Join each edition onto the {name} table")
+            extra = None
+            if any(f["source"] == rurality.SOURCE for f in schemas[name]["fields"]):
+                print(f"Place every {name} record in each Urban Rural Classification version")
+                extra = rurality.attach_rurality(indices[spec["index"]], registry, cfg["source_roots"][mode], report)
+                report.require()
             tables[name] = build_postcode_simd(indices[spec["index"]], phs, gov, registry, schemas[name], report,
-                                               label=f"join.{name}")
+                                               label=f"join.{name}", extra=extra)
         report.require()
         report.observe("table_agreement", compare_tables(tables["main"], tables["history"], registry))
         print("Write, reopen, check and publish")
@@ -230,7 +236,8 @@ def audit(cfg: dict, mode: str, report: Report) -> None:
     simd, gov_all = pd.concat(phs.values(), ignore_index=True), pd.concat(gov.values(), ignore_index=True)
     for name, spec in TABLES.items():
         info = output.readback(cfg["results_root"] / spec["file"], schemas[name], indices[spec["index"]], simd, gov_all,
-                               registry, report, decisions_sha256=sha256(cfg["decisions"]), label=f"readback.{name}")
+                               registry, report, decisions_sha256=sha256(cfg["decisions"]), label=f"readback.{name}",
+                               source_root=cfg["source_roots"][mode])
         report.equal(f"audit.{name}.manifest_hash_matches_file", info["sha256"], man["tables"][name]["sha256"])
         report.equal(f"audit.{name}.schema_matches", schemas[name]["sha256"], man["tables"][name]["schema_sha256"])
         audit_export(cfg, schemas[name], contract, name, man["tables"][name]["csv"], report)

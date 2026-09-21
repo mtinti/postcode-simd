@@ -65,6 +65,10 @@ def csv_section(contract: dict, name: str, fields: list) -> list:
                   "| --- | --- |"]
         lines += [f"| `{role}` | `{'`, `'.join(columns)}` |" for role, columns in nulls.items()]
         lines += ["", "An empty cell in one of those columns for any other record is a source blank.", ""]
+    never_blank = spec.get("empty_is_null") or []
+    if never_blank:
+        lines += ["These text columns are never blank, so an empty cell in one is a null for every record: `"
+                  + "`, `".join(never_blank) + "`.", ""]
     else:
         lines += ["This table comes from a single source file, so every text empty is a source blank.", ""]
     lines += ["An empty `deleted_on` is a null and agrees with `is_current`. The source text column",

@@ -1,7 +1,9 @@
 # Plan: a contemporary urban-rural class for every postcode life
 
-Drafted 21 September 2026 and revised the same day after review of a511f6a. Status: proposed,
-nothing implemented. The feasibility check in step 2 gates everything after it.
+Drafted 21 September 2026 and revised the same day after review of a511f6a. Status: steps 1 to 4
+and the readback half of step 7 are implemented (decisions rurality-by-version and
+nullable-integers-and-never-blank-text); step 5, the year mapping, and step 6, the SQL, are not.
+The feasibility check in step 2 gated everything after it and passed.
 
 The review found three gaps, all accepted: the saved rurality columns would escape readback
 (step 7), the gate was not measurable (step 2), and a bare code cannot say why it is empty

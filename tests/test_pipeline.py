@@ -254,6 +254,16 @@ def test_real_pinned_data_build_matches_contract_and_known_fingerprint(tmp_path)
         known = known_snapshot(result, name)
         if known is not None:
             assert result["tables"][name]["logical_fingerprint"] == known[fingerprint]
+    known = known_snapshot(result, "history")
+    if known is not None:
+        # The rurality columns were appended; the 162 columns that were there before must be
+        # exactly what they were, which the whole-table fingerprint can no longer show.
+        import pyarrow.parquet as pq
+        from simd_ingest.core.output import logical_fingerprint
+        saved = pq.ParquetFile(tmp_path / "results" / "postcode_simd_history.parquet").read().to_pandas(date_as_object=False)
+        original = [f["name"] for f in history["fields"] if f["source"] != "rurality"]
+        assert len(original) == 162 and list(saved.columns[:162]) == original
+        assert logical_fingerprint(saved[original]) == known["wide_v1_columns_fingerprint"]
     assert main(["audit", "--config", str(cfg)]) == 0
 
 

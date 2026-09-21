@@ -57,7 +57,7 @@ def join_edition(table: pd.DataFrame, edition_table: pd.DataFrame, ed: dict, kin
 
 
 def build_postcode_simd(index: pd.DataFrame, phs_tables: dict, gov_tables: dict, registry: Registry,
-                        schema: dict, report: Report, label: str = "join") -> pd.DataFrame:
+                        schema: dict, report: Report, label: str = "join", extra: pd.DataFrame | None = None) -> pd.DataFrame:
     """The ladder: the index, then one join per PHS edition, then one per government edition.
     The output schema supplies the column order and the natural key; label prefixes the checks
     so that the two tables of one build stay apart."""
@@ -66,6 +66,11 @@ def build_postcode_simd(index: pd.DataFrame, phs_tables: dict, gov_tables: dict,
         out = join_edition(out, phs_tables[ed["key"]], ed, "phs", registry, report, label)
     for ed in registry.govscot_editions:
         out = join_edition(out, gov_tables[ed["key"]], ed, "gov", registry, report, label)
+    if extra is not None:
+        # Columns computed beside the ladder, row-aligned to the index (the rurality placements).
+        # The index itself stays what the source files say, which is what readback compares.
+        report.equal(f"{label}.extra_rows_aligned", bool(extra.index.equals(index.index)), True)
+        out = pd.concat([out, extra], axis=1)
     return finish(out, index, registry, [f["name"] for f in schema["fields"]], schema["key"], report, label)
 
 

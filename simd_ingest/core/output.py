@@ -12,6 +12,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import yaml
 
+from . import rurality
 from .checks import Report
 from .join import attach
 from .sources import Registry, sha256
@@ -81,6 +82,10 @@ def _column(series: pd.Series, field: dict) -> pa.Array:
         return pa.array(values, type=pa.string())
     if kind == "bool":
         return pa.array(series.astype(bool).tolist(), type=pa.bool_())
+    if field["nullable"]:
+        # A nullable integer: a missing value stays missing. Only the rurality codes are declared
+        # so; a required column still goes through the strict path below and fails loudly on a null.
+        return pa.array([None if pd.isna(v) else int(v) for v in series], type=ARROW[kind])
     return pa.array(series.astype("int64").tolist(), type=ARROW[kind])
 
 
@@ -98,7 +103,8 @@ def write_table(table: pd.DataFrame, schema: dict, path: Path, metadata: dict) -
 
 
 def readback(path: Path, schema: dict, index: pd.DataFrame, simd: pd.DataFrame, gov: pd.DataFrame,
-             registry: Registry, report: Report, *, decisions_sha256: str, label: str = "readback") -> dict:
+             registry: Registry, report: Report, *, decisions_sha256: str, label: str = "readback",
+             source_root: Path | None = None) -> dict:
     """Reopen the saved file and compare it with the accepted sources, not with memory.
 
     Original columns are compared with the index built from the source files. SIMD and
@@ -154,6 +160,27 @@ def readback(path: Path, schema: dict, index: pd.DataFrame, simd: pd.DataFrame, 
         if not same.all():
             bad[column] = int((~same).sum())
     report.equal(f"{label}.attached_values", bad, {}, detail=f"{len(expected.columns)} attached columns re-looked-up" if not bad else f"differ: {bad}")
+
+    # The rurality columns belong to neither group above, so they get their own independent
+    # check: every point is placed again, from the saved file's own grid references, in the
+    # pinned polygons. Comparing with the frame the build held in memory would prove nothing.
+    rural = [f["name"] for f in schema["fields"] if f["source"] == rurality.SOURCE]
+    if rural:
+        declared = report.equal(f"{label}.rurality_columns", rural, rurality.expected_columns(registry))
+        supplied = report.add(f"{label}.rurality_sources_supplied", source_root is not None, "readback needs the source root to re-place points")
+    if rural and declared and supplied:
+        # Not report.require(): an earlier failure above must still be reported as itself, with
+        # this check beside it, rather than stopping the readback half way.
+        inner = Report()
+        again = rurality.attach_rurality(saved, registry, source_root, inner)
+        report.equal(f"{label}.rurality_sources_valid", [c.name for c in inner.blocking_failures], [])
+        wrong = {}
+        for column in rural:
+            kind = "string" if column.endswith("_status") else "Int64"
+            same = same_values(saved[column].astype(kind), again[column].astype(kind))
+            if not same.all():
+                wrong[column] = int((~same).sum())
+        report.equal(f"{label}.rurality_values", wrong, {}, detail=f"{len(rural)} rurality columns re-placed" if not wrong else f"differ: {wrong}")
     return {"table": schema["table"], "schema_version": schema["version"], "schema_sha256": schema["sha256"],
             "index_source": schema["index_source"], "index_release": index_release(registry, schema),
             "allocation": schema["allocation"], "key": schema["key"],

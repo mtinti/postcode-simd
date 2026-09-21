@@ -7,7 +7,7 @@ edition is a separate, less frequent change to the source registry and output sc
 | Table | Postcode source | One row per | Key | Answers |
 | --- | --- | --- | --- | --- |
 | `postcode_simd.parquet`, the **main table** | Scottish Statistics Postcode Lookup (SSPL) 2026/2 | whole postcode, latest life, both user types: 230,103 rows × 146 columns | `pc_norm` | SIMD on the latest postcode; either one edition or edition by event year |
-| `postcode_simd_history.parquet`, the **history table** | Scottish Postcode Directory (SPD) 2026/2 | postcode life, both user types: 247,773 rows × 162 columns | `pc_norm`, `introduced_on` | date-valid postcode records, split parts, or explicitly chosen SPD latest linkage |
+| `postcode_simd_history.parquet`, the **history table** | Scottish Postcode Directory (SPD) 2026/2 | postcode life, both user types: 247,773 rows × 189 columns | `pc_norm`, `introduced_on` | date-valid postcode records, split parts, or explicitly chosen SPD latest linkage |
 
 Six SIMD editions (2004–2020v2) are attached to both. The two NRS products allocate data
 zones differently: the SSPL takes the zone containing the centroid of the postcode's 2022
@@ -59,6 +59,12 @@ automatically.
 
 - `results/postcode_simd.parquet`: the main table, keyed by `pc_norm`.
 - `results/postcode_simd_history.parquet`: the history table, keyed by `(pc_norm, introduced_on)`.
+  Besides SIMD it carries the Scottish Government Urban Rural Classification of all nine published
+  versions, 2003-2004 to 2022, for every postcode life: `urbanrural<version>_6fold`, `_8fold` and
+  `_status`. Each life's own grid reference is placed in that version's polygons, which reproduces
+  the 2022 codes NRS publishes on every current life. A code is null, and the status says why, for
+  a point outside every polygon, a point on an edge between two classes, and a post-office box.
+  Read with pandas, a nullable code column arrives as a float; cast it to `Int8`.
   Release is metadata/an attribute of each table, not part of its key.
 - `results/postcode_simd.csv.gz` and `results/postcode_simd_history.csv.gz`: the same rows as a
   gzipped CSV, the form in which a table is shared. They omit the grid reference and coordinate

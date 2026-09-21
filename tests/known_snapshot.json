@@ -1,5 +1,5 @@
 {
-  "description": "SPD 2026/2 history regression is independent of SSPL refreshes. Main is SSPL 2026/2, reviewed on 2026-09-13: all 50 raw columns and 84 SIMD columns matched the pinned CSV/DBF sources on all 230103 rows. Main requires all pins and its own schema; never update just to clear a test.",
+  "description": "SPD 2026/2 history regression is independent of SSPL refreshes. Main is SSPL 2026/2, reviewed on 2026-09-13: all 50 raw columns and 84 SIMD columns matched the pinned CSV/DBF sources on all 230103 rows. Main requires all pins and its own schema; never update just to clear a test. History moved to postcode_simd_wide_v2 on 2026-09-21, which appends 27 rurality columns: wide_v1_columns_fingerprint is the fingerprint of the original 162 columns alone and must never change for these pins; logical_fingerprint covers all 189.",
   "sspl_object_sha256": "b3cc78a21b1cdecd8f29d972b6385c48cabb24a40d7c17b99d82ceae1a30ecbb",
   "main_schema_sha256": "ef247e819c626cb83d4e870d2ed5ab38460604cebefc59790e283c817881df20",
   "remote_object_sha256": [
@@ -27,7 +27,8 @@
     "5969d3377170c59273c37ba029eca6cf8b770adec90a72f4ec5fec92e47ba429",
     "1b18bce2d4201d5f99dfd3bdacbf9fb5bc7a966294cee94262165e2c398d85a9"
   ],
-  "schema_sha256": "460f1689d778269975c19c28e8670766a331f53154ab3b60e7c094a005bef8dc",
-  "logical_fingerprint": "59369357e44e45a5ac74b217692fd8e4799fd0aafc3b04e4e2c255abf722dc97",
-  "main_logical_fingerprint": "9515021d99099b437950960380313e6fac7a9a6393858c4d6115fef43a94e564"
+  "schema_sha256": "f757f1da37e4beaaf7fd5aa0f017a2891d436b4547af856b0f43654cdd3702a1",
+  "logical_fingerprint": "ddb162ef89c7d52acf0e7ba83c1b7432ca3df209458e32479b38a09a34fc0174",
+  "main_logical_fingerprint": "9515021d99099b437950960380313e6fac7a9a6393858c4d6115fef43a94e564",
+  "wide_v1_columns_fingerprint": "59369357e44e45a5ac74b217692fd8e4799fd0aafc3b04e4e2c255abf722dc97"
 }

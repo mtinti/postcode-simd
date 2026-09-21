@@ -8,7 +8,7 @@ postcode-in-zone allocation see the history table, [DATA_DICTIONARY_HISTORY.md](
 Generated from `simd_ingest/output_schema.yaml`; do not edit by hand.
 
 Current build: 230,103 rows by 146 columns, main index release 2026_2,
-allocation `oa2022_centroid`, built 2026-09-16T11:34:28Z. Parquet SHA256 `458bc362f6991391022a1ff59044968320b1db7bd769a0edac7f797a09b16652`; rows-only fingerprint
+allocation `oa2022_centroid`, built 2026-09-21T18:51:28Z. Parquet SHA256 `ba24b14bcd49420df1225eabb0d082569ec8b3493017af754f99b3091c5471dd`; rows-only fingerprint
 `9515021d99099b437950960380313e6fac7a9a6393858c4d6115fef43a94e564`. The file hash also covers the embedded provenance metadata,
 so it changes when the decision log changes; compare fingerprints under the same pinned runtime.
 
@@ -109,6 +109,15 @@ An empty `deleted_on` is a null and agrees with `is_current`. The source text co
 | maps_gov_scot | SG_SIMD_2012.zip | `c91aea4cbf39d116…` |
 | maps_gov_scot | SG_SIMD_2016.zip | `bffbec7c3f45da16…` |
 | maps_gov_scot | SG_SIMD_2020.zip | `33f166949c0e8a54…` |
+| maps_gov_scot | SG_UrbanRural_2003_2004.zip | `1389441b25a2804c…` |
+| maps_gov_scot | SG_UrbanRural_2005_2006.zip | `f792012c3f8b086a…` |
+| maps_gov_scot | SG_UrbanRural_2007_2008.zip | `9aa388730b66f81f…` |
+| maps_gov_scot | SG_UrbanRural_2009_2010.zip | `d5db1b102f4ce081…` |
+| maps_gov_scot | SG_UrbanRural_2011_2012.zip | `5f6f57badf3508c2…` |
+| maps_gov_scot | SG_UrbanRural_2013_2014.zip | `725ed5bb2b722848…` |
+| maps_gov_scot | SG_UrbanRural_2016.zip | `f44f3b22237bf43d…` |
+| maps_gov_scot | SG_UrbanRural_2020.zip | `5969d3377170c592…` |
+| maps_gov_scot | SG_UrbanRural_2022.zip | `1b18bce2d4201d5f…` |
 
 Licences: phs: Open Government Licence v3.0, stated in the PHS open data package metadata; nrs: NRS terms; confirm before redistributing copies of the index; maps_gov_scot: Open Government Licence, stated in each shapefile's .shp.xml
 

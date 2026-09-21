@@ -47,6 +47,12 @@ tables:
                    CensusHouseholdCount1991, CensusPopulationCount1991, NeverDigitised]
       small_user: [LinkedSmallUserPostcode]
     role_column: spd_user_type
+    # A text column that is never blank: it holds a value or it is null. An empty cell in one of
+    # these is therefore a null for every row, whatever its type. Without this rule the import
+    # would restore each empty as a blank, as it rightly does for a directory column.
+    empty_is_null: [urbanrural2003_2004_status, urbanrural2005_2006_status, urbanrural2007_2008_status,
+                    urbanrural2009_2010_status, urbanrural2011_2012_status, urbanrural2013_2014_status,
+                    urbanrural2016_status, urbanrural2020_status, urbanrural2022_status]
 
 # The row digest that a database load is checked against. Computed from the accepted table,
 # never from a re-read of the CSV, so an import mistake cannot appear on both sides.
