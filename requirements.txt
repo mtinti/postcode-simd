@@ -5,6 +5,13 @@ pyarrow==24.0.0
 PyYAML==6.0.3
 dbfread==2.0.7
 requests==2.32.4
+# Geometry, for placing postcode grid references in the Urban Rural Classification
+# polygons. pyogrio reads the shapefiles and ships its own GDAL; pyproj reads the
+# reference system.
+geopandas==1.1.4
+shapely==2.1.2
+pyogrio==0.13.0
+pyproj==3.8.0
 
 # Development and the query examples in the runbook.
 pytest==9.1.1
