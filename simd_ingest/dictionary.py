@@ -69,6 +69,10 @@ def csv_section(contract: dict, name: str, fields: list) -> list:
     if never_blank:
         lines += ["These text columns are never blank, so an empty cell in one is a null for every record: `"
                   + "`, `".join(never_blank) + "`.", ""]
+    numeric = [f["name"] for f in fields if f["nullable"] and f["type"] in ("int8", "int16") and f["name"] not in spec["exclude"]]
+    if numeric:
+        lines += [f"An empty cell in a numeric column is always a null, never zero and never a blank. {len(numeric)} numeric",
+                  "columns can be empty: `" + "`, `".join(numeric) + "`.", ""]
     else:
         lines += ["This table comes from a single source file, so every text empty is a source blank.", ""]
     lines += ["An empty `deleted_on` is a null and agrees with `is_current`. The source text column",

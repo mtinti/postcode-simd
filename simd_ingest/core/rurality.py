@@ -101,11 +101,47 @@ def is_po_box(index: pd.DataFrame) -> pd.Series:
     return ((index["spd_user_type"] == "large_user") & (link == "NOLINKP")).fillna(False)
 
 
+def agreement_gate(index: pd.DataFrame, placed: pd.DataFrame, registry: Registry, report: Report) -> None:
+    """The placement must reproduce the codes the directory itself publishes, or the build stops.
+
+    Readback only shows that a saved value equals its recomputation; both could be wrong
+    together. This compares with NRS. It runs on the raw placements, before post-office boxes
+    are withheld, because every box carries a published code and withholding first would
+    either manufacture disagreements or hide them. Every life is in the denominator and a
+    point in no polygon counts as wrong. Cohorts are gated separately so that a high overall
+    rate cannot conceal poor agreement among deleted lives or large users."""
+    gate = registry.rurality_published
+    six, eight = column_names(gate["version"])
+    right = ((placed[six].astype("Int64").astype("string") == index[gate["sixfold"]].astype("string"))
+             & (placed[eight].astype("Int64").astype("string") == index[gate["eightfold"]].astype("string"))).fillna(False).to_numpy()
+    current = index["is_current"].astype(bool).to_numpy()
+    small = (index["spd_user_type"] == "small_user").to_numpy()
+    cohorts = {"current_small_user": current & small, "deleted_small_user": ~current & small,
+               "current_large_user": current & ~small, "deleted_large_user": ~current & ~small,
+               "po_box": is_po_box(index).to_numpy()}
+    rates = {}
+    for name, members in cohorts.items():
+        n = int(members.sum())
+        rate = float(right[members].mean()) if n else None
+        rates[name] = {"lives": n, "agreement": rate}
+        gated = name == "current_small_user" or n > gate["min_cohort"]
+        if gated and n:
+            need = gate["current_small_user"] if name == "current_small_user" else gate["other_cohorts"]
+            report.add(f"rurality.agreement.{name}", rate >= need, f"{rate:.4%} of {n:,} lives, needs {need:.1%}",
+                       expected=need, actual=rate)
+    report.add("rurality.agreement.current_small_users_present", cohorts["current_small_user"].any(),
+               "the principal cohort is empty, so nothing was gated")
+    report.observe("rurality.agreement", rates)
+    report.observe("rurality.agreement.wrong", int((~right).sum()))
+
+
 def attach_rurality(index: pd.DataFrame, registry: Registry, root: Path, report: Report) -> pd.DataFrame:
     """classify(), then the one policy rule: a post-office box gets no derived class, in any
     version, and says so in its status. Decided 21 September 2026. The directory's own 2022
     columns are untouched and still carry whatever NRS published for the box."""
     out = classify(index, registry, root, report)
+    agreement_gate(index, out, registry, report)          # on the raw placements, boxes included
+    report.require()
     boxes = is_po_box(index).to_numpy()
     for version in registry.rurality_versions:
         six, eight = column_names(version["key"])

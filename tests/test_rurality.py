@@ -13,7 +13,7 @@ import pytest
 import shapely
 
 from simd_ingest.core.checks import BuildStopped, Report
-from simd_ingest.core.rurality import (NESTING, STATUS_AMBIGUOUS, STATUS_OUTSIDE, AreaLost, classify, column_names, cut,
+from simd_ingest.core.rurality import (NESTING, STATUS_AMBIGUOUS, STATUS_OUTSIDE, STATUS_PO_BOX, AreaLost, classify, column_names, cut,
                                          place, polygon_parts, read_version, status_name)
 
 WIDTH = 20_000
@@ -194,3 +194,75 @@ def test_the_real_2022_polygons_reproduce_the_codes_the_directory_publishes():
     # Every miss is a point outside the polygons; none is a different class.
     assert out.loc[~right, eight].isna().all()
     assert report.observations["rurality.2022.ambiguous_polygons"] == 0
+
+
+GATE = {"version": "2022", "sixfold": "UrbanRural6Fold2022Code", "eightfold": "UrbanRural8Fold2022Code",
+        "current_small_user": 0.995, "other_cohorts": 0.99, "min_cohort": 1000}
+
+
+def gated_index(points, published, link=None, user="small_user", current=True) -> pd.DataFrame:
+    index = index_of(points)
+    index["UrbanRural8Fold2022Code"] = [str(c) for c in published]
+    index["UrbanRural6Fold2022Code"] = [str(NESTING[c]) for c in published]
+    index["spd_user_type"], index["is_current"] = user, current
+    index["LinkedSmallUserPostcode"] = link if link is not None else ""
+    return index
+
+
+def test_the_build_stops_when_the_placement_disagrees_with_the_published_codes(tmp_path):
+    """Readback only proves a saved value equals its recomputation. A placement that is wrong,
+    and wrong the same way twice, passed both build and audit until the build compared itself
+    with the codes the directory publishes."""
+    from simd_ingest.core.rurality import attach_rurality
+    registry = SimpleNamespace(rurality_versions=(version(tmp_path),), rurality_published=GATE)
+    points = [(5_000, 5_000), (25_000, 5_000), (45_000, 5_000), (65_000, 5_000)]      # classes 1, 2, 3, 4
+    report = Report()
+    out = attach_rurality(gated_index(points, [1, 2, 3, 4]), registry, tmp_path, report)
+    assert not report.blocking_failures and out["urbanrural2022_8fold"].tolist() == [1, 2, 3, 4]
+    assert report.observations["rurality.agreement"]["current_small_user"] == {"lives": 4, "agreement": 1.0}
+
+    report = Report()
+    with pytest.raises(BuildStopped):
+        attach_rurality(gated_index(points, [8, 7, 6, 5]), registry, tmp_path, report)   # 0% agreement
+    assert [c.name for c in report.blocking_failures] == ["rurality.agreement.current_small_user"]
+
+
+def test_the_gate_runs_before_boxes_are_withheld_and_counts_an_outside_point_as_wrong(tmp_path):
+    from simd_ingest.core.rurality import agreement_gate, attach_rurality
+    registry = SimpleNamespace(rurality_versions=(version(tmp_path),), rurality_published=GATE)
+    # Boxes carry published codes. Withheld first, all four would read as disagreements.
+    boxes = gated_index([(5_000, 5_000)] * 4, [1, 1, 1, 1], link="NO LINKP", user="large_user")
+    small = gated_index([(5_000, 5_000)], [1])
+    index = pd.concat([small, boxes], ignore_index=True)
+    report = Report()
+    out = attach_rurality(index, registry, tmp_path, report)
+    assert not report.blocking_failures
+    assert report.observations["rurality.agreement"]["po_box"] == {"lives": 4, "agreement": 1.0}
+    assert out["urbanrural2022_status"].fillna("placed").tolist() == ["placed"] + [STATUS_PO_BOX] * 4
+    # A point in no polygon is in the denominator and is wrong, not excused.
+    report = Report()
+    index = gated_index([(5_000, 5_000), (5_000, 90_000)], [1, 1])
+    agreement_gate(index, classify(index, registry, tmp_path, Report()), registry, report)
+    assert report.observations["rurality.agreement"]["current_small_user"] == {"lives": 2, "agreement": 0.5}
+    assert [c.name for c in report.blocking_failures] == ["rurality.agreement.current_small_user"]
+
+
+def test_a_small_cohort_is_reported_but_only_a_large_one_is_gated(tmp_path):
+    from simd_ingest.core.rurality import agreement_gate
+    registry = SimpleNamespace(rurality_versions=(version(tmp_path),), rurality_published={**GATE, "min_cohort": 3})
+    good = gated_index([(5_000, 5_000)] * 5, [1] * 5)
+    few = gated_index([(5_000, 5_000)] * 3, [8] * 3, current=False)                      # 3 lives, not more than 3
+    many = gated_index([(5_000, 5_000)] * 4, [8] * 4, current=False)
+    for deleted, failures in ((few, []), (many, ["rurality.agreement.deleted_small_user"])):
+        index, report = pd.concat([good, deleted], ignore_index=True), Report()
+        agreement_gate(index, classify(index, registry, tmp_path, Report()), registry, report)
+        assert [c.name for c in report.blocking_failures] == failures
+        assert report.observations["rurality.agreement"]["deleted_small_user"]["agreement"] == 0.0
+
+
+def test_an_empty_principal_cohort_is_a_failure_not_a_pass(tmp_path):
+    from simd_ingest.core.rurality import agreement_gate
+    registry = SimpleNamespace(rurality_versions=(version(tmp_path),), rurality_published=GATE)
+    index, report = gated_index([(5_000, 5_000)], [1], current=False), Report()
+    agreement_gate(index, classify(index, registry, tmp_path, Report()), registry, report)
+    assert [c.name for c in report.blocking_failures] == ["rurality.agreement.current_small_users_present"]

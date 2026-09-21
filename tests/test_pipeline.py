@@ -209,7 +209,8 @@ def test_registry_rejects_incomplete_or_inconsistent_edition_registration(tmp_pa
         load_registry(path)
 
 
-@pytest.mark.parametrize("fault", ["member_not_pinned", "shp_not_pinned", "duplicate_version", "years_out_of_order", "missing_fold"])
+@pytest.mark.parametrize("fault", ["member_not_pinned", "shp_not_pinned", "duplicate_version", "years_out_of_order", "missing_fold",
+                                   "no_gate", "gate_names_unknown_version", "gate_thresholds_inverted"])
 def test_registry_rejects_an_incomplete_or_inconsistent_rurality_version(tmp_path, fault):
     """A shapefile is four files and a version is read for two named columns. Each of these
     would otherwise fail late, inside the geometry library, or silently pick the wrong year."""
@@ -228,8 +229,14 @@ def test_registry_rejects_an_incomplete_or_inconsistent_rurality_version(tmp_pat
         versions.append(dict(versions[-1]))
     elif fault == "years_out_of_order":
         versions[0]["reference_year"], versions[1]["reference_year"] = versions[1]["reference_year"], versions[0]["reference_year"]
-    else:
+    elif fault == "missing_fold":
         del versions[0]["columns"]["eightfold"]
+    elif fault == "no_gate":
+        del real["rurality_published"]                    # versions with nothing to check them against
+    elif fault == "gate_names_unknown_version":
+        real["rurality_published"]["version"] = "1999"
+    else:
+        real["rurality_published"].update(current_small_user=0.9, other_cohorts=0.99)
     path.write_text(yaml.safe_dump(real))
     with pytest.raises(ValueError):
         load_registry(path)

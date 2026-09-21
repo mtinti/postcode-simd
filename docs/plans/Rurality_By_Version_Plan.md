@@ -206,8 +206,8 @@ Two mappings are possible and they differ, so the choice has to be explicit:
   version was published on 16 December 2024, so under this rule events in 2022, 2023 and most
   of 2024 take the 2020 version.
 
-Proposal: reference year, because the purpose is to describe where a person lived, not what
-was knowable when. Years before the first version's reference year take none. Before step 6,
+**Decided, 21 September 2026: reference year**, because the purpose is to describe where a person
+lived, not what was knowable when. Years before the first version's reference year take none. Before step 6,
 pin each version's reference year and publication date as evidence, from the publisher, and
 settle the choice with the team.
 

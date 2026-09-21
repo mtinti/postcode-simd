@@ -308,6 +308,14 @@ rurality_versions:
   - {key: '2022', file: data.gov.uk/SG_UrbanRural_2022/SG_UrbanRural_2022.shp, reference_year: 2022, polygons: 8,
      columns: {sixfold: UR6Class, eightfold: UR8Class}}
 
+# The directory publishes one of these versions itself, which gives the placement a ground truth.
+# Every build and every audit must reproduce it, before post-office boxes are withheld, or stop.
+# The thresholds were fixed on 21 September 2026 before the first comparison was run: the share
+# of lives whose derived 6-fold and 8-fold both equal the published codes, among current small
+# users, and in every other cohort of more than min_cohort lives.
+rurality_published: {version: '2022', sixfold: UrbanRural6Fold2022Code, eightfold: UrbanRural8Fold2022Code,
+                     current_small_user: 0.995, other_cohorts: 0.99, min_cohort: 1000}
+
 # The directory's own rank is an independent agreement check, not a join source.
 directory_rank: {edition: '2020v2', column: ScottishIndexOfMultipleDeprivation2020Rank}
 

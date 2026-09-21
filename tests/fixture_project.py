@@ -43,6 +43,7 @@ def project(tmp: Path, release="test-1", extra_edition=False) -> Path:
     # The synthetic project pins no classification shapefiles yet. The geometry step will
     # give it small ones; until then it declares no versions rather than unpinned ones.
     raw["rurality_versions"] = []
+    raw["rurality_published"] = None
     sources = tmp / "sources"
     sources.mkdir(exist_ok=True)
 

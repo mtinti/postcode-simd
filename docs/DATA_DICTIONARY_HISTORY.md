@@ -6,7 +6,7 @@ containing the postcode's own grid reference. For one row per whole postcode see
 [DATA_DICTIONARY.md](DATA_DICTIONARY.md). Generated from `simd_ingest/output_schema_history.yaml`; do not edit by hand.
 
 Current build: 247,773 rows by 189 columns, history index release 2026_2,
-allocation `postcode_grid_reference`, built 2026-09-21T18:51:28Z. Parquet SHA256 `5521fe9360b15f68efc4dfe8b2bb191be01bb2e9ff6f2381c824c6333adc8586`; rows-only fingerprint
+allocation `postcode_grid_reference`, built 2026-09-21T19:36:32Z. Parquet SHA256 `03764e2db8bc12ef09c753f9d56d01eda7738e9bd7484475be2de4044094c954`; rows-only fingerprint
 `ddb162ef89c7d52acf0e7ba83c1b7432ca3df209458e32479b38a09a34fc0174`. The file hash also covers the embedded provenance metadata,
 so it changes when the decision log changes; compare fingerprints under the same pinned runtime.
 
@@ -89,6 +89,9 @@ column and the record type, never from the cell alone.
 An empty cell in one of those columns for any other record is a source blank.
 
 These text columns are never blank, so an empty cell in one is a null for every record: `urbanrural2003_2004_status`, `urbanrural2005_2006_status`, `urbanrural2007_2008_status`, `urbanrural2009_2010_status`, `urbanrural2011_2012_status`, `urbanrural2013_2014_status`, `urbanrural2016_status`, `urbanrural2020_status`, `urbanrural2022_status`.
+
+An empty cell in a numeric column is always a null, never zero and never a blank. 18 numeric
+columns can be empty: `urbanrural2003_2004_6fold`, `urbanrural2003_2004_8fold`, `urbanrural2005_2006_6fold`, `urbanrural2005_2006_8fold`, `urbanrural2007_2008_6fold`, `urbanrural2007_2008_8fold`, `urbanrural2009_2010_6fold`, `urbanrural2009_2010_8fold`, `urbanrural2011_2012_6fold`, `urbanrural2011_2012_8fold`, `urbanrural2013_2014_6fold`, `urbanrural2013_2014_8fold`, `urbanrural2016_6fold`, `urbanrural2016_8fold`, `urbanrural2020_6fold`, `urbanrural2020_8fold`, `urbanrural2022_6fold`, `urbanrural2022_8fold`.
 
 An empty `deleted_on` is a null and agrees with `is_current`. The source text column
 `DateOfDeletion` stays blank. Every other empty cell is a source blank.
