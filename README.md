@@ -118,7 +118,7 @@ one edition throughout. Every query is standalone, written as numbered steps tha
 guidance or project choice. All five queries share 41 core columns: statuses, product provenance,
 both record keys, the edition's data and intermediate zones and PHS geography codes, and all
 14 stored measures. Product-specific own-record context follows (89 total columns for SSPL,
-103 for SPD era/latest, 106 for SPD as-of); select shared columns by name when combining results.
+108 for SPD era/latest, 111 for SPD as-of); select shared columns by name when combining results.
 The SPD set selects the latest life and the A part itself;
 the SSPL set does not, because NRS did. Both attach a large user's SIMD through its linked
 small-user postcode and give PO boxes none. Applying that rule to SSPL is a project
@@ -126,7 +126,9 @@ interpretation of PHS Appendix A, not verified parity with PHS's own lookup.
 [NRS recommends SSPL for statistical production and SPD for operational/administrative use](https://www.nrscotland.gov.uk/publications/geography-scottish-statistics-postcode-lookup-information-note/);
 the project keeps this choice explicit. The SPD set adds `link_as_of.sql` for a reliable
 address date: it selects the postcode life valid on that date, not historical administrative
-or rurality snapshots. It needs only the address date: the year of that date chooses the
+snapshots. The three SPD queries also return the Urban Rural Classification version that suits
+the year, chosen by reference year as a project choice, with a status saying why when it is
+empty. It needs only the address date: the year of that date chooses the
 edition, and `analysis_year` is an optional override for holding one edition across a study.
 The step-by-step commentary is in [LINKAGE_BY_ERA.md](docs/LINKAGE_BY_ERA.md).
 

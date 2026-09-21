@@ -581,3 +581,35 @@ decisions:
       -3244194952865985434297 over 185 exported columns equal to the manifest's. The main
       table's digest, 600732040592218046898, is unchanged. tests/test_exports.py requires the
       NULLIF guard on every nullable integer and the rule on every empty_is_null column.
+
+  - id: rurality-version-by-reference-year
+    date: 2026-09-21
+    status: implemented
+    decision: >-
+      The three SPD queries and the walkthrough return the Urban Rural Classification version
+      that suits the year, as rurality_version, rurality_policy, rurality_6fold, rurality_8fold
+      and rurality_status, placed after the shared 41-column core. The version is chosen by
+      reference year, the year it describes, and applies until the year before the next
+      version: 2003-2004, 2005-2006, 2007-2008, 2009-2010, 2011-2012, 2013 to 2015, 2016 to
+      2019, 2020 to 2021, 2022 onwards. The year is the one that chose the SIMD edition, so an
+      overriding analysis_year fixes both. link_latest.sql uses the latest version throughout.
+      The codes are the matched record's own. rurality_status reports a postcode status where
+      no single record stands for the postcode, then missing_year, before_first_version or
+      invalid_year, then the reason stored with the record. The windows are generated from the
+      registry's reference years. The SSPL set is unchanged.
+    reason: >-
+      PHS publishes no equivalent of Table 4 for rurality, so this is a project choice and is
+      labelled as one in the queries and their output. Reference year rather than publication
+      date because the purpose is to describe where a person lived, not what was knowable when:
+      by publication date, events from 2022 to most of 2024 would take the 2020 version, since
+      the 2022 version appeared on 16 December 2024. A separate status is needed because the
+      SIMD status cannot express these outcomes: 1996 has a SIMD edition and no rurality
+      version.
+    evidence: >-
+      gov.scot: Urban Rural Classification 2022 published 16 December 2024, built on the
+      Census 2022 settlements. Output columns: SSPL 89 unchanged, SPD era and latest 108, SPD
+      as-of 111. tests/test_sql_sets.py states the versions and the year windows independently
+      of the generator and checks fourteen years, the statuses, a large user reporting its own
+      class while its SIMD comes from its link, and that the SSPL set has no rurality column.
+      The walkthrough agrees with the generated query on the four rurality columns across
+      fifteen cases on the built table.

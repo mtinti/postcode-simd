@@ -36,6 +36,25 @@ era AS (
         (2017, 9999, '2020v2', 2011)
     ) AS v(year_from, year_to, edition, data_zone_vintage)
 ),
+rurality_era AS (
+    -- STEP 3b. RURALITY VERSION (SPD only). PROJECT CHOICE: there is no PHS table for this.
+    -- The Scottish Government Urban Rural Classification version is chosen by its REFERENCE
+    -- year, the year it describes, not the date it was published: the 2022 version describes
+    -- Census Day 2022 and appeared on 16 December 2024. A version applies until the year before
+    -- the next one. Before 2003 there is no version. The year is the same year that chose the
+    -- SIMD edition, so an overriding analysis_year holds the classification fixed as well.
+    SELECT * FROM (VALUES
+        (2003, 2004, '2003-2004'),
+        (2005, 2006, '2005-2006'),
+        (2007, 2008, '2007-2008'),
+        (2009, 2010, '2009-2010'),
+        (2011, 2012, '2011-2012'),
+        (2013, 2015, '2013-2014'),
+        (2016, 2019, '2016'),
+        (2020, 2021, '2020'),
+        (2022, 9999, '2022')
+    ) AS v(year_from, year_to, version)
+),
 chosen AS (
     SELECT r.id, r.postcode, r.address_date, r.analysis_year, r.postcode_key,
            e.edition AS simd_edition, e.data_zone_vintage,
@@ -45,9 +64,12 @@ chosen AS (
                WHEN r.analysis_year < 1 OR r.analysis_year > 9999 THEN 'invalid_year'
                WHEN e.edition IS NULL THEN 'no_edition'
                ELSE 'ok'
-           END AS edition_status
+           END AS edition_status,
+           u.version AS rurality_version,
+           'project choice: classification version by reference year of the health data' AS rurality_policy
     FROM requested r
     LEFT JOIN era e ON r.analysis_year BETWEEN e.year_from AND e.year_to
+    LEFT JOIN rurality_era u ON r.analysis_year BETWEEN u.year_from AND u.year_to
 ),
 -- BEGIN shared: from here to END shared the text is identical in link_by_era.sql and link_latest.sql of this set.
 latest_lives AS (
@@ -269,6 +291,33 @@ matched AS (
            r.GridLinkPositionalAccuracy,
            r.NeverDigitised,
            r.LinkedSmallUserPostcode,
+           r.urbanrural2003_2004_6fold,
+           r.urbanrural2003_2004_8fold,
+           r.urbanrural2003_2004_status,
+           r.urbanrural2005_2006_6fold,
+           r.urbanrural2005_2006_8fold,
+           r.urbanrural2005_2006_status,
+           r.urbanrural2007_2008_6fold,
+           r.urbanrural2007_2008_8fold,
+           r.urbanrural2007_2008_status,
+           r.urbanrural2009_2010_6fold,
+           r.urbanrural2009_2010_8fold,
+           r.urbanrural2009_2010_status,
+           r.urbanrural2011_2012_6fold,
+           r.urbanrural2011_2012_8fold,
+           r.urbanrural2011_2012_status,
+           r.urbanrural2013_2014_6fold,
+           r.urbanrural2013_2014_8fold,
+           r.urbanrural2013_2014_status,
+           r.urbanrural2016_6fold,
+           r.urbanrural2016_8fold,
+           r.urbanrural2016_status,
+           r.urbanrural2020_6fold,
+           r.urbanrural2020_8fold,
+           r.urbanrural2020_status,
+           r.urbanrural2022_6fold,
+           r.urbanrural2022_8fold,
+           r.urbanrural2022_status,
            g.*
     FROM chosen c
     LEFT JOIN representative r ON r.pc_base = c.postcode_key
@@ -423,6 +472,39 @@ selected AS (
                WHEN '2016'   THEN m.simd2016_uw_scotland_vigintile
                WHEN '2020v2' THEN m.simd2020v2_uw_scotland_vigintile
            END AS gov_uw_scotland_vigintile,
+           CASE m.rurality_version
+               WHEN '2003-2004' THEN m.urbanrural2003_2004_6fold
+               WHEN '2005-2006' THEN m.urbanrural2005_2006_6fold
+               WHEN '2007-2008' THEN m.urbanrural2007_2008_6fold
+               WHEN '2009-2010' THEN m.urbanrural2009_2010_6fold
+               WHEN '2011-2012' THEN m.urbanrural2011_2012_6fold
+               WHEN '2013-2014' THEN m.urbanrural2013_2014_6fold
+               WHEN '2016'   THEN m.urbanrural2016_6fold
+               WHEN '2020'   THEN m.urbanrural2020_6fold
+               WHEN '2022'   THEN m.urbanrural2022_6fold
+           END AS rurality_6fold_stored,
+           CASE m.rurality_version
+               WHEN '2003-2004' THEN m.urbanrural2003_2004_8fold
+               WHEN '2005-2006' THEN m.urbanrural2005_2006_8fold
+               WHEN '2007-2008' THEN m.urbanrural2007_2008_8fold
+               WHEN '2009-2010' THEN m.urbanrural2009_2010_8fold
+               WHEN '2011-2012' THEN m.urbanrural2011_2012_8fold
+               WHEN '2013-2014' THEN m.urbanrural2013_2014_8fold
+               WHEN '2016'   THEN m.urbanrural2016_8fold
+               WHEN '2020'   THEN m.urbanrural2020_8fold
+               WHEN '2022'   THEN m.urbanrural2022_8fold
+           END AS rurality_8fold_stored,
+           CASE m.rurality_version
+               WHEN '2003-2004' THEN m.urbanrural2003_2004_status
+               WHEN '2005-2006' THEN m.urbanrural2005_2006_status
+               WHEN '2007-2008' THEN m.urbanrural2007_2008_status
+               WHEN '2009-2010' THEN m.urbanrural2009_2010_status
+               WHEN '2011-2012' THEN m.urbanrural2011_2012_status
+               WHEN '2013-2014' THEN m.urbanrural2013_2014_status
+               WHEN '2016'   THEN m.urbanrural2016_status
+               WHEN '2020'   THEN m.urbanrural2020_status
+               WHEN '2022'   THEN m.urbanrural2022_status
+           END AS rurality_stored_status,
            '1 = most deprived' AS band_direction
     FROM matched m
 ),
@@ -480,6 +562,24 @@ SELECT
        s.gov_uw_scotland_decile,
        s.gov_uw_scotland_vigintile,
        s.band_direction,
+       -- Rurality: the matched record's own Urban Rural Classification, in the version step 3b
+       -- chose. rurality_status says whether the two codes can be used and, when they are
+       -- empty, why: a postcode problem first, then no version for the year, then the reason
+       -- stored with the record (outside_polygons, ambiguous_polygons, po_box). The codes come
+       -- from this record's own grid reference, so read them beside matched_user_type; an
+       -- ambiguous postcode or a B or C part has no single record and so no codes.
+       s.rurality_version, s.rurality_policy,
+       CASE WHEN s.postcode_status IN ('ambiguous_postcode', 'split_a_missing') THEN NULL ELSE s.rurality_6fold_stored END AS rurality_6fold,
+       CASE WHEN s.postcode_status IN ('ambiguous_postcode', 'split_a_missing') THEN NULL ELSE s.rurality_8fold_stored END AS rurality_8fold,
+       CASE
+           WHEN s.matched_pc_norm IS NULL THEN s.postcode_status
+           WHEN s.postcode_status IN ('ambiguous_postcode', 'split_a_missing') THEN s.postcode_status
+           WHEN s.rurality_version IS NULL AND s.analysis_year IS NULL THEN 'missing_year'
+           WHEN s.rurality_version IS NULL AND s.analysis_year < 2003 THEN 'before_first_version'
+           WHEN s.rurality_version IS NULL THEN 'invalid_year'
+           WHEN s.rurality_stored_status IS NOT NULL THEN s.rurality_stored_status
+           ELSE 'matched'
+       END AS rurality_status,
        -- Own-record context: the matched record's NRS fields as ingested, names unchanged
        -- (Postcode as matched_postcode). For a large user these are its own fields, not the
        -- linked small user's; compare DataZone2011Code here with simd_source_pc_norm above.

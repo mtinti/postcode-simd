@@ -59,6 +59,18 @@ CONTRACT = ["id", "postcode", "address_date", "analysis_year", "postcode_key", "
             "data_zone_code", "intermediate_zone_code", "phs_hb_code", "phs_hscp_code", "phs_ca_code",
             *[out for out, _ in MEASURES], "band_direction"]
 OK = ("matched", "a_part", "linked_small_user")
+# The classification versions, stated here independently of the generator and the registry.
+RURAL = ("2003-2004", "2005-2006", "2007-2008", "2009-2010", "2011-2012", "2013-2014", "2016", "2020", "2022")
+RURAL_NESTING = {1: 1, 2: 2, 3: 3, 4: 4, 5: 4, 6: 5, 7: 6, 8: 6}
+
+
+def rural_stem(version: str) -> str:
+    return "urbanrural" + version.replace("-", "_")
+
+
+def rural_eightfold(seed: int, version: str) -> int:
+    """A different class in every version, so picking the wrong version is visible."""
+    return (seed + RURAL.index(version)) % 8 + 1
 
 
 def stored_values(seed: int) -> dict:
@@ -68,7 +80,7 @@ def stored_values(seed: int) -> dict:
 
 
 def record(name, pc="AB11AA", *, base=None, intro="2010-01-01", live=True, user="small_user",
-           link="", split="N", seed=1, q=None, deleted=None) -> dict:
+           link="", split="N", seed=1, q=None, deleted=None, rural_status=None) -> dict:
     """One row. A deleted life ends 30 days after its introduction unless `deleted` names the day."""
     if deleted is not None:
         live = False
@@ -82,6 +94,10 @@ def record(name, pc="AB11AA", *, base=None, intro="2010-01-01", live=True, user=
                is_current=live)
     if name == "spd":
         row.update(pc_base=base or pc, spd_release="fixture-spd")
+        for version in RURAL:
+            eight = None if rural_status else rural_eightfold(seed, version)
+            row.update({rural_stem(version) + "_8fold": eight, rural_stem(version) + "_6fold": RURAL_NESTING.get(eight),
+                        rural_stem(version) + "_status": rural_status})
     else:
         row.update(sspl_release="fixture-sspl")
     for v in (2001, 2011):
@@ -106,6 +122,9 @@ def con():
 
 def setup(con, name, rows):
     frame = pd.DataFrame(rows) if rows else pd.DataFrame([record(name)]).iloc[:0]
+    for column in frame.columns:                          # an all-null column would otherwise have no type
+        if column.startswith("urbanrural"):
+            frame[column] = frame[column].astype("string" if column.endswith("_status") else "Int8")
     con.register(PRODUCTS[name]["table"], frame)
 
 
@@ -191,9 +210,12 @@ def test_common_output_core_and_product_specific_context(con, name, variant):
         context.insert(0, "matched_pc_base")
     if variant == "link_as_of":
         context[:0] = ["first_introduced_on", "previous_life_deleted_on", "next_life_introduced_on"]
+    if name == "spd":                                     # rurality sits between the core and the context
+        context[:0] = ["rurality_version", "rurality_policy", "rurality_6fold", "rurality_8fold", "rurality_status"]
     assert list(out.columns[len(CONTRACT):]) == context
     assert len(CONTRACT) == 41
-    assert len(out.columns) == (106 if variant == "link_as_of" else 103 if name == "spd" else 89)
+    # The SPD set returns five rurality columns after the shared core; the SSPL set has none.
+    assert len(out.columns) == (111 if variant == "link_as_of" else 108 if name == "spd" else 89)
     assert not set(EXCLUDED[name]) & set(out.columns)
 
 
@@ -258,6 +280,7 @@ def test_year_problems_keep_the_postcode_but_no_simd(con, name, year, status):
 def test_spd_uses_the_latest_life_not_the_event_year(con):
     setup(con, "spd", [record("spd", intro="1990-01-01", live=False, seed=1), record("spd", intro="2010-01-01", seed=2)])
     out = run(con, "spd", "link_by_era", pd.concat([inputs(year=1996), inputs(year=2020)]))
+    out = out.sort_values("analysis_year").reset_index(drop=True)   # the queries promise no row order
     assert len(out) == 2 and out.matched_introduced_on.eq(pd.Timestamp("2010-01-01")).all()
     assert out.simd_edition.tolist() == ["2004", "2020v2"]
     assert out.simd_rank.tolist() == [stored_values(2)["simd2004_rank"], stored_values(2)["simd2020v2_rank"]]
@@ -642,7 +665,8 @@ def test_the_walkthrough_gives_the_same_answers_as_the_generated_dated_query(rea
               "simd_source_pc_norm", "data_zone_code", "simd_rank",
               "phs_pw_scotland_quintile", "phs_pw_scotland_decile",
               "gov_uw_scotland_quintile", "gov_uw_scotland_decile",
-              "UrbanRural6Fold2022Code", "UrbanRural8Fold2022Code"]
+              "UrbanRural6Fold2022Code", "UrbanRural8Fold2022Code",
+              "rurality_version", "rurality_6fold", "rurality_8fold", "rurality_status"]
     full = run("link_as_of.sql")[shared].sort_values("id").reset_index(drop=True)
     short = run("walkthrough_as_of.sql")[shared].sort_values("id").reset_index(drop=True)
     pd.testing.assert_frame_equal(full, short)
@@ -657,3 +681,78 @@ def test_the_walkthrough_gives_the_same_answers_as_the_generated_dated_query(rea
         ["2016", "2020v2", None, "2006", "2009v2"]
     # The override is what makes the same 1975 address readable on a modern classification.
     assert full.loc[full.id == 1, "simd_edition"].iloc[0] == "2020v2"
+
+
+# --- Rurality: the contemporary Urban Rural Classification, SPD set only -------------------------
+
+RURAL_BY_YEAR = [(2003, "2003-2004"), (2004, "2003-2004"), (2005, "2005-2006"), (2010, "2009-2010"), (2012, "2011-2012"),
+                 (2013, "2013-2014"), (2015, "2013-2014"), (2016, "2016"), (2019, "2016"), (2020, "2020"), (2021, "2020"),
+                 (2022, "2022"), (2024, "2022"), (2031, "2022")]
+
+
+def expect_rurality(out, seed, version):
+    eight = rural_eightfold(seed, version)
+    assert out.rurality_version == version and out.rurality_status == "matched"
+    assert int(out.rurality_8fold) == eight and int(out.rurality_6fold) == RURAL_NESTING[eight]
+
+
+@pytest.mark.parametrize("year,version", RURAL_BY_YEAR)
+def test_rurality_version_follows_the_reference_year_not_the_publication_date(con, year, version):
+    """2022, 2023 and 2024 take the 2022 version although it was published in December 2024;
+    by publication date they would have taken 2020. A version runs until the next one's year."""
+    setup(con, "spd", [record("spd", seed=3)])
+    out = run(con, "spd", "link_by_era", inputs(year=year)).iloc[0]
+    expect_rurality(out, 3, version)
+    assert out.rurality_policy.startswith("project choice")
+    dated = as_of(con, [dict(seed=3, intro="1990-01-01")], f"{year}-06-01", year=None)
+    expect_rurality(dated, 3, version)
+
+
+@pytest.mark.parametrize("year,status", [(2002, "before_first_version"), (1996, "before_first_version"), (None, "missing_year")])
+def test_rurality_before_the_first_version_or_without_a_year_is_empty_and_says_why(con, year, status):
+    setup(con, "spd", [record("spd")])
+    out = run(con, "spd", "link_by_era", inputs(year=year)).iloc[0]
+    assert (out.rurality_status, out.postcode_status) == (status, "matched")
+    assert pd.isna(out.rurality_version) and pd.isna(out.rurality_6fold) and pd.isna(out.rurality_8fold)
+    if year == 1996:                                      # SIMD has an edition for 1996; rurality has none
+        assert out.simd_status == "matched" and out.simd_edition == "2004"
+
+
+def test_rurality_in_the_latest_query_is_the_latest_version_throughout(con):
+    setup(con, "spd", [record("spd", seed=5)])
+    out = run(con, "spd", "link_latest", inputs()).iloc[0]
+    expect_rurality(out, 5, "2022")
+    assert "latest classification version" in out.rurality_policy
+
+
+@pytest.mark.parametrize("stored", ["outside_polygons", "ambiguous_polygons", "po_box"])
+def test_rurality_reports_the_reason_stored_with_the_record(con, stored):
+    box = dict(user="large_user", link="NO LINKP") if stored == "po_box" else {}
+    setup(con, "spd", [record("spd", rural_status=stored, **box)])
+    out = run(con, "spd", "link_by_era", inputs()).iloc[0]
+    assert out.rurality_status == stored and out.rurality_version == "2020"
+    assert pd.isna(out.rurality_6fold) and pd.isna(out.rurality_8fold)
+
+
+def test_rurality_is_the_matched_records_own_even_when_simd_comes_from_a_link(con):
+    """A large user takes its SIMD from the linked small user but reports its own location."""
+    setup(con, "spd", [record("spd", pc="AB11AA", user="large_user", link="AB1 1AB", seed=2), record("spd", pc="AB11AB", seed=6)])
+    out = run(con, "spd", "link_by_era", inputs()).iloc[0]
+    assert out.postcode_status == "linked_small_user" and out.simd_source_pc_norm == "AB11AB"
+    expect_rurality(out, 2, "2020")
+
+
+def test_rurality_is_withheld_when_no_single_record_stands_for_the_postcode(con):
+    rows = [record("spd", pc="AB11AAB", base="AB11AA", split="Y", seed=2), record("spd", pc="AB11AAC", base="AB11AA", split="Y", seed=3)]
+    setup(con, "spd", rows)
+    out = run(con, "spd", "link_by_era", inputs()).iloc[0]
+    assert (out.postcode_status, out.rurality_status) == ("split_a_missing", "split_a_missing")
+    assert pd.isna(out.rurality_6fold) and pd.isna(out.rurality_8fold)
+    setup(con, "spd", [])
+    out = run(con, "spd", "link_by_era", inputs()).iloc[0]
+    assert (out.postcode_status, out.rurality_status) == ("not_found", "not_found")
+
+
+def test_the_sspl_set_returns_no_rurality_columns():
+    for variant in FILES["sspl"]:
+        assert "rurality" not in render("sspl", variant)

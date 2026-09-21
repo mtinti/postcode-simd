@@ -99,7 +99,14 @@ def _header(name: str, p: dict, variant: str) -> str:
 """
 
 
-def _inputs_and_edition(variant: str, editions: list) -> str:
+def _inputs_and_edition(variant: str, editions: list, windows: list | None = None) -> str:
+    # windows is given for the SPD set only; the SSPL table carries one classification.
+    rural_cte = _rurality_era(windows) if windows else ""
+    rural_cols = (f",\n           u.version AS rurality_version,\n           '{RURALITY_POLICY_BY_YEAR}' AS rurality_policy"
+                  if windows else "")
+    rural_join = "\n    LEFT JOIN rurality_era u ON r.analysis_year BETWEEN u.year_from AND u.year_to" if windows else ""
+    latest_cols = (f",\n           '{windows[-1][2]}' AS rurality_version,\n           '{RURALITY_POLICY_LATEST}' AS rurality_policy"
+                   if windows else "")
     table4 = ",\n".join(f"        ({first}, {last}, '{ed}', {dict(editions)[ed]})" for first, last, ed in GUIDANCE_TABLE_4)
     if variant == "asof":
         return f"""WITH inputs AS (
@@ -135,7 +142,7 @@ era AS (
 {table4}
     ) AS v(year_from, year_to, edition, data_zone_vintage)
 ),
-chosen AS (
+{rural_cte}chosen AS (
     SELECT r.id, r.postcode, r.address_date, r.analysis_year, r.postcode_key,
            e.edition AS simd_edition, e.data_zone_vintage,
            'PHS v3.5 Table 4: edition by year of the health data' AS edition_policy,
@@ -144,9 +151,9 @@ chosen AS (
                WHEN r.analysis_year < 1 OR r.analysis_year > 9999 THEN 'invalid_year'
                WHEN e.edition IS NULL THEN 'no_edition'
                ELSE 'ok'
-           END AS edition_status
+           END AS edition_status{rural_cols}
     FROM requested r
-    LEFT JOIN era e ON r.analysis_year BETWEEN e.year_from AND e.year_to
+    LEFT JOIN era e ON r.analysis_year BETWEEN e.year_from AND e.year_to{rural_join}
 ),
 """
     if variant == "era":
@@ -172,7 +179,7 @@ era AS (
 {table4}
     ) AS v(year_from, year_to, edition, data_zone_vintage)
 ),
-chosen AS (
+{rural_cte}chosen AS (
     SELECT r.id, r.postcode, r.address_date, r.analysis_year, r.postcode_key,
            e.edition AS simd_edition, e.data_zone_vintage,
            'PHS v3.5 Table 4: edition by year of the health data' AS edition_policy,
@@ -181,9 +188,9 @@ chosen AS (
                WHEN r.analysis_year < 1 OR r.analysis_year > 9999 THEN 'invalid_year'
                WHEN e.edition IS NULL THEN 'no_edition'
                ELSE 'ok'
-           END AS edition_status
+           END AS edition_status{rural_cols}
     FROM requested r
-    LEFT JOIN era e ON r.analysis_year BETWEEN e.year_from AND e.year_to
+    LEFT JOIN era e ON r.analysis_year BETWEEN e.year_from AND e.year_to{rural_join}
 ),
 """
     vintages = ",\n".join(f"        ('{ed}', {v})" for ed, v in editions)
@@ -215,7 +222,7 @@ chosen AS (
     SELECT r.id, r.postcode, r.address_date, r.analysis_year, r.postcode_key,
            e.edition AS simd_edition, e.data_zone_vintage,
            'PHS v3.5 section 3.2.1.2: one edition throughout' AS edition_policy,
-           CASE WHEN e.edition IS NULL THEN 'unknown_edition' ELSE 'ok' END AS edition_status
+           CASE WHEN e.edition IS NULL THEN 'unknown_edition' ELSE 'ok' END AS edition_status{latest_cols}
     FROM requested r
     CROSS JOIN study_edition s
     LEFT JOIN era e ON e.edition = s.edition
@@ -230,6 +237,46 @@ def _source_columns(editions: list) -> str:
     cols += [f"phs_dz{v}_{g}" for v in _vintages(editions) for g in GEOGRAPHY]
     cols += [f"simd{ed}_{suffix}" for ed, _ in editions for _, suffix in MEASURES]
     return ",\n           ".join(cols)
+
+
+def _rurality_windows(registry) -> list:
+    """(year_from, year_to, version) by REFERENCE year: a version applies from the first year in
+    its name until the year before the next version's. Not by publication date: the 2022
+    version describes Census Day 2022 although it was published on 16 December 2024."""
+    versions = list(registry.rurality_versions)
+    return [(v["reference_year"], versions[i + 1]["reference_year"] - 1 if i + 1 < len(versions) else 9999, v["key"])
+            for i, v in enumerate(versions)]
+
+
+def _rurality_stem(key: str) -> str:
+    return "urbanrural" + key.replace("-", "_")
+
+
+def _rurality_era(windows: list) -> str:
+    rows = ",\n".join(f"        ({a}, {b}, '{k}')" for a, b, k in windows)
+    return f"""rurality_era AS (
+    -- STEP 3b. RURALITY VERSION (SPD only). PROJECT CHOICE: there is no PHS table for this.
+    -- The Scottish Government Urban Rural Classification version is chosen by its REFERENCE
+    -- year, the year it describes, not the date it was published: the 2022 version describes
+    -- Census Day 2022 and appeared on 16 December 2024. A version applies until the year before
+    -- the next one. Before {windows[0][0]} there is no version. The year is the same year that chose the
+    -- SIMD edition, so an overriding analysis_year holds the classification fixed as well.
+    SELECT * FROM (VALUES
+{rows}
+    ) AS v(year_from, year_to, version)
+),
+"""
+
+
+RURALITY_POLICY_BY_YEAR = "project choice: classification version by reference year of the health data"
+RURALITY_POLICY_LATEST = "project choice: latest classification version throughout"
+
+
+def _rurality_carried(windows: list) -> str:
+    # The matched record's stored classification of every version, carried so that step 7 can
+    # pick one. Like the rest of the own-record context these are the matched record's own,
+    # which for a large user means its own grid reference, not the linked small user's.
+    return ",\n           ".join(f"r.{_rurality_stem(k)}_{part}" for _, _, k in windows for part in ("6fold", "8fold", "status"))
 
 
 def _raw_context(raw: list) -> str:
@@ -251,7 +298,7 @@ def _tier(alias: str) -> str:
     return f"CASE WHEN {_part(alias)} = '' THEN 'A' ELSE {_part(alias)} END"
 
 
-def _selection_spd(editions: list, raw: list) -> str:
+def _selection_spd(editions: list, raw: list, windows: list) -> str:
     return f"""latest_lives AS (
     -- STEP 4. LATEST LIFE (SPD only). The directory keeps every life of a postcode. PHS's
     -- postcode file is "based on the most recent version of a postcode" and NRS's SSPL keeps
@@ -315,6 +362,7 @@ matched AS (
            r.candidate_count AS matched_candidate_count, r.spd_release AS index_release,
            r.pc_base AS matched_pc_base,
            {_raw_context(raw)},
+           {_rurality_carried(windows)},
            g.*
     FROM chosen c
     LEFT JOIN representative r ON r.pc_base = c.postcode_key
@@ -338,7 +386,7 @@ def _g_columns(editions: list) -> str:
     return ",\n           ".join(cols)
 
 
-def _selection_spd_asof(editions: list, raw: list) -> str:
+def _selection_spd_asof(editions: list, raw: list, windows: list) -> str:
     return f"""lookup_requests AS (
     -- Resolve each postcode/date pair once, then join back to every original input row.
     -- No unique patient ID or execution-dependent row number is needed (project choice).
@@ -405,6 +453,7 @@ matched AS (
            r.pc_base AS matched_pc_base,
            k.first_introduced_on, k.previous_life_deleted_on, k.next_life_introduced_on,
            {_raw_context(raw)},
+           {_rurality_carried(windows)},
            {_g_columns(editions)}
     FROM chosen c
     LEFT JOIN representative r ON r.requested_key = c.postcode_key AND r.requested_date = c.address_date
@@ -470,7 +519,7 @@ matched AS (
 """
 
 
-def _values_and_report(name: str, p: dict, editions: list, raw: list, variant: str = "era") -> str:
+def _values_and_report(name: str, p: dict, editions: list, raw: list, variant: str = "era", windows: list | None = None) -> str:
     vintages = _vintages(editions)
     selects = [_case("m.data_zone_vintage", [(v, f"m.source_dz{v}") for v in vintages], "data_zone_code", quote=False),
                _case("m.data_zone_vintage", [(v, f"m.source_iz{v}") for v in vintages], "intermediate_zone_code", quote=False)]
@@ -478,7 +527,29 @@ def _values_and_report(name: str, p: dict, editions: list, raw: list, variant: s
         selects.append(_case("m.data_zone_vintage", [(v, f"m.phs_dz{v}_{g}") for v in vintages], f"phs_{g}_code", quote=False))
     for out, suffix in MEASURES:
         selects.append(_case("m.simd_edition", [(ed, f"m.simd{ed}_{suffix}") for ed, _ in editions], out))
+    if windows:
+        for part, alias in (("6fold", "rurality_6fold_stored"), ("8fold", "rurality_8fold_stored"), ("status", "rurality_stored_status")):
+            selects.append(_case("m.rurality_version", [(k, f"m.{_rurality_stem(k)}_{part}") for _, _, k in windows], alias))
     measures = ",\n".join(selects)
+    rurality_report = "" if not windows else f"""
+       -- Rurality: the matched record's own Urban Rural Classification, in the version step 3b
+       -- chose. rurality_status says whether the two codes can be used and, when they are
+       -- empty, why: a postcode problem first, then no version for the year, then the reason
+       -- stored with the record (outside_polygons, ambiguous_polygons, po_box). The codes come
+       -- from this record's own grid reference, so read them beside matched_user_type; an
+       -- ambiguous postcode or a B or C part has no single record and so no codes.
+       s.rurality_version, s.rurality_policy,
+       CASE WHEN s.postcode_status IN ('ambiguous_postcode', 'split_a_missing') THEN NULL ELSE s.rurality_6fold_stored END AS rurality_6fold,
+       CASE WHEN s.postcode_status IN ('ambiguous_postcode', 'split_a_missing') THEN NULL ELSE s.rurality_8fold_stored END AS rurality_8fold,
+       CASE
+           WHEN s.matched_pc_norm IS NULL THEN s.postcode_status
+           WHEN s.postcode_status IN ('ambiguous_postcode', 'split_a_missing') THEN s.postcode_status
+           WHEN s.rurality_version IS NULL AND s.analysis_year IS NULL THEN 'missing_year'
+           WHEN s.rurality_version IS NULL AND s.analysis_year < {windows[0][0]} THEN 'before_first_version'
+           WHEN s.rurality_version IS NULL THEN 'invalid_year'
+           WHEN s.rurality_stored_status IS NOT NULL THEN s.rurality_stored_status
+           ELSE 'matched'
+       END AS rurality_status,"""
     nulls = " OR ".join([f"s.{out} IS NULL" for out, _ in MEASURES] + ["s.data_zone_code IS NULL"]
                         + [f"s.phs_{g}_code IS NULL" for g in GEOGRAPHY])
     if name == "spd" and variant == "asof":
@@ -577,7 +648,7 @@ SELECT
        s.source_is_current AS simd_source_is_current,
        s.data_zone_code, s.intermediate_zone_code, s.phs_hb_code, s.phs_hscp_code, s.phs_ca_code,
        {out_measures},
-       s.band_direction,
+       s.band_direction,{rurality_report}
        -- Own-record context: the matched record's NRS fields as ingested, names unchanged
        -- (Postcode as matched_postcode). For a large user these are its own fields, not the
        -- linked small user's; compare DataZone2011Code here with simd_source_pc_norm above.
@@ -599,11 +670,13 @@ def render(name: str, variant: str) -> str:
     if variant == "asof":
         if name != "spd":
             raise ValueError("Only the SPD set can answer a dated question: the SSPL holds one life per postcode")
-        return (_header(name, p, variant) + "\n" + _inputs_and_edition(variant, editions)
-                + _selection_spd_asof(editions, raw) + _values_and_report(name, p, editions, raw, variant))
-    selection = _selection_spd(editions, raw) if name == "spd" else _selection_sspl(editions, raw)
-    return (_header(name, p, variant) + "\n" + _inputs_and_edition(variant, editions)
-            + SHARED_BEGIN + "\n" + selection + _values_and_report(name, p, editions, raw, variant).rstrip("\n")
+        windows = _rurality_windows(registry)
+        return (_header(name, p, variant) + "\n" + _inputs_and_edition(variant, editions, windows)
+                + _selection_spd_asof(editions, raw, windows) + _values_and_report(name, p, editions, raw, variant, windows))
+    windows = _rurality_windows(registry) if name == "spd" else None
+    selection = _selection_spd(editions, raw, windows) if name == "spd" else _selection_sspl(editions, raw)
+    return (_header(name, p, variant) + "\n" + _inputs_and_edition(variant, editions, windows)
+            + SHARED_BEGIN + "\n" + selection + _values_and_report(name, p, editions, raw, variant, windows).rstrip("\n")
             + "\n" + SHARED_END + "\n")
 
 
