@@ -13,7 +13,8 @@ import pytest
 import shapely
 
 from simd_ingest.core.checks import BuildStopped, Report
-from simd_ingest.core.rurality import NESTING, STATUS_AMBIGUOUS, STATUS_OUTSIDE, classify, column_names, place, read_version
+from simd_ingest.core.rurality import (NESTING, STATUS_AMBIGUOUS, STATUS_OUTSIDE, AreaLost, classify, column_names, cut,
+                                         place, polygon_parts, read_version, status_name)
 
 WIDTH = 20_000
 COLUMNS = {"sixfold": "UR6FOLD", "eightfold": "UR8FOLD"}
@@ -119,9 +120,44 @@ def test_every_version_is_classified_in_row_order_with_shared_points_placed_once
     assert early == ("urbanrural2003_2004_6fold", "urbanrural2003_2004_8fold")
     assert out[early[1]].tolist()[:3] == [8, 1, 8] and out[late[1]].tolist()[:3] == [1, 8, 1]
     assert out[early[0]].tolist()[:3] == [6, 1, 6]
-    assert out.iloc[3].isna().all() and set(map(str, out.dtypes)) == {"Int8"}
+    codes = [c for c in out.columns if not c.endswith("_status")]
+    assert out.loc[20, codes].isna().all() and set(map(str, out[codes].dtypes)) == {"Int8"}
+    # The reason travels with the row, in both versions, and is null where the codes are present.
+    assert out[status_name("2022")].fillna("placed").tolist() == ["placed", "placed", "placed", STATUS_OUTSIDE]
+    assert out.loc[20, status_name("2003-2004")] == STATUS_OUTSIDE
+    assert str(out[status_name("2022")].dtype) == "string"
     assert report.observations["rurality.2022.outside_polygons"] == 1
     assert report.observations["rurality.2022.ambiguous_polygons"] == 0
+
+
+def test_an_ambiguous_row_keeps_its_own_status_apart_from_an_outside_one(tmp_path):
+    registry = SimpleNamespace(rurality_versions=(version(tmp_path),))
+    out = classify(index_of([(WIDTH, 5_000), (5_000, 90_000), (5_000, 5_000)]), registry, tmp_path, Report())
+    assert out[status_name("2022")].fillna("placed").tolist() == [STATUS_AMBIGUOUS, STATUS_OUTSIDE, "placed"]
+
+
+def test_polygons_nested_inside_a_collection_are_all_kept():
+    """What make_valid can return for a badly broken ring: a collection holding a MultiPolygon
+    beside a stray line. Unpacking one level leaves the MultiPolygon whole, and a filter on
+    Polygon then drops its whole area, so an interior point reads as outside."""
+    nested = shapely.GeometryCollection([
+        shapely.MultiPolygon([shapely.box(0, 0, 10, 10), shapely.box(20, 0, 30, 10)]),
+        shapely.GeometryCollection([shapely.box(40, 0, 50, 10), shapely.LineString([(0, 0), (5, 5)])]),
+        shapely.Point(1, 1)])
+    assert sorted(p.bounds[0] for p in polygon_parts(nested)) == [0, 20, 40]
+    assert polygon_parts(shapely.LineString([(0, 0), (1, 1)])) == [] and polygon_parts(None) == []
+    frame = gpd.GeoDataFrame({"sixfold": [1], "eightfold": [1]}, geometry=[nested], crs=27700)
+    out = place([5, 25, 45, 15], [5, 5, 5, 5], frame)
+    assert out.eightfold.tolist()[:3] == [1, 1, 1] and out.status.tolist()[3] == STATUS_OUTSIDE
+
+
+def test_cutting_that_loses_area_stops_rather_than_nulling_points(tmp_path, monkeypatch):
+    g, _ = polygons_of(tmp_path)
+    assert abs(cut(g).area.sum() - g.area.sum()) < 1.0               # the real cut loses nothing
+    import simd_ingest.core.rurality as module
+    monkeypatch.setattr(module, "polygon_parts", lambda geometry: [] if geometry.bounds[0] == 0 else [geometry])
+    with pytest.raises(AreaLost):
+        cut(g)
 
 
 def test_a_missing_grid_reference_stops_the_build(tmp_path):

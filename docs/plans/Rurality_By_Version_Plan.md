@@ -176,8 +176,11 @@ a rule after the geometry, and counted in the build report. The published 2022 c
 whatever NRS supplied.
 
 History table only. Per version, the 6-fold and 8-fold code where that version publishes
-them, named on the pattern of the existing columns, for example `UrbanRural6Fold2016Code`.
-Up to eighteen new columns, all nullable, source marked as derived rather than directory.
+them, named like the SIMD columns, for example `urbanrural2016_6fold`, plus one status column
+per version, `urbanrural2016_status`, null where the codes are present and otherwise the reason
+they are not, row by row. Twenty-seven new columns, all nullable, source marked as derived
+rather than directory. Review of 7bfd3c4 asked for the per-row status: an aggregate count
+cannot tell the SQL which rows were outside the polygons.
 
 Keep the two published 2022 columns exactly as NRS supplies them. The derived 2022 columns
 sit beside them, which keeps the validation permanently visible instead of overwriting a

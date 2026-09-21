@@ -39,9 +39,27 @@ STATUS_OUTSIDE, STATUS_AMBIGUOUS = "outside_polygons", "ambiguous_polygons"
 
 
 def column_names(key: str) -> tuple:
-    """The two output columns of a version, on the pattern of simd2004_rank."""
+    """The two code columns of a version, on the pattern of simd2004_rank."""
     stem = "urbanrural" + key.replace("-", "_")
     return f"{stem}_6fold", f"{stem}_8fold"
+
+
+def status_name(key: str) -> str:
+    """The column saying why a version's codes are null for a row; null when they are not."""
+    return "urbanrural" + key.replace("-", "_") + "_status"
+
+
+def polygon_parts(geometry) -> list:
+    """Every Polygon inside a geometry, however deeply nested. make_valid may return a
+    GeometryCollection holding a MultiPolygon beside stray lines; one level of unpacking would
+    leave that MultiPolygon whole and a type filter would then drop its entire area."""
+    if geometry is None or geometry.is_empty:
+        return []
+    if geometry.geom_type == "Polygon":
+        return [geometry]
+    if geometry.geom_type in ("MultiPolygon", "GeometryCollection"):
+        return [p for part in shapely.get_parts(geometry) for p in polygon_parts(part)]
+    return []                                             # lines and points carry no area
 
 
 def read_version(entry: dict, root: Path, report: Report) -> gpd.GeoDataFrame | None:
@@ -70,19 +88,32 @@ def read_version(entry: dict, root: Path, report: Report) -> gpd.GeoDataFrame | 
     return g if ok else None
 
 
+class AreaLost(ValueError):
+    """Cutting the polygons changed their area: geometry was dropped, so points would go null
+    for no reason a reader could see. Never tolerated."""
+
+
 def cut(polygons: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """The polygons split along a fixed 10 km grid. The grid is anchored at multiples of CELL,
-    not at the data's own corner, so the pieces do not depend on which polygons are present."""
-    minx, miny, maxx, maxy = polygons.total_bounds
+    not at the data's own corner, so the pieces do not depend on which polygons are present.
+
+    The pieces must cover exactly what the polygons covered. That is asserted, because the
+    alternative failure is silent: a dropped area only ever shows up as outside_polygons."""
+    rows = [(r.sixfold, r.eightfold, part) for r in polygons.itertuples() for part in polygon_parts(r.geometry)]
+    parts = gpd.GeoDataFrame({"sixfold": [r[0] for r in rows], "eightfold": [r[1] for r in rows]},
+                             geometry=[r[2] for r in rows], crs=polygons.crs)
+    minx, miny, maxx, maxy = parts.total_bounds
     xs = np.arange(np.floor(minx / CELL) * CELL, maxx, CELL)
     ys = np.arange(np.floor(miny / CELL) * CELL, maxy, CELL)
     grid = gpd.GeoDataFrame(geometry=[shapely.box(x, y, x + CELL, y + CELL) for x in xs for y in ys], crs=polygons.crs)
-    parts = polygons.explode(index_parts=False).reset_index(drop=True)
-    parts = parts[parts.geom_type == "Polygon"]           # make_valid can leave stray lines behind
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         pieces = gpd.overlay(parts, grid, how="intersection", keep_geom_type=True)
-    return pieces.explode(index_parts=False).reset_index(drop=True)
+    pieces = pieces.explode(index_parts=False).reset_index(drop=True)
+    before, after = float(polygons.geometry.area.sum()), float(pieces.geometry.area.sum())
+    if abs(before - after) > max(1.0, before * 1e-9):     # a square metre, or a part in a billion
+        raise AreaLost(f"polygons cover {before:.1f} m2 but their pieces cover {after:.1f} m2")
+    return pieces
 
 
 def place(easting: np.ndarray, northing: np.ndarray, polygons: gpd.GeoDataFrame) -> pd.DataFrame:
@@ -104,7 +135,9 @@ def place(easting: np.ndarray, northing: np.ndarray, polygons: gpd.GeoDataFrame)
 
 
 def classify(index: pd.DataFrame, registry: Registry, root: Path, report: Report) -> pd.DataFrame:
-    """Every version's two codes for every row of a postcode index, aligned to its rows.
+    """Every version's two codes and its status for every row of a postcode index, aligned to
+    its rows. The status is null where the codes are present and otherwise says why they are
+    not, row by row: a count in the build report cannot tell a reader which rows.
 
     Distinct points are placed once: a fifth of lives share a point with another. Post-office
     boxes are placed like any other row; withholding their result is a policy applied by the
@@ -125,6 +158,7 @@ def classify(index: pd.DataFrame, registry: Registry, root: Path, report: Report
         six, eight = column_names(entry["key"])
         out[six], out[eight] = placed.sixfold.to_numpy(), placed.eightfold.to_numpy()
         out[six], out[eight] = out[six].astype("Int8"), out[eight].astype("Int8")
+        out[status_name(entry["key"])] = pd.array(placed.status.to_numpy(), dtype="string")
         label = f"rurality.{entry['key']}"
         report.observe(f"{label}.outside_polygons", int((placed.status == STATUS_OUTSIDE).sum()))
         report.observe(f"{label}.ambiguous_polygons", int((placed.status == STATUS_AMBIGUOUS).sum()))
