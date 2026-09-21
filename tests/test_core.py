@@ -80,8 +80,16 @@ class KeyAndDateRules(unittest.TestCase):
 class SourceSafety(unittest.TestCase):
     def test_registry_loads_and_wrong_bytes_fail_verification(self):
         reg = load_registry(ROOT / "simd_ingest" / "sources.yaml")
-        self.assertEqual(len(reg.objects), 14)
-        self.assertEqual(len(reg.files), 20)
+        self.assertEqual(len(reg.objects), 23)
+        self.assertEqual(len(reg.files), 56)
+        # Nine classification versions, each a whole shapefile: four pinned members apiece.
+        self.assertEqual([v["key"] for v in reg.rurality_versions],
+                         ["2003-2004", "2005-2006", "2007-2008", "2009-2010", "2011-2012",
+                          "2013-2014", "2016", "2020", "2022"])
+        pinned = {f.path for f in reg.files}
+        for v in reg.rurality_versions:
+            stem = v["file"][:-4]
+            self.assertTrue(all(stem + ext in pinned for ext in (".shp", ".shx", ".dbf", ".prj")), v["key"])
         with tempfile.TemporaryDirectory() as temp:
             f = reg.files[0]
             path = Path(temp) / f.path

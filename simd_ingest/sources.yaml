@@ -1,6 +1,6 @@
 # Pinned sources for the postcode-SIMD build. Version 2, 10 September 2026.
 #
-# Fourteen remote objects supply twenty logical files. A remote object is what is
+# Twenty-three remote objects supply fifty-six logical files. A remote object is what is
 # downloaded; a logical file is what a builder reads. For a plain file they are the
 # same bytes. For an archive, the declared members are extracted and each member's
 # own hash is the pin. A pin is never updated by the pipeline: changed bytes stop it.
@@ -126,6 +126,100 @@ remote_objects:
       - {member: SG_SIMD_2020.dbf, path: data.gov.uk/SG_SIMD_2020/SG_SIMD_2020.dbf, sha256: 3eb0f27aa4aa2e2eaf94a06201e9dfb4597cd3ab5dffb375ee4917f9b37eee5a}
       - {member: "SIMD2020v2 - GIS files - glossary.xlsx", path: "data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx", sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c, role: documentation}
 
+  # Scottish Government Urban Rural Classification, one shapefile per version. Unlike the SIMD
+  # layers, which are read for their attribute table alone, these are read for their geometry,
+  # so the four members a shapefile needs are each pinned.
+  - key: sg_urbanrural_2003_2004
+    publisher: maps_gov_scot
+    url: https://maps.gov.scot/ATOM/shapefiles/SG_UrbanRural_2003_2004.zip
+    format: zip
+    sha256: 1389441b25a2804c55e0ba6aabb07083b789a9c16d08c08483b40b6b87905668
+    files:
+      - {member: SG_UrbanRural_2003_2004.shp, path: data.gov.uk/SG_UrbanRural_2003_2004/SG_UrbanRural_2003_2004.shp, sha256: 0df62a32ffcbedeae4a28b2a35380064d57e0a4c97341efb11b4f56783c438bb}
+      - {member: SG_UrbanRural_2003_2004.shx, path: data.gov.uk/SG_UrbanRural_2003_2004/SG_UrbanRural_2003_2004.shx, sha256: 30f1eaf5e9346f0de6b3fdec2d5ac07decafb657beb51676dc479466505bd351}
+      - {member: SG_UrbanRural_2003_2004.dbf, path: data.gov.uk/SG_UrbanRural_2003_2004/SG_UrbanRural_2003_2004.dbf, sha256: 8645ca6680598e86899399218151c9f80118794de622faa05d349f141a57b652}
+      - {member: SG_UrbanRural_2003_2004.prj, path: data.gov.uk/SG_UrbanRural_2003_2004/SG_UrbanRural_2003_2004.prj, sha256: d97d276680377a05a19a8b8030ae04c4a87e883a9e5c07d0c646e5402e773a89}
+  - key: sg_urbanrural_2005_2006
+    publisher: maps_gov_scot
+    url: https://maps.gov.scot/ATOM/shapefiles/SG_UrbanRural_2005_2006.zip
+    format: zip
+    sha256: f792012c3f8b086a1af07aa0384d60763c3218e76634e1656b7d98c6a0314261
+    files:
+      - {member: SG_UrbanRural_2005_2006.shp, path: data.gov.uk/SG_UrbanRural_2005_2006/SG_UrbanRural_2005_2006.shp, sha256: 16898b1d981af3f7b76637e64b34367a842eb86c5b9076b91c60c557eab82b66}
+      - {member: SG_UrbanRural_2005_2006.shx, path: data.gov.uk/SG_UrbanRural_2005_2006/SG_UrbanRural_2005_2006.shx, sha256: 328c5263c15d17b3223c1d22a530f465986eb3818f2f1360c78850f4a43304d0}
+      - {member: SG_UrbanRural_2005_2006.dbf, path: data.gov.uk/SG_UrbanRural_2005_2006/SG_UrbanRural_2005_2006.dbf, sha256: 6bb762fa3fc47e289004b9d68df857874b34fea48ad270397a5c84bf7400957d}
+      - {member: SG_UrbanRural_2005_2006.prj, path: data.gov.uk/SG_UrbanRural_2005_2006/SG_UrbanRural_2005_2006.prj, sha256: d97d276680377a05a19a8b8030ae04c4a87e883a9e5c07d0c646e5402e773a89}
+  - key: sg_urbanrural_2007_2008
+    publisher: maps_gov_scot
+    url: https://maps.gov.scot/ATOM/shapefiles/SG_UrbanRural_2007_2008.zip
+    format: zip
+    sha256: 9aa388730b66f81f28528752d0d05e5497229571f355e226734fdd73bd4318d8
+    files:
+      - {member: SG_UrbanRural_2007_2008.shp, path: data.gov.uk/SG_UrbanRural_2007_2008/SG_UrbanRural_2007_2008.shp, sha256: 305899304c3cdb0e67f534340b8b55d7dd044e3b6089a63b5c1fc4ba115a15ab}
+      - {member: SG_UrbanRural_2007_2008.shx, path: data.gov.uk/SG_UrbanRural_2007_2008/SG_UrbanRural_2007_2008.shx, sha256: 4872b17b3a5e25738981796230eeba6407f519c608414fc10f78dd7bdeeb7d1a}
+      - {member: SG_UrbanRural_2007_2008.dbf, path: data.gov.uk/SG_UrbanRural_2007_2008/SG_UrbanRural_2007_2008.dbf, sha256: f3ae67b9356d1549ad09dd532cc983f12aa5e0012e7d9e3a4116a3ef26ca942c}
+      - {member: SG_UrbanRural_2007_2008.prj, path: data.gov.uk/SG_UrbanRural_2007_2008/SG_UrbanRural_2007_2008.prj, sha256: d97d276680377a05a19a8b8030ae04c4a87e883a9e5c07d0c646e5402e773a89}
+  - key: sg_urbanrural_2009_2010
+    publisher: maps_gov_scot
+    url: https://maps.gov.scot/ATOM/shapefiles/SG_UrbanRural_2009_2010.zip
+    format: zip
+    sha256: d5db1b102f4ce08111eac925c03afa5f933f5fc46076b96bc77a93f651245b8d
+    files:
+      - {member: SG_UrbanRural_2009_2010.shp, path: data.gov.uk/SG_UrbanRural_2009_2010/SG_UrbanRural_2009_2010.shp, sha256: 905c2d3e8c53dd1013bc97daf6363a7e6341f299a68a26f6cc111adc52d1d1d6}
+      - {member: SG_UrbanRural_2009_2010.shx, path: data.gov.uk/SG_UrbanRural_2009_2010/SG_UrbanRural_2009_2010.shx, sha256: 9b7b483a6aac35951f6ca2b4cefa707180911d809173d7743e3c01f62f86e419}
+      - {member: SG_UrbanRural_2009_2010.dbf, path: data.gov.uk/SG_UrbanRural_2009_2010/SG_UrbanRural_2009_2010.dbf, sha256: 9ab63036cc4e31b2636d3a8ce71dcd2292f1232c7cc31ca46fb7a07dc8e6a8fe}
+      - {member: SG_UrbanRural_2009_2010.prj, path: data.gov.uk/SG_UrbanRural_2009_2010/SG_UrbanRural_2009_2010.prj, sha256: d97d276680377a05a19a8b8030ae04c4a87e883a9e5c07d0c646e5402e773a89}
+  - key: sg_urbanrural_2011_2012
+    publisher: maps_gov_scot
+    url: https://maps.gov.scot/ATOM/shapefiles/SG_UrbanRural_2011_2012.zip
+    format: zip
+    sha256: 5f6f57badf3508c202279577ac46be4b24af3859636f408b5d72befe09a612ea
+    files:
+      - {member: SG_UrbanRural_2011_2012.shp, path: data.gov.uk/SG_UrbanRural_2011_2012/SG_UrbanRural_2011_2012.shp, sha256: 67e8ad75ea4190588caa32446d95041d90802442740088e633467e126582e0db}
+      - {member: SG_UrbanRural_2011_2012.shx, path: data.gov.uk/SG_UrbanRural_2011_2012/SG_UrbanRural_2011_2012.shx, sha256: ab047b8af518f12e66503e39d0a41cba5726961b9d03daaab1f65622824b7911}
+      - {member: SG_UrbanRural_2011_2012.dbf, path: data.gov.uk/SG_UrbanRural_2011_2012/SG_UrbanRural_2011_2012.dbf, sha256: ee4e2d31514e37eabdb7cbe4bfd33510321313ac178246a74dd3a2b3f1207d92}
+      - {member: SG_UrbanRural_2011_2012.prj, path: data.gov.uk/SG_UrbanRural_2011_2012/SG_UrbanRural_2011_2012.prj, sha256: d97d276680377a05a19a8b8030ae04c4a87e883a9e5c07d0c646e5402e773a89}
+  - key: sg_urbanrural_2013_2014
+    publisher: maps_gov_scot
+    url: https://maps.gov.scot/ATOM/shapefiles/SG_UrbanRural_2013_2014.zip
+    format: zip
+    sha256: 725ed5bb2b722848a323f03fa034283da9edee0f822d6b911c09819113cc383e
+    files:
+      - {member: SG_UrbanRural_2013_2014.shp, path: data.gov.uk/SG_UrbanRural_2013_2014/SG_UrbanRural_2013_2014.shp, sha256: afb75ff5c03e00dfd955c4285affc29e7146e7454b8d694da5c518eb5efe4be0}
+      - {member: SG_UrbanRural_2013_2014.shx, path: data.gov.uk/SG_UrbanRural_2013_2014/SG_UrbanRural_2013_2014.shx, sha256: 236281d590217393e0baa510de683ecf987550f99463f1ea3632c17f24912649}
+      - {member: SG_UrbanRural_2013_2014.dbf, path: data.gov.uk/SG_UrbanRural_2013_2014/SG_UrbanRural_2013_2014.dbf, sha256: ad4122ffc7dd47c77932c9c8fc4f0f2d02f466867801afc01bf8179018bac728}
+      - {member: SG_UrbanRural_2013_2014.prj, path: data.gov.uk/SG_UrbanRural_2013_2014/SG_UrbanRural_2013_2014.prj, sha256: d97d276680377a05a19a8b8030ae04c4a87e883a9e5c07d0c646e5402e773a89}
+  - key: sg_urbanrural_2016
+    publisher: maps_gov_scot
+    url: https://maps.gov.scot/ATOM/shapefiles/SG_UrbanRural_2016.zip
+    format: zip
+    sha256: f44f3b22237bf43d5d5d3776193106257b0756189f4f2055905f48010be41208
+    files:
+      - {member: SG_UrbanRural_2016.shp, path: data.gov.uk/SG_UrbanRural_2016/SG_UrbanRural_2016.shp, sha256: be6b61cc12a4be84814d35585867b1eac446883554aa03768ae5839271a7ee77}
+      - {member: SG_UrbanRural_2016.shx, path: data.gov.uk/SG_UrbanRural_2016/SG_UrbanRural_2016.shx, sha256: d8b132ccdd29743230fc862fbf27daf17d906948665777a6f0aa0bef37714879}
+      - {member: SG_UrbanRural_2016.dbf, path: data.gov.uk/SG_UrbanRural_2016/SG_UrbanRural_2016.dbf, sha256: d411d8a039d9110235d42eba74698da18cce924284ccc74fcc47eda8c01c3383}
+      - {member: SG_UrbanRural_2016.prj, path: data.gov.uk/SG_UrbanRural_2016/SG_UrbanRural_2016.prj, sha256: d97d276680377a05a19a8b8030ae04c4a87e883a9e5c07d0c646e5402e773a89}
+  - key: sg_urbanrural_2020
+    publisher: maps_gov_scot
+    url: https://maps.gov.scot/ATOM/shapefiles/SG_UrbanRural_2020.zip
+    format: zip
+    sha256: 5969d3377170c59273c37ba029eca6cf8b770adec90a72f4ec5fec92e47ba429
+    files:
+      - {member: SG_UrbanRural_2020/SG_UrbanRural_2020.shp, path: data.gov.uk/SG_UrbanRural_2020/SG_UrbanRural_2020.shp, sha256: 483c55951c8624a6e8c2b8b3d584ef837f7a0ccec8ecf96499027d39bb4595f5}
+      - {member: SG_UrbanRural_2020/SG_UrbanRural_2020.shx, path: data.gov.uk/SG_UrbanRural_2020/SG_UrbanRural_2020.shx, sha256: 50eb0735b48602beaaa60bba7e9a836dd7fdbea3bba1c5b313580fbbe1c79b23}
+      - {member: SG_UrbanRural_2020/SG_UrbanRural_2020.dbf, path: data.gov.uk/SG_UrbanRural_2020/SG_UrbanRural_2020.dbf, sha256: 9b6ae20b1cd06f06dd54e2a688e9af62fecebe89713d76403ba875a6b0e15fdd}
+      - {member: SG_UrbanRural_2020/SG_UrbanRural_2020.prj, path: data.gov.uk/SG_UrbanRural_2020/SG_UrbanRural_2020.prj, sha256: d97d276680377a05a19a8b8030ae04c4a87e883a9e5c07d0c646e5402e773a89}
+  - key: sg_urbanrural_2022
+    publisher: maps_gov_scot
+    url: https://maps.gov.scot/ATOM/shapefiles/SG_UrbanRural_2022.zip
+    format: zip
+    sha256: 1b18bce2d4201d5f99dfd3bdacbf9fb5bc7a966294cee94262165e2c398d85a9
+    files:
+      - {member: SG_UrbanRural_2022/SG_UrbanRural_2022.shp, path: data.gov.uk/SG_UrbanRural_2022/SG_UrbanRural_2022.shp, sha256: e780bde46164ebeccbb29c19f340c9c831f42fef19dd237bb5eafbb193783171}
+      - {member: SG_UrbanRural_2022/SG_UrbanRural_2022.shx, path: data.gov.uk/SG_UrbanRural_2022/SG_UrbanRural_2022.shx, sha256: e12b4a74a881b9f6af2092cc81526604b356fe55208d3a05f48103fe421ea7c0}
+      - {member: SG_UrbanRural_2022/SG_UrbanRural_2022.dbf, path: data.gov.uk/SG_UrbanRural_2022/SG_UrbanRural_2022.dbf, sha256: 77a7f1bd8edf7baa220341344df677b08322fe9a53c04a60a7bb82d1a9cdb2a8}
+      - {member: SG_UrbanRural_2022/SG_UrbanRural_2022.prj, path: data.gov.uk/SG_UrbanRural_2022/SG_UrbanRural_2022.prj, sha256: d97d276680377a05a19a8b8030ae04c4a87e883a9e5c07d0c646e5402e773a89}
+
 # PHS population-weighted SIMD, one CSV per edition, keyed by data zone.
 # invert_bands: the 2004 and 2006 files publish bands with 1 = least deprived.
 phs_editions:
@@ -188,6 +282,31 @@ govscot_editions:
      columns: {datazone: datazone, rank: rank,   quintile: quintile,   decile: decile,   vigintile: vigintile,  population: sape2014}}
   - {key: '2020v2', file: data.gov.uk/SG_SIMD_2020/SG_SIMD_2020.dbf, dz_vintage: 2011, rows: 6976,
      columns: {datazone: datazone, rank: rankv2, quintile: quintilev2, decile: decilev2, vigintile: vigintilv2, population: sape2017}}
+
+# Urban Rural Classification versions, placed by point-in-polygon on each postcode life's own
+# grid reference (docs/plans/Rurality_By_Version_Plan.md). Every version is eight multipolygons
+# in British National Grid carrying the 6-fold and the 8-fold; the column names changed in 2016.
+# reference_year is the first year in the version's name, not its publication date: the 2022
+# version was published on 16 December 2024.
+rurality_versions:
+  - {key: '2003-2004', file: data.gov.uk/SG_UrbanRural_2003_2004/SG_UrbanRural_2003_2004.shp, reference_year: 2003, polygons: 8,
+     columns: {sixfold: UR6FOLD, eightfold: UR8FOLD}}
+  - {key: '2005-2006', file: data.gov.uk/SG_UrbanRural_2005_2006/SG_UrbanRural_2005_2006.shp, reference_year: 2005, polygons: 8,
+     columns: {sixfold: UR6FOLD, eightfold: UR8FOLD}}
+  - {key: '2007-2008', file: data.gov.uk/SG_UrbanRural_2007_2008/SG_UrbanRural_2007_2008.shp, reference_year: 2007, polygons: 8,
+     columns: {sixfold: UR6FOLD, eightfold: UR8FOLD}}
+  - {key: '2009-2010', file: data.gov.uk/SG_UrbanRural_2009_2010/SG_UrbanRural_2009_2010.shp, reference_year: 2009, polygons: 8,
+     columns: {sixfold: UR6FOLD, eightfold: UR8FOLD}}
+  - {key: '2011-2012', file: data.gov.uk/SG_UrbanRural_2011_2012/SG_UrbanRural_2011_2012.shp, reference_year: 2011, polygons: 8,
+     columns: {sixfold: UR6FOLD, eightfold: UR8FOLD}}
+  - {key: '2013-2014', file: data.gov.uk/SG_UrbanRural_2013_2014/SG_UrbanRural_2013_2014.shp, reference_year: 2013, polygons: 8,
+     columns: {sixfold: UR6FOLD, eightfold: UR8FOLD}}
+  - {key: '2016', file: data.gov.uk/SG_UrbanRural_2016/SG_UrbanRural_2016.shp, reference_year: 2016, polygons: 8,
+     columns: {sixfold: UR6Class, eightfold: UR8Class}}
+  - {key: '2020', file: data.gov.uk/SG_UrbanRural_2020/SG_UrbanRural_2020.shp, reference_year: 2020, polygons: 8,
+     columns: {sixfold: UR6Class, eightfold: UR8Class}}
+  - {key: '2022', file: data.gov.uk/SG_UrbanRural_2022/SG_UrbanRural_2022.shp, reference_year: 2022, polygons: 8,
+     columns: {sixfold: UR6Class, eightfold: UR8Class}}
 
 # The directory's own rank is an independent agreement check, not a join source.
 directory_rank: {edition: '2020v2', column: ScottishIndexOfMultipleDeprivation2020Rank}

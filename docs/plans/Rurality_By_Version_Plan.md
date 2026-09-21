@@ -148,8 +148,13 @@ a different class in an earlier version than the 2022 code it carries today. And
 an outlier: 870 points fall outside its polygons, spread across Scotland, of which 851 sit
 inside both neighbouring versions. Repairing the geometry recovers none; 612 lie within 50 m
 and 864 within 250 m of a polygon, so that file's coastline is drawn tighter than the others.
-Step 3's no-polygon rule therefore matters for one version, and needs deciding: leave them
-null with `outside_polygons`, or accept the nearest polygon within a stated tolerance.
+Step 3's no-polygon rule therefore matters for one version.
+
+**Decided, 21 September 2026: a point outside every polygon stays null, with status
+`outside_polygons`, in every version.** No nearest-polygon fallback initially, although NRS
+appears to use one. The cost is known and small: 870 lives in 2005-2006 and at most 34 in any
+other version. The build report counts them per version, so a later tolerance rule can be
+judged against real numbers.
 
 ### 3. The geometry step
 
@@ -159,8 +164,8 @@ non-trivial dependency this project has added; pin it like the others. Requireme
 - British National Grid throughout; assert each shapefile's reference system rather than
   reproject silently.
 - A spatial index, so 247,773 points against up to several thousand polygons stays fast.
-- A stated rule for a point that falls in no polygon (off the coast, in a gap): null with a
-  reason, never the nearest polygon unless that is decided and recorded.
+- A point that falls in no polygon (off the coast, in a gap) is null with status
+  `outside_polygons`. Decided; see section 2a. No nearest-polygon fallback.
 - A stated rule for a point exactly on a shared boundary, so the result is deterministic.
 - Deterministic output, so the history table's fingerprint stays reproducible.
 

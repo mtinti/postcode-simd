@@ -209,6 +209,32 @@ def test_registry_rejects_incomplete_or_inconsistent_edition_registration(tmp_pa
         load_registry(path)
 
 
+@pytest.mark.parametrize("fault", ["member_not_pinned", "shp_not_pinned", "duplicate_version", "years_out_of_order", "missing_fold"])
+def test_registry_rejects_an_incomplete_or_inconsistent_rurality_version(tmp_path, fault):
+    """A shapefile is four files and a version is read for two named columns. Each of these
+    would otherwise fail late, inside the geometry library, or silently pick the wrong year."""
+    from support import ROOT
+    real = yaml.safe_load((ROOT / "simd_ingest" / "sources.yaml").read_text())
+    path = tmp_path / "sources.yaml"
+    path.write_text(yaml.safe_dump(real))
+    load_registry(path)                                   # the real registry is accepted as it stands
+    versions = real["rurality_versions"]
+    if fault == "member_not_pinned":
+        obj = next(o for o in real["remote_objects"] if o["key"] == "sg_urbanrural_2022")
+        obj["files"] = [f for f in obj["files"] if not f["path"].endswith(".prj")]
+    elif fault == "shp_not_pinned":
+        versions[0]["file"] = "data.gov.uk/SG_UrbanRural_1999/SG_UrbanRural_1999.shp"
+    elif fault == "duplicate_version":
+        versions.append(dict(versions[-1]))
+    elif fault == "years_out_of_order":
+        versions[0]["reference_year"], versions[1]["reference_year"] = versions[1]["reference_year"], versions[0]["reference_year"]
+    else:
+        del versions[0]["columns"]["eightfold"]
+    path.write_text(yaml.safe_dump(real))
+    with pytest.raises(ValueError):
+        load_registry(path)
+
+
 def test_real_pinned_data_build_matches_contract_and_known_fingerprint(tmp_path):
     from support import ROOT, known_snapshot, source_root, write_config
     source = source_root()

@@ -40,6 +40,9 @@ def project(tmp: Path, release="test-1", extra_edition=False) -> Path:
     raw = yaml.safe_load((ROOT / "simd_ingest/sources.yaml").read_text())
     raw["spd_release"] = release
     raw["remote_objects"] = []
+    # The synthetic project pins no classification shapefiles yet. The geometry step will
+    # give it small ones; until then it declares no versions rather than unpinned ones.
+    raw["rurality_versions"] = []
     sources = tmp / "sources"
     sources.mkdir(exist_ok=True)
 
