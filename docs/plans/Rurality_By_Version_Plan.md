@@ -101,6 +101,56 @@ can be failed:
 If the gate fails for current small users, stop and write down why; the rest is not worth
 building.
 
+### 2a. Feasibility result, 21 September 2026: the gate passes
+
+Run in a scratch environment (geopandas 1.1.4, shapely 2.1.2), thresholds fixed beforehand at
+99.5% for current small users and 99% for every other cohort over 1,000 lives. Raw own-point
+results, no suppression, every life in the denominator, a point in no polygon counted wrong.
+
+| Cohort | Lives | Agreement, 6-fold and 8-fold alike | Wrong |
+| --- | ---: | ---: | ---: |
+| All | 247,773 | 99.9988% | 3 |
+| Current small user (the 99.5% gate) | 157,282 | 100% | 0 |
+| Deleted small user | 39,487 | 99.9924% | 3 |
+| Large user, not a box | 19,279 | 100% | 0 |
+| Post-office box | 31,725 | 100% | 0 |
+| Split part | 1,263 | 99.92% | 1 |
+| Deleted, blank positional accuracy | 84,307 | 99.9964% | 3 |
+
+No point fell in more than one class, so the boundary rule in step 3 has nothing to decide in
+2022. Every disagreement is a point outside every polygon; none is a different class. The
+three: G84 7BD (0.2 m from a polygon of its published class), DG6 4UF (820 m, nearest matches
+the published class) and DD11 2PTB (17 km out to sea, nearest does not match). NRS therefore
+appears to use point-in-polygon with a nearest-polygon fallback of some kind, which this
+project does not need to imitate for three deleted lives from the 1970s.
+
+Attribute tables: all nine versions carry the 6-fold and the 8-fold, in British National Grid
+(EPSG:27700), as eight multipolygons. Columns are `UR6FOLD`/`UR8FOLD` to 2013-2014 and
+`UR6Class`/`UR8Class` from 2016; the 2-fold and 3-fold appear from 2013-2014. Seven of the
+nine files contain self-intersecting rings; repairing them changed no result in 2022.
+
+All nine versions, every life:
+
+| Version | In no polygon | 6-fold differs from the published 2022 code |
+| --- | ---: | ---: |
+| 2003-2004 | 30 | 12.3% |
+| 2005-2006 | 870 | 12.7% |
+| 2007-2008 | 34 | 11.7% |
+| 2009-2010 | 34 | 11.2% |
+| 2011-2012 | 34 | 10.7% |
+| 2013-2014 | 7 | 11.9% |
+| 2016 | 3 | 11.1% |
+| 2020 | 4 | 7.4% |
+| 2022 | 3 | 0 |
+
+Two findings for the steps that follow. The work is worth doing: about one life in nine has
+a different class in an earlier version than the 2022 code it carries today. And 2005-2006 is
+an outlier: 870 points fall outside its polygons, spread across Scotland, of which 851 sit
+inside both neighbouring versions. Repairing the geometry recovers none; 612 lie within 50 m
+and 864 within 250 m of a polygon, so that file's coastline is drawn tighter than the others.
+Step 3's no-polygon rule therefore matters for one version, and needs deciding: leave them
+null with `outside_polygons`, or accept the nearest polygon within a stated tolerance.
+
 ### 3. The geometry step
 
 A new module, `simd_ingest/core/rurality.py`. It needs a geometry library, which is the first
