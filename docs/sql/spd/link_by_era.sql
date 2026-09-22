@@ -575,6 +575,7 @@ SELECT
            WHEN s.matched_pc_norm IS NULL THEN s.postcode_status
            WHEN s.postcode_status IN ('ambiguous_postcode', 'split_a_missing') THEN s.postcode_status
            WHEN s.rurality_version IS NULL AND s.analysis_year IS NULL THEN 'missing_year'
+           WHEN s.rurality_version IS NULL AND (s.analysis_year < 1 OR s.analysis_year > 9999) THEN 'invalid_year'
            WHEN s.rurality_version IS NULL AND s.analysis_year < 2003 THEN 'before_first_version'
            WHEN s.rurality_version IS NULL THEN 'invalid_year'
            WHEN s.rurality_stored_status IS NOT NULL THEN s.rurality_stored_status

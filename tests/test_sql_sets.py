@@ -708,7 +708,8 @@ def test_rurality_version_follows_the_reference_year_not_the_publication_date(co
     expect_rurality(dated, 3, version)
 
 
-@pytest.mark.parametrize("year,status", [(2002, "before_first_version"), (1996, "before_first_version"), (None, "missing_year")])
+@pytest.mark.parametrize("year,status", [(2002, "before_first_version"), (1996, "before_first_version"), (None, "missing_year"),
+                                         (0, "invalid_year"), (-1, "invalid_year"), (10000, "invalid_year")])
 def test_rurality_before_the_first_version_or_without_a_year_is_empty_and_says_why(con, year, status):
     setup(con, "spd", [record("spd")])
     out = run(con, "spd", "link_by_era", inputs(year=year)).iloc[0]
@@ -716,6 +717,10 @@ def test_rurality_before_the_first_version_or_without_a_year_is_empty_and_says_w
     assert pd.isna(out.rurality_version) and pd.isna(out.rurality_6fold) and pd.isna(out.rurality_8fold)
     if year == 1996:                                      # SIMD has an edition for 1996; rurality has none
         assert out.simd_status == "matched" and out.simd_edition == "2004"
+    if status == "invalid_year":                          # the two statuses agree on a year that is no year
+        assert out.simd_status == "invalid_year"
+        dated = as_of(con, [dict()], "2020-06-01", year=year)
+        assert dated.rurality_status == "invalid_year"
 
 
 def test_rurality_in_the_latest_query_is_the_latest_version_throughout(con):

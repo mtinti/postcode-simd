@@ -116,9 +116,15 @@ def agreement_gate(index: pd.DataFrame, placed: pd.DataFrame, registry: Registry
              & (placed[eight].astype("Int64").astype("string") == index[gate["eightfold"]].astype("string"))).fillna(False).to_numpy()
     current = index["is_current"].astype(bool).to_numpy()
     small = (index["spd_user_type"] == "small_user").to_numpy()
+    split = (index["pc_norm"] != index["pc_base"]).to_numpy()
+    blank_accuracy = index["GridLinkPositionalAccuracy"].astype("string").fillna("").str.strip().eq("").to_numpy()
+    # The cohorts the plan named. Split parts and lives with no recorded positional accuracy
+    # are gated on their own because each is a small slice of a large cohort that could pass
+    # while they fail: 1,263 split parts at 92% leave the small users above 99.5%.
     cohorts = {"current_small_user": current & small, "deleted_small_user": ~current & small,
                "current_large_user": current & ~small, "deleted_large_user": ~current & ~small,
-               "po_box": is_po_box(index).to_numpy()}
+               "po_box": is_po_box(index).to_numpy(), "split_part": split,
+               "deleted_blank_positional_accuracy": ~current & blank_accuracy}
     rates = {}
     for name, members in cohorts.items():
         n = int(members.sum())

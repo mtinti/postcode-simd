@@ -303,6 +303,7 @@ SELECT c.id, c.postcode, c.address_date, c.analysis_year, c.edition AS simd_edit
            WHEN m.candidates > 1 AND m.part = ''                   THEN 'ambiguous_postcode'
            WHEN m.part NOT IN ('', 'A')                            THEN 'split_a_missing'
            WHEN c.rurality_version IS NULL AND c.analysis_year IS NULL THEN 'missing_year'
+           WHEN c.rurality_version IS NULL AND (c.analysis_year < 1 OR c.analysis_year > 9999) THEN 'invalid_year'
            WHEN c.rurality_version IS NULL AND c.analysis_year < 2003  THEN 'before_first_version'
            WHEN c.rurality_version IS NULL                         THEN 'invalid_year'
            ELSE COALESCE(

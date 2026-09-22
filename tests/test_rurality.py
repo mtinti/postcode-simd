@@ -200,8 +200,11 @@ GATE = {"version": "2022", "sixfold": "UrbanRural6Fold2022Code", "eightfold": "U
         "current_small_user": 0.995, "other_cohorts": 0.99, "min_cohort": 1000}
 
 
-def gated_index(points, published, link=None, user="small_user", current=True) -> pd.DataFrame:
+def gated_index(points, published, link=None, user="small_user", current=True, split=False, accuracy="1") -> pd.DataFrame:
     index = index_of(points)
+    index["pc_base"] = [f"AB1{n:03}" for n in range(len(points))]
+    index["pc_norm"] = index["pc_base"] + ("A" if split else "")
+    index["GridLinkPositionalAccuracy"] = accuracy
     index["UrbanRural8Fold2022Code"] = [str(c) for c in published]
     index["UrbanRural6Fold2022Code"] = [str(NESTING[c]) for c in published]
     index["spd_user_type"], index["is_current"] = user, current
@@ -258,6 +261,22 @@ def test_a_small_cohort_is_reported_but_only_a_large_one_is_gated(tmp_path):
         agreement_gate(index, classify(index, registry, tmp_path, Report()), registry, report)
         assert [c.name for c in report.blocking_failures] == failures
         assert report.observations["rurality.agreement"]["deleted_small_user"]["agreement"] == 0.0
+
+
+@pytest.mark.parametrize("cohort,kwargs", [("split_part", dict(split=True)),
+                                           ("deleted_blank_positional_accuracy", dict(current=False, accuracy=""))])
+def test_a_small_cohort_that_fails_is_caught_even_when_the_large_one_it_sits_in_passes(tmp_path, cohort, kwargs):
+    """The reviewer's case: 1,263 split parts at 92% agreement inside 157,000 small users at 99.67%
+    passed, because split parts were not a cohort of their own. Here five good rows carry the
+    large cohort and four bad ones fail the small one they also belong to."""
+    from simd_ingest.core.rurality import agreement_gate
+    registry = SimpleNamespace(rurality_versions=(version(tmp_path),), rurality_published={**GATE, "min_cohort": 3, "other_cohorts": 0.99})
+    good = gated_index([(5_000, 5_000)] * 5, [1] * 5)
+    bad = gated_index([(5_000, 5_000)] * 4, [8] * 4, **kwargs)
+    index, report = pd.concat([good, bad], ignore_index=True), Report()
+    agreement_gate(index, classify(index, registry, tmp_path, Report()), registry, report)
+    assert report.observations["rurality.agreement"][cohort] == {"lives": 4, "agreement": 0.0}
+    assert cohort in {c.name.split(".")[-1] for c in report.blocking_failures}
 
 
 def test_an_empty_principal_cohort_is_a_failure_not_a_pass(tmp_path):
