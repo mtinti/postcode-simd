@@ -481,8 +481,8 @@ def as_of(con, rows, on, year=2020, postcode="AB1 1AA"):
     ("1975-06-01", "matched", 1, None, "1978-11-01"),
     ("1973-08-01", "matched", 1, None, "1978-11-01"),          # the introduction day is inside the life
     ("1978-03-31", "matched", 1, None, "1978-11-01"),          # the day before deletion is inside
-    ("1978-04-01", "between_lives", None, "1978-04-01", "1978-11-01"),  # the deletion day is not
-    ("1978-06-01", "between_lives", None, "1978-04-01", "1978-11-01"),
+    ("1978-04-01", "previous_life", 1, "1978-04-01", "1978-11-01"),  # the deletion day is not: the previous life
+    ("1978-06-01", "previous_life", 1, "1978-04-01", "1978-11-01"),  # in the gap: the life before it, never the reissue
     ("1978-11-01", "matched", 2, "1978-04-01", None),          # the re-introduction day starts the new life
     ("1990-06-01", "matched", 2, "1978-04-01", None),
     ("1970-01-01", "postcode_not_yet_introduced", None, None, "1973-08-01"),
@@ -502,11 +502,14 @@ def test_as_of_takes_the_life_containing_the_address_date(con, on, status, seed,
 
 
 def test_as_of_after_the_only_life_is_deleted_by_date(con):
-    life = [dict(intro="1973-08-01", deleted="1999-03-22")]
+    """A postcode retired before the address date: its last life is used, reported as
+    previous_life, with the deletion date beside it so the gap can be judged."""
+    life = [dict(intro="1973-08-01", deleted="1999-03-22", seed=4)]
     out = as_of(con, life, "2005-06-10")
-    assert (out.postcode_status, str(out.previous_life_deleted_on.date())) == ("postcode_deleted_by_date", "1999-03-22")
-    assert pd.isna(out.next_life_introduced_on)
-    assert as_of(con, life, "1999-03-22").postcode_status == "postcode_deleted_by_date"
+    assert (out.postcode_status, out.simd_status, str(out.previous_life_deleted_on.date())) == ("previous_life", "matched", "1999-03-22")
+    assert pd.isna(out.next_life_introduced_on) and out.matched_is_current == False
+    expect_edition(out, record("spd", seed=4), "2020v2")
+    assert as_of(con, life, "1999-03-22").postcode_status == "previous_life"
     assert as_of(con, life, "1999-03-21").postcode_status == "matched"
     assert as_of(con, life, "2005-06-10", postcode="ZZ1 1ZZ").postcode_status == "not_found"
 
@@ -562,13 +565,41 @@ def test_as_of_large_user_link_uses_the_target_life_valid_on_the_date(con, on, s
         assert out.simd_status == status and pd.isna(out.simd_source_pc_norm)
 
 
+def test_as_of_previous_life_is_the_last_one_that_ended_before_the_date_and_never_a_later_one(con):
+    """Three lives: 1973 to 1978, 1980 to 1990, and a reissue from 2000. A date in each gap
+    takes the life just before it, never the next, and a same-day record never counts."""
+    lives = [dict(intro="1973-08-01", deleted="1978-04-01", seed=1), dict(intro="1980-01-01", deleted="1990-01-01", seed=2),
+             dict(intro="1995-05-05", deleted="1995-05-05", seed=5), dict(intro="2000-01-01", seed=3)]
+    for on, seed in (("1979-06-01", 1), ("1995-06-01", 2), ("1999-06-01", 2)):
+        out = as_of(con, lives, on)
+        assert out.postcode_status == "previous_life", on
+        expect_edition(out, record("spd", seed=seed), "2020v2")
+    assert as_of(con, lives, "1972-01-01").postcode_status == "postcode_not_yet_introduced"
+
+
+def test_as_of_previous_life_keeps_every_rule_that_applies_to_a_record(con):
+    """The fallback changes only which life is looked at. A retired PO box still gets nothing,
+    and a retired large user takes its link as it stood on the life's last day."""
+    box = [dict(intro="1990-01-01", deleted="2000-01-01", user="large_user", link="NO LINKP")]
+    out = as_of(con, box, "2005-06-01")
+    assert (out.postcode_status, out.simd_status) == ("po_box", "po_box") and pd.isna(out.simd_rank)
+    linked = [dict(intro="1990-01-01", deleted="2000-01-01", user="large_user", link="AB1 1AB"),
+              dict(pc="AB11AB", intro="1990-01-01", deleted="2000-01-01", seed=6)]      # the link ended the same day
+    out = as_of(con, linked, "2005-06-01")
+    assert (out.postcode_status, out.simd_source_pc_norm) == ("previous_life", "AB11AB")
+    expect_edition(out, record("spd", seed=6), "2020v2")
+    gone = [dict(intro="1990-01-01", deleted="2000-01-01", user="large_user", link="AB1 1AB"),
+            dict(pc="AB11AB", intro="1990-01-01", deleted="1995-01-01", seed=6)]        # the link had ended earlier
+    assert as_of(con, gone, "2005-06-01").postcode_status == "linked_small_user_not_found"
+
+
 def test_as_of_every_input_row_comes_back_once(con):
     setup(con, "spd", [record("spd", **r) for r in LIVES])
     cohort = pd.concat([inputs(on="1975-06-01"), inputs(on="1975-06-01"), inputs(on="1978-06-01"), inputs("ZZ1 1ZZ", on="1975-06-01")], ignore_index=True)
     cohort["id"] = [1, 1, None, None]
     out = run(con, "spd", "link_as_of", cohort)
     assert len(out) == 4 and out.id.isna().sum() == 2
-    assert sorted(out.postcode_status) == ["between_lives", "matched", "matched", "not_found"]
+    assert sorted(out.postcode_status) == ["matched", "matched", "not_found", "previous_life"]
     assert list(out.columns[:len(CONTRACT)]) == CONTRACT and out.columns.str.lower().is_unique
     assert run(con, "spd", "link_as_of", cohort.iloc[:0]).empty
 
@@ -581,7 +612,7 @@ def test_as_of_pairs_are_stable_with_duplicate_ids_dates_and_input_order(con):
         ("AB1 1AA", "1975-06-01", 2005, "matched", 1, "2006"),
         (" ab1 1aa ", "1975-06-01", 2020, "matched", 1, "2020v2"),
         ("AB1 1AA", "1990-06-01", 2020, "matched", 2, "2020v2"),
-        ("AB1 1AA", "1978-06-01", 2020, "between_lives", None, "2020v2"),
+        ("AB1 1AA", "1978-06-01", 2020, "previous_life", 1, "2020v2"),
         ("AB1 1AB", "1975-06-01", 2020, "matched", 3, "2020v2"),
         ("AB1 1AA", None, 2020, "missing_address_date", None, "2020v2"),
         ("ZZ1 1ZZ", None, 2020, "not_found", None, "2020v2"),
@@ -620,7 +651,11 @@ def test_as_of_real_recycled_and_deleted_postcodes(real):
     real.register("cases", cohort)  # a registered frame would shadow the cohort view created below
     sql = (SQL / "spd" / "link_as_of.sql").read_text().replace(DEMO["link_as_of"], "    SELECT id, postcode, address_date, analysis_year FROM cohort")
     out = real.execute(sql.replace("FROM cohort", "FROM cases")).df().set_index("id").sort_index()
-    assert out.postcode_status.tolist() == ["matched", "between_lives", "matched", "matched", "postcode_deleted_by_date", "postcode_not_yet_introduced"]
+    assert out.postcode_status.tolist() == ["matched", "previous_life", "matched", "matched", "previous_life", "postcode_not_yet_introduced"]
+    # June 1978 falls between FK17 8DS's lives: the 1973 life, S01013116, never the 1978 reissue.
+    assert out.loc[2, "data_zone_code"] == "S01013116" and str(out.loc[2, "matched_introduced_on"].date()) == "1973-08-01"
+    # TD9 7PQ on its deletion day: its last life, retired that day, with the date beside it.
+    assert out.loc[5, "simd_status"] == "matched" and not out.loc[5, "matched_is_current"]
     assert out.loc[1, "data_zone_code"] == "S01013116" and out.loc[1, "phs_pw_scotland_quintile"] == 5 and not out.loc[1, "matched_is_current"]
     assert out.loc[3, "data_zone_code"] == "S01013113" and out.loc[3, "phs_pw_scotland_quintile"] == 3 and out.loc[3, "matched_is_current"]
     assert out.loc[4, "phs_pw_scotland_quintile"] == 3 and not out.loc[4, "matched_is_current"]
@@ -671,8 +706,7 @@ def test_the_walkthrough_gives_the_same_answers_as_the_generated_dated_query(rea
     short = run("walkthrough_as_of.sql")[shared].sort_values("id").reset_index(drop=True)
     pd.testing.assert_frame_equal(full, short)
     # The cases must actually exercise the interesting branches, or agreeing proves little.
-    assert set(full.postcode_status) >= {"matched", "a_part", "linked_small_user",
-                                         "between_lives", "postcode_deleted_by_date", "not_found"}
+    assert set(full.postcode_status) >= {"matched", "a_part", "linked_small_user", "previous_life", "not_found"}
     # The derived rows really were derived: the reported year is the year of the address date,
     # and one of them lands before SIMD began, where deriving leaves no edition to use.
     derived = full[full.id > 10]

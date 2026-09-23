@@ -92,13 +92,43 @@ chosen AS (
     LEFT JOIN era e ON r.analysis_year BETWEEN e.year_from AND e.year_to
     LEFT JOIN rurality_era u ON r.analysis_year BETWEEN u.year_from AND u.year_to
 ),
+bounds AS (
+    -- When no life covers the date, say where the date falls rather than only that it failed:
+    -- before the postcode existed, in a gap between two lives, or after it was retired. That
+    -- turns a linkage failure into a reviewable finding about the address.
+    SELECT c.id,
+           MIN(p.introduced_on) AS first_introduced_on,
+           MIN(CASE WHEN p.introduced_on > c.address_date THEN p.introduced_on END) AS next_life,
+           MAX(CASE WHEN p.deleted_on <= c.address_date THEN p.deleted_on END)      AS previous_end,
+           -- The day the last real life before the date ended; a same-day record never lived.
+           MAX(CASE WHEN p.deleted_on <= c.address_date AND p.introduced_on < p.deleted_on
+                    THEN p.deleted_on END)                                           AS last_end
+    FROM chosen c
+    JOIN postcode_simd_history p ON p.pc_base = c.postcode_key
+    GROUP BY c.id
+),
+life_choice AS (
+    -- STEP 4a. Which life to look for. Normally the one in force on the address date. When no
+    -- life covers the date but the postcode had one that ended before it, take that previous
+    -- life instead (PROJECT CHOICE): the postcode was retired, or retired and later reissued
+    -- elsewhere, after the address was recorded. The usual cause is a Royal Mail recoding the
+    -- patient record never caught up with, and the building did not move. Never a later life.
+    SELECT c.id, b.last_end,
+           CASE WHEN EXISTS (SELECT 1 FROM postcode_simd_history p
+                             WHERE p.pc_base = c.postcode_key AND p.introduced_on <= c.address_date
+                               AND (p.deleted_on IS NULL OR p.deleted_on > c.address_date)) THEN 0
+                WHEN b.last_end IS NOT NULL THEN 1
+           END AS from_previous_life
+    FROM chosen c
+    LEFT JOIN bounds b ON b.id = c.id
+),
 lives AS (
     -- STEP 4. The postcode life that was in force on the address date. A life runs from
     -- introduced_on up to but NOT including deleted_on, so a record deleted that day is not
     -- valid on it. This is the step that matters: a postcode can be retired and later reissued
     -- somewhere else entirely, and taking the latest life instead would give a 1975 address the
     -- data zone of a place the patient never lived.
-    SELECT c.id, c.address_date,
+    SELECT c.id, c.address_date, lc.from_previous_life,
            p.pc_norm, p.pc_base, p.introduced_on, p.deleted_on, p.is_current,
            -- The NRS split suffix: '' for a whole postcode, else A, B or C. Taken from the key
            -- and its base, not the last character: whole postcodes end in A, B and C too.
@@ -119,10 +149,12 @@ lives AS (
            p.urbanrural2020_6fold, p.urbanrural2020_8fold, p.urbanrural2020_status,
            p.urbanrural2022_6fold, p.urbanrural2022_8fold, p.urbanrural2022_status
     FROM chosen c
+    JOIN life_choice lc ON lc.id = c.id
     JOIN postcode_simd_history p
       ON p.pc_base = c.postcode_key
-     AND p.introduced_on <= c.address_date
-     AND (p.deleted_on IS NULL OR p.deleted_on > c.address_date)
+     AND ((lc.from_previous_life = 0 AND p.introduced_on <= c.address_date
+           AND (p.deleted_on IS NULL OR p.deleted_on > c.address_date))
+       OR (lc.from_previous_life = 1 AND p.deleted_on = lc.last_end AND p.introduced_on < p.deleted_on))
 ),
 ranked AS (
     -- STEP 5. A postcode that straddles a boundary is held by NRS as separate A, B and C parts,
@@ -142,18 +174,6 @@ ranked AS (
 ),
 matched AS (
     SELECT * FROM ranked WHERE preference = 1
-),
-bounds AS (
-    -- When no life covers the date, say where the date falls rather than only that it failed:
-    -- before the postcode existed, in a gap between two lives, or after it was retired. That
-    -- turns a linkage failure into a reviewable finding about the address.
-    SELECT c.id,
-           MIN(p.introduced_on) AS first_introduced_on,
-           MIN(CASE WHEN p.introduced_on > c.address_date THEN p.introduced_on END) AS next_life,
-           MAX(CASE WHEN p.deleted_on <= c.address_date THEN p.deleted_on END)      AS previous_end
-    FROM chosen c
-    JOIN postcode_simd_history p ON p.pc_base = c.postcode_key
-    GROUP BY c.id
 ),
 source AS (
     -- STEP 6. A large-user postcode is a single address with no boundary of its own, so it has
@@ -188,15 +208,18 @@ source AS (
                           WHEN m.part NOT IN ('', 'A')           THEN NULL
                           WHEN m.spd_user_type = 'small_user'    THEN m.pc_norm
                           ELSE UPPER(REPLACE(m.LinkedSmallUserPostcode, ' ', '')) END
-     AND g.introduced_on <= m.address_date
-     AND (g.deleted_on IS NULL OR g.deleted_on > m.address_date)
+     -- ... valid on the address date, or for a previous life on that life's last day.
+     AND ((m.from_previous_life = 0 AND g.introduced_on <= m.address_date
+           AND (g.deleted_on IS NULL OR g.deleted_on > m.address_date))
+       OR (m.from_previous_life = 1 AND g.introduced_on < m.deleted_on
+           AND (g.deleted_on IS NULL OR g.deleted_on >= m.deleted_on)))
 )
 -- STEP 7 and 8. Report. The values come from the record that supplied the geography, read
 -- through the data zone of the edition's own vintage: 2001 zones for SIMD 2004 to 2012, 2011
 -- zones for 2016 and 2020v2. Nothing is recalculated. Band 1 is the most deprived in every
 -- edition, because ingestion already turned the 2004 and 2006 bands the right way round.
 -- postcode_status says what happened to the postcode; simd_status says whether the numbers can
--- be used. Only matched, a_part and linked_small_user carry a value.
+-- be used. Only matched, a_part, linked_small_user and previous_life carry a value.
 --
 -- Two bandings are returned because the publishers band the same ranks differently. PHS splits
 -- them so each band holds a fifth or a tenth of the POPULATION, and its guidance expects those
@@ -231,6 +254,7 @@ SELECT c.id, c.postcode, c.address_date, c.analysis_year, c.edition AS simd_edit
                 AND UPPER(REPLACE(COALESCE(m.LinkedSmallUserPostcode, ''), ' ', '')) IN ('', 'NOLINK')
                                                          THEN 'unlinked_large_user'
            WHEN s.source_pc_norm IS NULL                 THEN 'linked_small_user_not_found'
+           WHEN m.from_previous_life = 1                  THEN 'previous_life'
            WHEN m.spd_user_type = 'large_user'            THEN 'linked_small_user'
            WHEN m.part = 'A'                             THEN 'a_part'
            ELSE 'matched'

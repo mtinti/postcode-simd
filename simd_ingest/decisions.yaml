@@ -619,3 +619,37 @@ decisions:
       class while its SIMD comes from its link, and that the SSPL set has no rurality column.
       The walkthrough agrees with the generated query on the four rurality columns across
       fifteen cases on the built table.
+
+  - id: previous-life-fallback
+    date: 2026-09-23
+    status: implemented
+    decision: >-
+      When no postcode life contains the address date but the postcode had a life that ended
+      before it, the dated SQL query, the walkthrough and the Python dated lookups use that
+      life: the one whose deletion date is the latest on or before the address date, excluding
+      same-day records, and never a later life. The row reports postcode_status previous_life,
+      or in Python status previous_life, which carries SIMD and rurality like matched. Every
+      rule that applies to a record still applies: a retired PO box gets nothing, and a retired
+      large user's linked small-user record must be valid on the last day of the life used.
+      The context columns first_introduced_on, previous_life_deleted_on and
+      next_life_introduced_on are unchanged, so the gap and any reissue stay visible.
+      between_lives and postcode_deleted_by_date remain for the case where only same-day
+      records ended before the date. No gap tolerance is applied.
+    reason: >-
+      A record carrying a postcode after its retirement is most often a Royal Mail recoding
+      the record never caught up with: the building did not move, so the retired postcode's
+      last location is where the person lived. The latest-life queries already gave retired
+      postcodes their last life's SIMD, so the dated query was stricter than its siblings by
+      accident rather than by design. Reporting a status of its own keeps the choice
+      reviewable and lets an analyst exclude it with one filter. A later life is excluded
+      because a reissue can be anywhere.
+    evidence: >-
+      On the built table: G3 8NR, retired July 2015 and reissued in a different data zone in
+      January 2018, asked for June 2016 returns its 1978 life in S01010278, quintile 1, not the
+      reissue's S01010283, quintile 4. FK17 8DS in its 1978 gap returns its 1973 life, and TD9
+      7PQ, retired in 1999, returns its only life for 2020. tests/test_sql_sets.py and
+      tests/test_lookup.py cover the gap, the date after the last life, three lives with two
+      gaps, a same-day record, a retired PO box, and a retired large user whose link ended
+      the same day or earlier; the walkthrough agrees with the generated query. This changes
+      what the dated SQL and the Python dated lookups return for those rows, and is part of
+      the 3.0.0 release.

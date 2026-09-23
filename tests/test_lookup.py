@@ -38,8 +38,8 @@ class Statuses(unittest.TestCase):
 
     def test_each_status(self):
         cases = [("ZZ1 1ZZ", None, lookup.NOT_FOUND, None), ("ab10 1bf", None, lookup.UNIQUE, 3),
-                 ("AB10 1BF", "2004-06-01", lookup.UNIQUE, 2), ("AB10 1BF", "2008-01-01", lookup.DELETED, None),
-                 ("AB10 1BF", "2005-10-05", lookup.DELETED, None), ("AB10 1BF", "2011-10-13", lookup.UNIQUE, 3),
+                 ("AB10 1BF", "2004-06-01", lookup.UNIQUE, 2), ("AB10 1BF", "2008-01-01", lookup.PREVIOUS_LIFE, 2),
+                 ("AB10 1BF", "2005-10-05", lookup.PREVIOUS_LIFE, 2), ("AB10 1BF", "2011-10-13", lookup.UNIQUE, 3),
                  ("G71 8BQ", None, lookup.A_PART, 5), ("G71 8BQA", None, lookup.UNIQUE, 5), ("G71 8BQB", None, lookup.UNIQUE, 2),
                  ("AB12 3GQ", None, lookup.A_PART, 4), ("KA6 6EY", "2026-02-18", lookup.DELETED, None)]
         for postcode, on, status, value in cases:
@@ -60,13 +60,14 @@ class Statuses(unittest.TestCase):
                                "event_date": ["2020-01-01", "2004-06-01", "2008-01-01", "2020-01-01", "2020-01-01", "2020-01-01", "2020-01-01"]})
         out = lookup.attach(cohort, self.t, "postcode", "event_date", edition="2020v2")
         self.assertEqual(out["id"].tolist(), cohort["id"].tolist())
-        self.assertEqual(out["simd_status"].tolist(), [lookup.A_PART, lookup.UNIQUE, lookup.DELETED, lookup.A_PART, lookup.NOT_FOUND, lookup.NOT_FOUND, lookup.UNIQUE])
-        self.assertEqual([None if pd.isna(v) else int(v) for v in out["simd_value"]], [5, 2, None, 4, None, None, 2])
+        # 2008 falls between AB10 1BF's lives: the life that ended in 2005 is used, never the 2011 one.
+        self.assertEqual(out["simd_status"].tolist(), [lookup.A_PART, lookup.UNIQUE, lookup.PREVIOUS_LIFE, lookup.A_PART, lookup.NOT_FOUND, lookup.NOT_FOUND, lookup.UNIQUE])
+        self.assertEqual([None if pd.isna(v) else int(v) for v in out["simd_value"]], [5, 2, 2, 4, None, None, 2])
         self.assertEqual(out["simd_pc_norm"].tolist()[:2], ["G718BQA", "AB101BF"])
         self.assertEqual(out.attrs["simd_label"], "SIMD 2020v2, PHS population-weighted, within-Scotland quintile, 1 = most deprived, split postcodes resolved to the A part")
         reported = lookup.attach(cohort, self.t, "postcode", "event_date", edition="2020v2", split="report")
-        self.assertEqual(reported["simd_status"].tolist(), [lookup.SPLIT_CONFLICT, lookup.UNIQUE, lookup.DELETED, lookup.SPLIT_CONSENSUS, lookup.NOT_FOUND, lookup.NOT_FOUND, lookup.UNIQUE])
-        self.assertEqual([None if pd.isna(v) else int(v) for v in reported["simd_value"]], [None, 2, None, 4, None, None, 2])
+        self.assertEqual(reported["simd_status"].tolist(), [lookup.SPLIT_CONFLICT, lookup.UNIQUE, lookup.PREVIOUS_LIFE, lookup.SPLIT_CONSENSUS, lookup.NOT_FOUND, lookup.NOT_FOUND, lookup.UNIQUE])
+        self.assertEqual([None if pd.isna(v) else int(v) for v in reported["simd_value"]], [None, 2, 2, 4, None, None, 2])
         current = lookup.attach(cohort, self.t, "postcode", None, edition="2020v2")
         self.assertEqual(current["simd_status"].tolist()[1:3], [lookup.UNIQUE, lookup.UNIQUE])
 
@@ -91,7 +92,9 @@ class Statuses(unittest.TestCase):
         self.assertEqual(lookup.label("simd2012_rank", "report"), "SIMD 2012 rank, 1 = most deprived, split postcodes reported")
 
     def test_by_era_keeps_python_historical_policy(self):
-        # Changing SQL policy must not silently change existing Python consumers.
+        # Changing SQL policy must not silently change existing Python consumers. The previous-
+        # life fallback of 3.0.0 changed both deliberately and together: see decision
+        # previous-life-fallback.
         for edition in ("2004", "2006", "2009v2", "2012", "2016"):
             self.t[f"simd{edition}_pw_scotland_quintile"] = self.t["simd2020v2_pw_scotland_quintile"]
         events = pd.DataFrame({
@@ -101,8 +104,8 @@ class Statuses(unittest.TestCase):
         out = lookup.attach_by_era(events, self.t, "postcode", "event_date")
         self.assertEqual(out.id.tolist(), [1, 1, 2, 3])
         self.assertEqual(out.simd_edition.tolist(), ["2006", "2009v2", "2020v2", None])
-        self.assertEqual(out.simd_status.tolist(), [lookup.UNIQUE, lookup.DELETED, lookup.UNIQUE, lookup.NO_EDITION])
-        self.assertEqual([None if pd.isna(v) else int(v) for v in out.simd_value], [2, None, 3, None])
+        self.assertEqual(out.simd_status.tolist(), [lookup.UNIQUE, lookup.PREVIOUS_LIFE, lookup.UNIQUE, lookup.NO_EDITION])
+        self.assertEqual([None if pd.isna(v) else int(v) for v in out.simd_value], [2, 2, 3, None])
 
 
 @unittest.skipUnless(FILE.is_file(), "no build output")
@@ -128,7 +131,9 @@ class RealFile(unittest.TestCase):
         self.assertEqual(lookup.lookup(self.t, "AB12 3GQ", edition="2020v2", split="report").status, lookup.SPLIT_CONSENSUS)
         r = lookup.lookup(self.t, "AB10 1BF", edition="2006", on="2004-06-01")
         self.assertEqual(r.status, lookup.UNIQUE)
-        self.assertEqual(lookup.lookup(self.t, "AB10 1BF", edition="2009v2", on="2008-01-01").status, lookup.DELETED)
+        r = lookup.lookup(self.t, "AB10 1BF", edition="2009v2", on="2008-01-01")
+        self.assertEqual((r.status, r.value), (lookup.PREVIOUS_LIFE, 3))
+        self.assertEqual(r.candidates["deleted_on"].dt.strftime("%Y-%m-%d").tolist(), ["2005-10-05"])
 
     def test_ambiguous_current_postcodes_split_into_consensus_and_conflict(self):
         current = self.t[self.t["is_current"]]
@@ -240,3 +245,19 @@ class RuralityOnTheBuiltTable(unittest.TestCase):
         self.assertEqual([None if pd.isna(v) else int(v) for v in py.rurality_value],
                          [None if pd.isna(v) else int(v) for v in q.rurality_6fold])
         self.assertEqual(py.rurality_status.replace({"unique": "matched", "a_part": "matched"}).tolist(), q.rurality_status.tolist())
+
+
+class PreviousLife(unittest.TestCase):
+    """The same rule as the dated SQL: no record valid on the date, a life that ended before
+    it, so that life is used. Never a later one; never without a date; never a same-day record."""
+
+    def test_the_last_life_before_the_date_and_never_a_later_one(self):
+        t = fixture()
+        for on, status, value in (("2008-01-01", lookup.PREVIOUS_LIFE, 2), ("2003-01-01", lookup.DELETED, None),
+                                  ("2011-10-13", lookup.UNIQUE, 3)):
+            r = lookup.lookup(t, "AB10 1BF", edition="2020v2", on=on)
+            self.assertEqual((r.status, r.value), (status, value), on)
+        # A same-day record never lived, so it is never the previous life.
+        self.assertEqual(lookup.lookup(t, "KA6 6EY", edition="2020v2", on="2026-03-01").status, lookup.DELETED)
+        # Without a date nothing falls back: a retired postcode with no current record is deleted.
+        self.assertEqual(lookup.lookup(t, "KA6 6EY", edition="2020v2").status, lookup.DELETED)

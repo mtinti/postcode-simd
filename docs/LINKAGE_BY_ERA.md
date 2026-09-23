@@ -114,15 +114,23 @@ This selects a postcode life from the downloaded SPD release. It does not recons
 administrative boundaries were published on the address date; the returned context remains the
 fields supplied for that life in the downloaded release. Rurality is the one exception, below.
 
-When no life contains the date, the query says where the date falls and returns the nearest
-lives as context (`first_introduced_on`, `previous_life_deleted_on`, `next_life_introduced_on`):
+When no life contains the date but the postcode had a life that ended before it, the query
+uses that life. This is a **project choice**. The postcode was retired, or retired and later
+reissued elsewhere, after the address was recorded. The usual cause is a Royal Mail recoding
+that the record never caught up with, and the building did not move. The row reports
+`postcode_status` `previous_life`, which carries SIMD like `matched`. It is never a later life,
+and a same-day record never counts as a life. Every other rule still applies to the life used:
+a retired PO box still gets nothing, and a retired large user takes its link as it stood on the
+life's last day. The nearest lives are always returned as context (`first_introduced_on`,
+`previous_life_deleted_on`, `next_life_introduced_on`), so the gap can be judged, and a
+reissue shows as a non-null `next_life_introduced_on`.
 
 | `postcode_status` | Meaning |
 | --- | --- |
+| `previous_life` | no life contains the date; the last life that ended before it was used |
 | `postcode_not_yet_introduced` | the date is before the postcode's first life |
-| `between_lives` | the date is in a gap between two lives |
-| `postcode_deleted_by_date` | the date is after the postcode's last life ended |
 | `missing_address_date` | no date was supplied |
+| `between_lives`, `postcode_deleted_by_date` | the date is in a gap, or after the last life, and no real life ended before it. Only same-day records can cause this |
 
 FK17 8DS was in use from August 1973 to April 1978 in S01013116 and again from November
 1978 in S01013113. Asked with the 2020v2 edition:
@@ -130,12 +138,12 @@ FK17 8DS was in use from August 1973 to April 1978 in S01013116 and again from N
 | `address_date` | `postcode_status` | `matched_introduced_on` | `data_zone_code` | `phs_pw_scotland_quintile` |
 | --- | --- | --- | --- | --- |
 | 1975-06-01 | `matched`, life since ended | 1973-08-01 | S01013116 | 5 |
-| 1978-06-01 | `between_lives` | | | |
+| 1978-06-01 | `previous_life`, in the gap | 1973-08-01 | S01013116 | 5 |
 | 1990-06-01 | `matched` | 1978-11-01 | S01013113 | 3 |
 
 `link_by_era.sql` would give quintile 3 for all three, because it takes the latest life.
 TD9 7PQ, one life deleted on 22 March 1999, is `matched` with `matched_is_current` false on
-15 May 1990, `postcode_deleted_by_date` on the deletion day itself, and
+15 May 1990, `previous_life` on the deletion day itself and after it, and
 `postcode_not_yet_introduced` on 1 January 1970.
 
 The Python API answers the same question for one postcode or a frame

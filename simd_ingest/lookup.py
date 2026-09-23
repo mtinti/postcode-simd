@@ -42,7 +42,11 @@ NOT_FOUND, UNIQUE, SPLIT_CONSENSUS, SPLIT_CONFLICT, DELETED = "not_found", "uniq
 BEFORE_FIRST_VERSION = "before_first_version"  # the event predates the first urban-rural version
 A_PART = "a_part"          # several split parts valid; resolved to the A part, the NRS convention
 NO_EDITION = "no_edition"  # the event predates SIMD; the guidance points to Carstairs
-STATUSES = (NOT_FOUND, UNIQUE, A_PART, SPLIT_CONSENSUS, SPLIT_CONFLICT, DELETED, NO_EDITION)
+# No record was valid on the date, but the postcode had a life that ended before it: that life
+# was used (project choice). Usually a Royal Mail recoding the record never caught up with.
+PREVIOUS_LIFE = "previous_life"
+STATUSES = (NOT_FOUND, UNIQUE, A_PART, SPLIT_CONSENSUS, SPLIT_CONFLICT, DELETED, NO_EDITION, PREVIOUS_LIFE)
+_RESOLVED = (UNIQUE, A_PART, SPLIT_CONSENSUS)
 SPLIT_RULES = ("a_part", "report")
 
 _SCOPE = {"scotland": "within-Scotland", "hb": "within-NHS-Board", "hscp": "within-HSCP", "ca": "within-council-area"}
@@ -176,9 +180,17 @@ def lookup(table: pd.DataFrame, postcode: str, edition: str, measure: str = "pw_
         valid = cand[cand["is_current"]]
     else:
         valid = cand[(cand["introduced_on"] <= when) & (cand["deleted_on"].isna() | (cand["deleted_on"] > when))]
+    previous = False
+    if valid.empty and when is not None:
+        # The previous life: the last real life that ended before the date, never a later one.
+        ended = cand[cand["deleted_on"].notna() & (cand["deleted_on"] <= when) & (cand["introduced_on"] < cand["deleted_on"])]
+        if len(ended):
+            valid, previous = ended[ended["deleted_on"] == ended["deleted_on"].max()], True
     if valid.empty:
         return Result(postcode, key, edition, measure, when, DELETED, None, label(col, split), cand)
     status, value = _resolve(valid, col, split)
+    if previous and status in _RESOLVED:
+        status = PREVIOUS_LIFE
     return Result(postcode, key, edition, measure, when, status, value, label(col, split), valid)
 
 
@@ -218,8 +230,17 @@ def _attach_column(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str,
     exact_rows = set(by_part["_row"])
     m = pd.concat([by_base[~by_base["_row"].isin(exact_rows)], by_part], ignore_index=True)
     known = m["pc_norm"].notna()
+    previous_rows = set()
     if date_col is not None:
         valid = known & (m["introduced_on"] <= m["_on"]) & (m["deleted_on"].isna() | (m["deleted_on"] > m["_on"]))
+        # Where no record is valid on the date, the last real life that ended before it.
+        ended = (known & ~m["_row"].isin(set(m.loc[valid, "_row"])) & m["deleted_on"].notna()
+                 & (m["deleted_on"] <= m["_on"]) & (m["introduced_on"] < m["deleted_on"]))
+        last = m.loc[ended].groupby("_row")["deleted_on"].transform("max")
+        fallback = pd.Series(False, index=m.index)
+        fallback[ended] = m.loc[ended, "deleted_on"] == last
+        valid = valid | fallback
+        previous_rows = set(m.loc[fallback, "_row"])
     else:
         valid = known & m["is_current"].fillna(False).astype(bool)
     v = m[valid]
@@ -244,6 +265,7 @@ def _attach_column(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str,
     value[status == A_PART] = summary["a_value"][status == A_PART]
     pc_norm = summary["pc_norm"].where(status == UNIQUE)
     pc_norm[status == A_PART] = summary["a_pc_norm"][status == A_PART]
+    status[status.index.isin(previous_rows) & status.isin(_RESOLVED)] = PREVIOUS_LIFE
     out = events.copy()
     out[f"{prefix}_status"] = status.values
     out[f"{prefix}_value"] = value.values
@@ -357,7 +379,7 @@ def attach_rurality(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str
         rows = events[chosen == v]
         code = _attach_column(rows, table, postcode_col, date_col, f"{stem(v)}_{fold}fold", prefix, split)
         stored = _attach_column(rows, table, postcode_col, date_col, f"{stem(v)}_status", "_stored", split)
-        reason = stored["_stored_value"].where(code[f"{prefix}_status"].isin([UNIQUE, A_PART, SPLIT_CONSENSUS]))
+        reason = stored["_stored_value"].where(code[f"{prefix}_status"].isin(_RESOLVED + (PREVIOUS_LIFE,)))
         code[f"{prefix}_status"] = reason.fillna(code[f"{prefix}_status"]).values
         code[f"{prefix}_version"] = v
         code[f"{prefix}_label"] = rurality_label(v, fold)

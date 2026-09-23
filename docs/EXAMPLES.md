@@ -84,7 +84,8 @@ AB10 1BF on 2012-06-01: unique, SIMD 2012, ..., split postcodes resolved to the 
 ```
 
 A postcode can be out of use on the date you ask about. AB10 1BF was deleted in 2005 and
-reintroduced in 2011:
+reintroduced in 2011, so on 2008-01-01 no record is valid. The life that ended in 2005 is
+used, and the status says so:
 
 ```python
 r = lookup.lookup(t, "AB10 1BF", edition=lookup.recommended_edition(2008), on="2008-01-01")
@@ -92,11 +93,15 @@ print(r)
 print(r.candidates[["pc_norm", "introduced_on", "deleted_on"]])
 ```
 ```text
-AB10 1BF on 2008-01-01: deleted, SIMD 2009v2, ..., split postcodes resolved to the A part = None
+AB10 1BF on 2008-01-01: previous_life, SIMD 2009v2, ..., split postcodes resolved to the A part = 3
 pc_norm introduced_on deleted_on
 AB101BF    2003-04-15 2005-10-05
-AB101BF    2011-10-13        NaT
 ```
+
+Never the 2011 reissue, which may be somewhere else entirely. This is a project choice: the
+usual reason a record carries a retired postcode is a Royal Mail recoding it never caught up
+with, and the building did not move. `candidates` shows the life used, so its deletion date
+tells you how stale the postcode was.
 
 Validity is the half-open interval `introduced_on <= day < deleted_on`. On 2004-06-01 the
 first record applies and the answer is quintile 3 in SIMD 2004.
@@ -185,7 +190,8 @@ analysis-year edition selection and both publishers' full measures, use the
 | `a_part` | Several split parts valid; the A part was used, following NRS's convention. Default rule only | The A part's value |
 | `split_consensus` | Several valid records, all with the same value for the requested measure. Report rule only | The shared value |
 | `split_conflict` | Several valid records with different values. Report rule only | Null |
-| `deleted` | The postcode exists but no record is valid on that day, or none is current | Null |
+| `previous_life` | No record is valid on that day, but the postcode had a life that ended before it; that life was used. Dated lookups only | The previous life's value |
+| `deleted` | The postcode exists but no record is valid on that day and none ended before it, or none is current | Null |
 | `not_found` | No record has that postcode, or the postcode is missing, or it is a PO box under the default | Null |
 | `no_edition` | The event is before 1996; the guidance points to Carstairs. `attach_by_era` only | Null |
 
