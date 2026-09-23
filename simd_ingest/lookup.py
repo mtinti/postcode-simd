@@ -45,7 +45,8 @@ NO_EDITION = "no_edition"  # the event predates SIMD; the guidance points to Car
 # No record was valid on the date, but the postcode had a life that ended before it: that life
 # was used (project choice). Usually a Royal Mail recoding the record never caught up with.
 PREVIOUS_LIFE = "previous_life"
-STATUSES = (NOT_FOUND, UNIQUE, A_PART, SPLIT_CONSENSUS, SPLIT_CONFLICT, DELETED, NO_EDITION, PREVIOUS_LIFE)
+MISSING_DATE = "missing_date"  # a dated question asked without a date
+STATUSES = (NOT_FOUND, UNIQUE, A_PART, SPLIT_CONSENSUS, SPLIT_CONFLICT, DELETED, NO_EDITION, PREVIOUS_LIFE, MISSING_DATE)
 _RESOLVED = (UNIQUE, A_PART, SPLIT_CONSENSUS)
 SPLIT_RULES = ("a_part", "report")
 
@@ -57,14 +58,20 @@ _WEIGHT = {"pw": "PHS population-weighted", "uw": "Scottish Government unweighte
 PO_BOX_SENTINELS = ("NO LINKP", "NO LINK")
 
 
-def scope(table: pd.DataFrame, include_po_boxes: bool = False, include_large_users: bool = True) -> pd.DataFrame:
-    """Python's scope: exclude no-link sentinels by default; keep own-record geography."""
-    keep = pd.Series(True, index=table.index)
+def _excluded(table: pd.DataFrame, include_po_boxes: bool, include_large_users: bool) -> pd.Series:
+    out = pd.Series(False, index=table.index)
     if not include_large_users and "spd_user_type" in table:
-        keep &= table["spd_user_type"] != "large_user"
+        out |= table["spd_user_type"] == "large_user"
     if not include_po_boxes and "LinkedSmallUserPostcode" in table:
-        keep &= ~table["LinkedSmallUserPostcode"].isin(PO_BOX_SENTINELS)
-    return table[keep]
+        out |= table["LinkedSmallUserPostcode"].isin(PO_BOX_SENTINELS)
+    return out.fillna(False).astype(bool)
+
+
+def scope(table: pd.DataFrame, include_po_boxes: bool = False, include_large_users: bool = True) -> pd.DataFrame:
+    """Python's scope: exclude no-link sentinels by default; keep own-record geography.
+    The lookups apply it to the record they choose, never before choosing: removing a PO-box
+    life first would let an earlier life answer for a date the PO box covers."""
+    return table[~_excluded(table, include_po_boxes, include_large_users)]
 
 
 def recommended_edition(year: int) -> str:
@@ -164,7 +171,7 @@ def lookup(table: pd.DataFrame, postcode: str, edition: str, measure: str = "pw_
     postcode or a full NRS key with its split suffix. PO boxes are excluded unless asked for.
     Split postcodes resolve to the A part unless split="report"."""
     _check_split(split)
-    table = scope(_prepare(table, on is not None, split), include_po_boxes, include_large_users)
+    table = _prepare(table, on is not None, split)
     col = column(edition, measure)
     key = normalise_postcode(pd.Series([postcode])).iloc[0]
     when = None if on is None else pd.Timestamp(on)
@@ -188,10 +195,14 @@ def lookup(table: pd.DataFrame, postcode: str, edition: str, measure: str = "pw_
             valid, previous = ended[ended["deleted_on"] == ended["deleted_on"].max()], True
     if valid.empty:
         return Result(postcode, key, edition, measure, when, DELETED, None, label(col, split), cand)
-    status, value = _resolve(valid, col, split)
+    # The exclusions judge the record that answers the question, after it has been chosen.
+    kept = valid[~_excluded(valid, include_po_boxes, include_large_users)]
+    if kept.empty:
+        return Result(postcode, key, edition, measure, when, NOT_FOUND, None, label(col, split), valid)
+    status, value = _resolve(kept, col, split)
     if previous and status in _RESOLVED:
         status = PREVIOUS_LIFE
-    return Result(postcode, key, edition, measure, when, status, value, label(col, split), valid)
+    return Result(postcode, key, edition, measure, when, status, value, label(col, split), kept)
 
 
 def attach(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, date_col: str | None,
@@ -204,24 +215,33 @@ def attach(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, date_co
     Split postcodes resolve to the A part unless split="report".
     """
     _check_split(split)
-    table = scope(_prepare(table, date_col is not None, split), include_po_boxes, include_large_users)
+    table = _prepare(table, date_col is not None, split)
     col = column(edition, measure)
-    out = _attach_column(events, table, postcode_col, date_col, col, prefix, split)
+    out = _attach_column(events, table, postcode_col, date_col, [col], prefix, split, include_po_boxes, include_large_users)
     out[f"{prefix}_value"] = out[f"{prefix}_value"].astype("Int64")
     out.attrs[f"{prefix}_label"] = label(col, split)
     return out
 
 
 def _attach_column(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, date_col: str | None,
-                   col: str, prefix: str, split: str) -> pd.DataFrame:
-    """attach()'s record resolution for any one column of an already scoped table: status,
-    value and matched key, one row per event, never dropped or duplicated."""
+                   value_cols: list, prefix: str, split: str, include_po_boxes: bool = False,
+                   include_large_users: bool = True) -> pd.DataFrame:
+    """attach()'s record resolution: one row per event, in order, never dropped or duplicated.
+
+    The record is chosen first, on the whole table: the record valid on the date, or the
+    previous life, or the current one. The exclusions are then applied to that record, so an
+    excluded PO box answers not_found rather than letting an older life answer for it.
+    value_cols are resolved together as one tuple taken from one record, nulls included:
+    parts that agree must agree on every column, and a null is a value like any other.
+    Returns {prefix}_status, {prefix}_value (the first column), {prefix}_pc_norm, and for any
+    further column a companion {prefix}__<column>.
+    """
     ev = pd.DataFrame({"_row": range(len(events)),
-                       "_key": normalise_postcode(events[postcode_col].astype("string").fillna("")).replace("", pd.NA)},
-                      index=events.index)
+                       "_key": normalise_postcode(events[postcode_col].astype("string").fillna("")).replace("", pd.NA).to_numpy()})
     if date_col is not None:
-        ev["_on"] = pd.to_datetime(events[date_col])
-    cols = ["pc_norm", "pc_base", "introduced_on", "deleted_on", "is_current", col]
+        ev["_on"] = pd.to_datetime(events[date_col]).to_numpy()
+    extra = [c for c in ("spd_user_type", "LinkedSmallUserPostcode") if c in table]
+    cols = list(dict.fromkeys(["pc_norm", "pc_base", "introduced_on", "deleted_on", "is_current", *value_cols, *extra]))
     # Two routes, as in lookup(): an ordinary postcode matches on pc_base; a full NRS key
     # with a suffix matches its own split part on pc_norm and then takes precedence.
     by_base = ev.merge(table[cols], left_on="_key", right_on="pc_base", how="left")
@@ -230,11 +250,14 @@ def _attach_column(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str,
     exact_rows = set(by_part["_row"])
     m = pd.concat([by_base[~by_base["_row"].isin(exact_rows)], by_part], ignore_index=True)
     known = m["pc_norm"].notna()
-    previous_rows = set()
+    rows = range(len(events))
+    previous_rows, missing_rows = set(), set()
     if date_col is not None:
-        valid = known & (m["introduced_on"] <= m["_on"]) & (m["deleted_on"].isna() | (m["deleted_on"] > m["_on"]))
+        dated = m["_on"].notna()
+        missing_rows = set(m.loc[known & ~dated, "_row"])
+        valid = known & dated & (m["introduced_on"] <= m["_on"]) & (m["deleted_on"].isna() | (m["deleted_on"] > m["_on"]))
         # Where no record is valid on the date, the last real life that ended before it.
-        ended = (known & ~m["_row"].isin(set(m.loc[valid, "_row"])) & m["deleted_on"].notna()
+        ended = (known & dated & ~m["_row"].isin(set(m.loc[valid, "_row"])) & m["deleted_on"].notna()
                  & (m["deleted_on"] <= m["_on"]) & (m["introduced_on"] < m["deleted_on"]))
         last = m.loc[ended].groupby("_row")["deleted_on"].transform("max")
         fallback = pd.Series(False, index=m.index)
@@ -243,33 +266,67 @@ def _attach_column(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str,
         previous_rows = set(m.loc[fallback, "_row"])
     else:
         valid = known & m["is_current"].fillna(False).astype(bool)
-    v = m[valid]
-    a = v[part_of(v) == "A"]
-    rows = range(len(events))
-    summary = pd.DataFrame({"n_known": known.groupby(m["_row"]).sum(),
-                            "n_valid": v.groupby("_row").size().reindex(rows, fill_value=0),
-                            "n_values": v.groupby("_row")[col].nunique().reindex(rows, fill_value=0),
-                            "value": v.groupby("_row")[col].first().reindex(rows),
-                            "pc_norm": v.groupby("_row")["pc_norm"].first().reindex(rows),
-                            "n_a": a.groupby("_row").size().reindex(rows, fill_value=0),
-                            "a_value": a.groupby("_row")[col].first().reindex(rows),
-                            "a_pc_norm": a.groupby("_row")["pc_norm"].first().reindex(rows)})
-    status = pd.Series(NOT_FOUND, index=summary.index)
-    status[(summary["n_known"] > 0) & (summary["n_valid"] == 0)] = DELETED
-    status[summary["n_valid"] == 1] = UNIQUE
-    status[(summary["n_valid"] > 1) & (summary["n_values"] == 1)] = SPLIT_CONSENSUS
-    status[(summary["n_valid"] > 1) & (summary["n_values"] > 1)] = SPLIT_CONFLICT
+    kept = valid & ~_excluded(m, include_po_boxes, include_large_users)
+    v = m[kept].copy()
+    # One signature per record over every value column, a null marked rather than skipped.
+    v["_sig"] = v[value_cols].astype("string").fillna("\x00").agg("\x1f".join, axis=1) if len(v) else pd.Series(dtype="string")
+    a = v[part_of(v) == "A"] if len(v) else v
+    first = v.groupby("_row").head(1).set_index("_row")          # the first record, nulls and all
+    first_a = a.groupby("_row").head(1).set_index("_row")
+    n_valid = m[valid].groupby("_row").size().reindex(rows, fill_value=0)
+    n_kept = v.groupby("_row").size().reindex(rows, fill_value=0)
+    n_values = v.groupby("_row")["_sig"].nunique().reindex(rows, fill_value=0)
+    n_a = a.groupby("_row").size().reindex(rows, fill_value=0)
+    n_known = known.groupby(m["_row"]).sum().reindex(rows, fill_value=0)
+
+    status = pd.Series(NOT_FOUND, index=rows, dtype="object")
+    status[(n_known > 0) & (n_valid == 0)] = DELETED
+    status[(n_valid > 0) & (n_kept == 0)] = NOT_FOUND             # the chosen record is excluded
+    status[n_kept == 1] = UNIQUE
+    status[(n_kept > 1) & (n_values == 1)] = SPLIT_CONSENSUS
+    status[(n_kept > 1) & (n_values > 1)] = SPLIT_CONFLICT
     if split == "a_part":
-        status[(summary["n_valid"] > 1) & (summary["n_a"] == 1)] = A_PART
-    value = summary["value"].where(status.isin([UNIQUE, SPLIT_CONSENSUS]))
-    value[status == A_PART] = summary["a_value"][status == A_PART]
-    pc_norm = summary["pc_norm"].where(status == UNIQUE)
-    pc_norm[status == A_PART] = summary["a_pc_norm"][status == A_PART]
-    status[status.index.isin(previous_rows) & status.isin(_RESOLVED)] = PREVIOUS_LIFE
+        status[(n_kept > 1) & (n_a == 1)] = A_PART
+    status[status.index.isin(missing_rows)] = MISSING_DATE
+    source = pd.Series(pd.NA, index=rows, dtype="object")       # which table the answering record is in
+    use_first = status.isin([UNIQUE, SPLIT_CONSENSUS])
+    use_a = status == A_PART
     out = events.copy()
-    out[f"{prefix}_status"] = status.values
-    out[f"{prefix}_value"] = value.values
-    out[f"{prefix}_pc_norm"] = pc_norm.values
+    out[f"{prefix}_status"] = pd.Series(status).where(~(status.index.isin(previous_rows) & status.isin(_RESOLVED)), PREVIOUS_LIFE).to_numpy()
+    for i, c in enumerate(value_cols + ["pc_norm"]):
+        values = pd.Series(pd.NA, index=rows, dtype="object")
+        if len(first):
+            picked = first[c].reindex(rows)
+            values[use_first] = picked[use_first]
+        if len(first_a):
+            picked_a = first_a[c].reindex(rows)
+            values[use_a] = picked_a[use_a]
+        if c == "pc_norm" and len(first):
+            values[status == SPLIT_CONSENSUS] = pd.NA                # consensus is not one record
+        name = f"{prefix}_value" if i == 0 else f"{prefix}_pc_norm" if c == "pc_norm" else f"{prefix}__{c}"
+        out[name] = values.to_numpy()
+    assert len(out) == len(events)
+    return out
+
+
+def _by_group(events: pd.DataFrame, groups: pd.Series, resolve, prefix: str, columns: dict) -> pd.DataFrame:
+    """Resolve each group of rows separately and reassemble them in the original order.
+
+    Rows are identified by position, never by index label, so a cohort whose index repeats a
+    label, or is empty, comes back unchanged in shape. `groups` holds a group key per row, or
+    null for rows no group applies to; `columns` gives the value those rows take per column.
+    """
+    ev = events.reset_index(drop=True)
+    keys = pd.Series(groups.to_numpy(), index=ev.index)
+    out = ev.copy()
+    for name, value in columns.items():
+        out[f"{prefix}_{name}"] = pd.Series([value] * len(ev), index=ev.index, dtype="object")
+    for key in keys.dropna().unique():
+        at = keys.index[keys == key]
+        part = resolve(ev.loc[at], key)
+        for name in columns:
+            out.loc[at, f"{prefix}_{name}"] = part[f"{prefix}_{name}"].to_numpy()
+    out.index = events.index
     assert len(out) == len(events)
     return out
 
@@ -291,28 +348,23 @@ def attach_by_era(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, 
     This is not the latest-postcode policy of the docs/sql sets.
 
     Events before 1996 get status `no_edition`; the guidance points to Carstairs for them.
+    Events with no date get `missing_date`: they are not before 1996, they are unknown.
     """
     _prepare(table, True, split)  # Refuse SSPL even when no event has a recommended edition.
-    edition = edition_for(events[date_col])
-    parts = []
-    for ed in edition.dropna().unique():
-        rows = events[edition == ed]
+    dates = pd.to_datetime(events[date_col])
+    edition = edition_for(dates)
+
+    def resolve(rows, ed):
         part = attach(rows, table, postcode_col, date_col, edition=ed, measure=measure, prefix=prefix,
                       include_po_boxes=include_po_boxes, include_large_users=include_large_users, split=split)
         part[f"{prefix}_edition"] = ed
         part[f"{prefix}_label"] = label(column(ed, measure), split)
-        parts.append(part)
-    none = events[edition.isna()].copy()
-    if len(none):
-        none[f"{prefix}_status"] = NO_EDITION
-        none[f"{prefix}_value"] = pd.Series(pd.NA, index=none.index, dtype="Int64")
-        none[f"{prefix}_pc_norm"] = None
-        none[f"{prefix}_edition"] = None
-        none[f"{prefix}_label"] = None
-        parts.append(none)
-    out = pd.concat(parts).loc[events.index]
-    out[f"{prefix}_value"] = out[f"{prefix}_value"].astype("Int64")
-    assert len(out) == len(events)
+        return part
+
+    out = _by_group(events, edition, resolve, prefix,
+                    {"status": NO_EDITION, "value": pd.NA, "pc_norm": None, "edition": None, "label": None})
+    out.loc[dates.isna().to_numpy(), f"{prefix}_status"] = MISSING_DATE
+    out[f"{prefix}_value"] = pd.array(out[f"{prefix}_value"], dtype="Int64")
     return out
 
 
@@ -353,11 +405,12 @@ def attach_rurality(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str
     year, or in one `version` throughout. With `date_col` the record valid on the event date is
     used; with `date_col=None` and a `version`, the current record.
 
-    The status is attach()'s, except where the chosen record has no code in that version: then
-    it is the reason stored with the record, `outside_polygons`, `ambiguous_polygons` or
-    `po_box`. Events before the first version get `before_first_version`. Like attach(), the
-    class is the matched record's own, and PO boxes are excluded unless asked for, in which case
-    they come back with no code and status `po_box`.
+    The class and its stored reason are resolved together, from one record: where the chosen
+    record has no code in that version the status is the reason, `outside_polygons`,
+    `ambiguous_polygons` or `po_box`. Split parts agree only if they agree on both, a missing
+    code included. Events before the first version get `before_first_version`, and events with
+    no date `missing_date`. Like attach(), the class is the matched record's own, and PO boxes
+    are excluded unless asked for, in which case they come back with no code and `po_box`.
     """
     if fold not in (6, 8):
         raise ValueError("fold must be 6 or 8")
@@ -371,28 +424,24 @@ def attach_rurality(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str
     if version is not None and version not in known:
         raise ValueError(f"version must be one of {known}, not {version!r}")
     _check_split(split)
-    table = scope(table, include_po_boxes, include_large_users)
-    chosen = (pd.Series(version, index=events.index, dtype="string") if version is not None
-              else rurality_version_for(events[date_col]))
-    parts = []
-    for v in chosen.dropna().unique():
-        rows = events[chosen == v]
-        code = _attach_column(rows, table, postcode_col, date_col, f"{stem(v)}_{fold}fold", prefix, split)
-        stored = _attach_column(rows, table, postcode_col, date_col, f"{stem(v)}_status", "_stored", split)
-        reason = stored["_stored_value"].where(code[f"{prefix}_status"].isin(_RESOLVED + (PREVIOUS_LIFE,)))
-        code[f"{prefix}_status"] = reason.fillna(code[f"{prefix}_status"]).values
-        code[f"{prefix}_version"] = v
-        code[f"{prefix}_label"] = rurality_label(v, fold)
-        parts.append(code)
-    none = events[chosen.isna()].copy()
-    if len(none):
-        none[f"{prefix}_status"] = BEFORE_FIRST_VERSION
-        none[f"{prefix}_value"] = pd.NA
-        none[f"{prefix}_pc_norm"] = None
-        none[f"{prefix}_version"] = None
-        none[f"{prefix}_label"] = None
-        parts.append(none)
-    out = pd.concat(parts).loc[events.index]
-    out[f"{prefix}_value"] = out[f"{prefix}_value"].astype("Int8")
-    assert len(out) == len(events)
+    dates = pd.to_datetime(events[date_col]) if date_col is not None else None
+    chosen = (pd.Series(version, index=events.index, dtype="object") if version is not None
+              else rurality_version_for(dates).astype("object"))
+
+    def resolve(rows, v):
+        code, reason = f"{stem(v)}_{fold}fold", f"{stem(v)}_status"
+        part = _attach_column(rows, table, postcode_col, date_col, [code, reason], prefix, split,
+                              include_po_boxes, include_large_users)
+        stored = part.pop(f"{prefix}__{reason}")
+        resolved = part[f"{prefix}_status"].isin(_RESOLVED + (PREVIOUS_LIFE,))
+        part[f"{prefix}_status"] = stored.where(resolved & stored.notna(), part[f"{prefix}_status"]).to_numpy()
+        part[f"{prefix}_version"] = v
+        part[f"{prefix}_label"] = rurality_label(v, fold)
+        return part
+
+    out = _by_group(events, chosen, resolve, prefix,
+                    {"status": BEFORE_FIRST_VERSION, "value": pd.NA, "pc_norm": None, "version": None, "label": None})
+    if dates is not None:
+        out.loc[dates.isna().to_numpy(), f"{prefix}_status"] = MISSING_DATE
+    out[f"{prefix}_value"] = pd.array(out[f"{prefix}_value"], dtype="Int8")
     return out

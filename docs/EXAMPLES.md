@@ -192,8 +192,9 @@ analysis-year edition selection and both publishers' full measures, use the
 | `split_conflict` | Several valid records with different values. Report rule only | Null |
 | `previous_life` | No record is valid on that day, but the postcode had a life that ended before it; that life was used. Dated lookups only | The previous life's value |
 | `deleted` | The postcode exists but no record is valid on that day and none ended before it, or none is current | Null |
-| `not_found` | No record has that postcode, or the postcode is missing, or it is a PO box under the default | Null |
+| `not_found` | No record has that postcode, or the postcode is missing, or the record that answers is a PO box under the default | Null |
 | `no_edition` | The event is before 1996; the guidance points to Carstairs. `attach_by_era` only | Null |
+| `missing_date` | A dated question with no date for this row. Never read as an early date | Null |
 
 Three rules sit behind them. A record is valid for `introduced_on <= day < deleted_on`, with a
 null deletion meaning current. An ordinary postcode matches every record whose base it is, so a
@@ -203,7 +204,9 @@ builds the Scottish Statistics Postcode Lookup, because A is the part with more 
 report rule refuses instead. Neither rule averages or votes.
 
 One more Python default to know about. Records with `NO LINKP` or `NO LINK` in the linked
-postcode field are excluded, so they come back `not_found`. Appendix A explains why PO boxes
+postcode field are excluded, so they come back `not_found`. The record is chosen first and the
+exclusion applied to it afterwards, so a date that a PO-box life covers is `not_found`, never
+answered by an older life of the same postcode. Appendix A explains why PO boxes
 lack usable residential geography. Pass `include_po_boxes=True` to attach the SIMD the
 directory assigns them, or `include_large_users=False` to exclude every large-user record.
 Other large users still use their own attached SIMD here, not their linked small user's.
@@ -225,7 +228,9 @@ out = lookup.attach_rurality(cohort, t, "postcode", None, version="2022")   # on
 The result adds `rurality_status`, `rurality_value`, `rurality_pc_norm`, `rurality_version` and
 `rurality_label`. The status is `attach`'s, except where the chosen record has no code in that
 version: then it is the reason stored with the record, `outside_polygons`, `ambiguous_polygons`
-or `po_box`. An event before 2003 gets `before_first_version`. PO boxes are excluded unless
+or `po_box`. The class and its reason come from one record, and split parts agree only if they
+agree on both, a missing class included. An event before 2003 gets `before_first_version`, and
+an event with no date `missing_date`. PO boxes are excluded unless
 you pass `include_po_boxes=True`, and then come back with no code and status `po_box`. The
 main table has no versions and is refused. On small-user postcodes the dated SQL query returns
 the same version and class; a test compares the two on the built table.

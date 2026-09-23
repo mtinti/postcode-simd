@@ -653,3 +653,33 @@ decisions:
       the same day or earlier; the walkthrough agrees with the generated query. This changes
       what the dated SQL and the Python dated lookups return for those rows, and is part of
       the 3.0.0 release.
+
+  - id: python-lookups-choose-then-exclude
+    date: 2026-09-23
+    status: implemented
+    decision: >-
+      The Python lookups choose the record first, on the whole table, and apply the PO-box and
+      large-user exclusions to the record chosen. A date that an excluded record covers is
+      not_found; it is never answered by an older life. The shared resolver takes several
+      value columns and resolves them as one tuple from one record, a null counting as a
+      value, so a rurality class and its stored reason can never come from different split
+      parts. attach_by_era and attach_rurality reassemble the cohort by position, not index
+      label, and accept an empty cohort. A row with no date gets missing_date in attach,
+      attach_by_era and attach_rurality, rather than deleted, no_edition or
+      before_first_version.
+    reason: >-
+      Review of 9fa39d4 found four faults, all in Python and none in SQL. Excluding PO boxes
+      before choosing the life let the previous-life fallback answer AB10 1WS in 2025 from a
+      1996 life although a PO-box life covers that date; the SQL chooses the life first and
+      returns no value. Resolving a class and its reason separately, with nulls ignored in the
+      agreement check, gave HS6 5HT class 6 beside outside_polygons and PA66 6BN not_found
+      although both of its parts exist. Label-based reassembly duplicated rows sharing an index
+      label and failed on an empty cohort. A missing date read as a date before the first
+      edition or version. The last two were already in attach_by_era on main.
+    evidence: >-
+      On the built table: AB10 1WS on 2025-01-01 is not_found, and unique with its own value
+      only when PO boxes are asked for; HS6 5HT in 2005-2006 is split_conflict under the
+      report rule and the A part, class 6, by default, as in SQL; PA66 6BN is
+      outside_polygons under both rules. tests/test_lookup.py pins each fault on a small
+      table and the reviewer's postcodes on the built one. No SQL, schema or built data
+      changed.

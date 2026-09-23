@@ -261,3 +261,107 @@ class PreviousLife(unittest.TestCase):
         self.assertEqual(lookup.lookup(t, "KA6 6EY", edition="2020v2", on="2026-03-01").status, lookup.DELETED)
         # Without a date nothing falls back: a retired postcode with no current record is deleted.
         self.assertEqual(lookup.lookup(t, "KA6 6EY", edition="2020v2").status, lookup.DELETED)
+
+
+class ReviewOf9fa39d4(unittest.TestCase):
+    """Four faults found in review, each pinned on a table small enough to read."""
+
+    def box_history(self) -> pd.DataFrame:
+        # A linked large user in the 1990s, a PO box from 2005: the box life covers 2025.
+        t = pd.DataFrame([("AB101WS", "AB101WS", "1996-04-01", "1996-12-04", False, 5, "large_user", "AB10 1XE"),
+                          ("AB101WS", "AB101WS", "2005-07-20", None,         True,  4, "large_user", "NO LINKP")],
+                         columns=["pc_norm", "pc_base", "introduced_on", "deleted_on", "is_current",
+                                  "simd2020v2_pw_scotland_quintile", "spd_user_type", "LinkedSmallUserPostcode"])
+        t["introduced_on"], t["deleted_on"] = pd.to_datetime(t["introduced_on"]), pd.to_datetime(t["deleted_on"])
+        return t
+
+    def test_an_excluded_po_box_is_not_answered_by_an_older_life(self):
+        t = self.box_history()
+        r = lookup.lookup(t, "AB10 1WS", edition="2020v2", on="2025-01-01")
+        self.assertEqual((r.status, r.value), (lookup.NOT_FOUND, None))
+        out = lookup.attach(pd.DataFrame({"pc": ["AB10 1WS", "AB10 1WS"], "on": ["2025-01-01", None]}), t, "pc", "on", edition="2020v2")
+        self.assertEqual(out.simd_status.tolist(), [lookup.NOT_FOUND, lookup.MISSING_DATE])
+        self.assertTrue(out.simd_value.isna().all())
+        # Asked for, the box answers with its own value; the 1990s life never does.
+        r = lookup.lookup(t, "AB10 1WS", edition="2020v2", on="2025-01-01", include_po_boxes=True)
+        self.assertEqual((r.status, r.value), (lookup.UNIQUE, 4))
+        # Before the box existed, the linked large user is still found as before.
+        self.assertEqual(lookup.lookup(t, "AB10 1WS", edition="2020v2", on="1996-06-01").value, 5)
+
+    def split_parts(self, codes, statuses) -> pd.DataFrame:
+        t = pd.DataFrame({"pc_norm": ["HS65HTA", "HS65HTB"], "pc_base": ["HS65HT"] * 2,
+                          "introduced_on": pd.to_datetime(["2000-01-01"] * 2), "deleted_on": pd.NaT, "is_current": True})
+        t["urbanrural2005_2006_6fold"] = pd.array(codes, dtype="Int8")
+        t["urbanrural2005_2006_8fold"] = pd.array(codes, dtype="Int8")
+        t["urbanrural2005_2006_status"] = pd.array(statuses, dtype="string")
+        return t
+
+    def rural(self, table, split):
+        with unittest.mock.patch.object(lookup, "rurality_versions", return_value=[(2005, 9999, "2005-2006")]):
+            return lookup.attach_rurality(pd.DataFrame({"postcode": ["HS6 5HT"]}), table, "postcode", None,
+                                          version="2005-2006", split=split).iloc[0]
+
+    def test_split_parts_resolve_the_class_and_its_reason_together_nulls_included(self):
+        mixed = self.split_parts([6, None], [None, "outside_polygons"])
+        out = self.rural(mixed, "report")                     # one part has a class, the other none
+        self.assertEqual(out.rurality_status, lookup.SPLIT_CONFLICT)
+        self.assertTrue(pd.isna(out.rurality_value))
+        out = self.rural(mixed, "a_part")
+        self.assertEqual((out.rurality_status, int(out.rurality_value)), (lookup.A_PART, 6))
+        outside = self.split_parts([None, None], ["outside_polygons", "outside_polygons"])
+        for split in ("report", "a_part"):                    # both parts outside: found, and why it has no class
+            out = self.rural(outside, split)
+            self.assertEqual(out.rurality_status, "outside_polygons", split)
+            self.assertTrue(pd.isna(out.rurality_value))
+
+    def test_repeated_index_labels_and_empty_cohorts_keep_their_shape(self):
+        t = fixture()
+        for edition in ("2004", "2006", "2009v2", "2012", "2016"):
+            t[f"simd{edition}_pw_scotland_quintile"] = t["simd2020v2_pw_scotland_quintile"]
+        cohort = pd.DataFrame({"postcode": ["G71 8BQ", "AB10 1BF", "AB10 1BF"], "on": ["2020-01-01", "2004-06-01", "1990-01-01"]},
+                              index=["x", "x", "y"])
+        out = lookup.attach_by_era(cohort, t, "postcode", "on")
+        self.assertEqual(out.index.tolist(), ["x", "x", "y"])
+        self.assertEqual(out.postcode.tolist(), cohort.postcode.tolist())
+        self.assertEqual(out.simd_status.tolist(), [lookup.A_PART, lookup.UNIQUE, lookup.NO_EDITION])
+        empty = cohort.iloc[:0]
+        self.assertEqual(len(lookup.attach_by_era(empty, t, "postcode", "on")), 0)
+        self.assertEqual(len(lookup.attach(empty, t, "postcode", "on", edition="2020v2")), 0)
+        rural = rural_fixture()
+        with unittest.mock.patch.object(lookup, "rurality_versions", return_value=[(2005, 2021, "2005-2006"), (2022, 9999, "2022")]):
+            out = lookup.attach_rurality(cohort, rural, "postcode", "on")
+            self.assertEqual(out.index.tolist(), ["x", "x", "y"])
+            self.assertEqual(out.postcode.tolist(), cohort.postcode.tolist())
+            self.assertEqual(out.rurality_status.tolist(), ["a_part", lookup.BEFORE_FIRST_VERSION, lookup.BEFORE_FIRST_VERSION])
+            self.assertEqual(len(lookup.attach_rurality(empty, rural, "postcode", "on")), 0)
+
+    def test_a_missing_date_is_reported_as_missing_not_as_early(self):
+        t = fixture()
+        for edition in ("2004", "2006", "2009v2", "2012", "2016"):
+            t[f"simd{edition}_pw_scotland_quintile"] = t["simd2020v2_pw_scotland_quintile"]
+        cohort = pd.DataFrame({"postcode": ["AB10 1BF", "AB10 1BF"], "on": [None, "1990-01-01"]})
+        self.assertEqual(lookup.attach_by_era(cohort, t, "postcode", "on").simd_status.tolist(), [lookup.MISSING_DATE, lookup.NO_EDITION])
+        self.assertEqual(lookup.attach(cohort, t, "postcode", "on", edition="2020v2").simd_status.tolist()[0], lookup.MISSING_DATE)
+        with unittest.mock.patch.object(lookup, "rurality_versions", return_value=[(2005, 9999, "2005-2006")]):
+            out = lookup.attach_rurality(cohort, rural_fixture(), "postcode", "on")
+        self.assertEqual(out.rurality_status.tolist(), [lookup.MISSING_DATE, lookup.BEFORE_FIRST_VERSION])
+
+
+class ReviewCasesOnTheBuiltTable(unittest.TestCase):
+    """The reviewer's own postcodes, against the built history table: Python must now say what
+    the dated SQL query says."""
+
+    def test_the_reviewed_postcodes(self):
+        if not FILE.is_file():
+            self.skipTest("no built history table")
+        h = lookup.load(str(FILE))
+        if "urbanrural2005_2006_6fold" not in h or not (h.pc_base == "AB101WS").any():
+            self.skipTest("the saved table is not the 2026/2 build with rurality")
+        r = lookup.lookup(h, "AB10 1WS", edition="2020v2", on="2025-01-01")
+        self.assertEqual((r.status, r.value), (lookup.NOT_FOUND, None))            # SQL: po_box, no value
+        cases = pd.DataFrame({"postcode": ["HS6 5HT", "PA66 6BN"]})
+        report = lookup.attach_rurality(cases, h, "postcode", None, version="2005-2006", split="report")
+        self.assertEqual(report.rurality_status.tolist(), [lookup.SPLIT_CONFLICT, "outside_polygons"])
+        a_part = lookup.attach_rurality(cases, h, "postcode", None, version="2005-2006")
+        self.assertEqual(a_part.rurality_status.tolist(), [lookup.A_PART, "outside_polygons"])   # SQL: the A part
+        self.assertEqual([None if pd.isna(v) else int(v) for v in a_part.rurality_value], [6, None])
