@@ -15,6 +15,7 @@ the analyst, who passes an edition and a measure explicitly.
     h = lookup.load("results/postcode_simd_history.parquet")
     lookup.lookup(h, "AB10 1BF", edition="2012", on="2012-06-01")      # at a date
     lookup.attach(cohort, h, "postcode", "event_date", edition="2020v2")  # a whole frame
+    lookup.attach_rurality(cohort, h, "postcode", "event_date")          # urban-rural for the year
 
 Split postcodes: NRS splits a postcode that straddles a boundary into A, B and C parts, each
 its own record, and the A part is the one with more addresses. By default, as in NRS's own
@@ -38,6 +39,7 @@ GUIDANCE_TABLE_4 = [(1996, 2003, "2004"), (2004, 2006, "2006"), (2007, 2009, "20
                     (2010, 2013, "2012"), (2014, 2016, "2016"), (2017, 9999, "2020v2")]
 
 NOT_FOUND, UNIQUE, SPLIT_CONSENSUS, SPLIT_CONFLICT, DELETED = "not_found", "unique", "split_consensus", "split_conflict", "deleted"
+BEFORE_FIRST_VERSION = "before_first_version"  # the event predates the first urban-rural version
 A_PART = "a_part"          # several split parts valid; resolved to the A part, the NRS convention
 NO_EDITION = "no_edition"  # the event predates SIMD; the guidance points to Carstairs
 STATUSES = (NOT_FOUND, UNIQUE, A_PART, SPLIT_CONSENSUS, SPLIT_CONFLICT, DELETED, NO_EDITION)
@@ -192,6 +194,16 @@ def attach(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, date_co
     _check_split(split)
     table = scope(_prepare(table, date_col is not None, split), include_po_boxes, include_large_users)
     col = column(edition, measure)
+    out = _attach_column(events, table, postcode_col, date_col, col, prefix, split)
+    out[f"{prefix}_value"] = out[f"{prefix}_value"].astype("Int64")
+    out.attrs[f"{prefix}_label"] = label(col, split)
+    return out
+
+
+def _attach_column(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, date_col: str | None,
+                   col: str, prefix: str, split: str) -> pd.DataFrame:
+    """attach()'s record resolution for any one column of an already scoped table: status,
+    value and matched key, one row per event, never dropped or duplicated."""
     ev = pd.DataFrame({"_row": range(len(events)),
                        "_key": normalise_postcode(events[postcode_col].astype("string").fillna("")).replace("", pd.NA)},
                       index=events.index)
@@ -234,9 +246,8 @@ def attach(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, date_co
     pc_norm[status == A_PART] = summary["a_pc_norm"][status == A_PART]
     out = events.copy()
     out[f"{prefix}_status"] = status.values
-    out[f"{prefix}_value"] = value.astype("Int64").values
+    out[f"{prefix}_value"] = value.values
     out[f"{prefix}_pc_norm"] = pc_norm.values
-    out.attrs[f"{prefix}_label"] = label(col, split)
     assert len(out) == len(events)
     return out
 
@@ -279,5 +290,87 @@ def attach_by_era(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, 
         parts.append(none)
     out = pd.concat(parts).loc[events.index]
     out[f"{prefix}_value"] = out[f"{prefix}_value"].astype("Int64")
+    assert len(out) == len(events)
+    return out
+
+
+# --- Urban Rural Classification, history table only --------------------------------------------
+# The history table carries every published Scottish Government version, placed from each life's
+# own grid reference. Which version suits a year is a PROJECT CHOICE, as in the SPD SQL: by
+# reference year, the year a version describes, until the next version's year; not by
+# publication date (the 2022 version appeared in December 2024).
+
+def rurality_versions() -> list:
+    """(first year, last year, version) by reference year, read from the source registry so the
+    windows cannot drift from the versions the table was built with."""
+    from pathlib import Path
+    from .core.sources import load_registry
+    versions = list(load_registry(Path(__file__).resolve().parent / "sources.yaml").rurality_versions)
+    return [(v["reference_year"], versions[i + 1]["reference_year"] - 1 if i + 1 < len(versions) else 9999, v["key"])
+            for i, v in enumerate(versions)]
+
+
+def rurality_version_for(dates: pd.Series) -> pd.Series:
+    """The classification version for each event date's year; null before the first version."""
+    years = pd.to_datetime(dates).dt.year
+    out = pd.Series(pd.NA, index=dates.index, dtype="string")
+    for first, last, version in rurality_versions():
+        out[years.between(first, last)] = version
+    return out
+
+
+def rurality_label(version: str, fold: int) -> str:
+    return (f"Scottish Government Urban Rural Classification {version}, {fold}-fold, placed from the record's own "
+            "grid reference; version by reference year (project choice)")
+
+
+def attach_rurality(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, date_col: str | None,
+                    fold: int = 6, version: str | None = None, prefix: str = "rurality",
+                    include_po_boxes: bool = False, include_large_users: bool = True, split: str = "a_part") -> pd.DataFrame:
+    """The urban-rural class of the record attach() would choose, in the version for each event's
+    year, or in one `version` throughout. With `date_col` the record valid on the event date is
+    used; with `date_col=None` and a `version`, the current record.
+
+    The status is attach()'s, except where the chosen record has no code in that version: then
+    it is the reason stored with the record, `outside_polygons`, `ambiguous_polygons` or
+    `po_box`. Events before the first version get `before_first_version`. Like attach(), the
+    class is the matched record's own, and PO boxes are excluded unless asked for, in which case
+    they come back with no code and status `po_box`.
+    """
+    if fold not in (6, 8):
+        raise ValueError("fold must be 6 or 8")
+    table = _prepare(table, date_col is not None, split)
+    stem = lambda v: "urbanrural" + v.replace("-", "_")
+    if not any(c.startswith("urbanrural") for c in table.columns):
+        raise ValueError("This table carries no urban-rural versions. Use the history table, postcode_simd_history.parquet.")
+    if version is None and date_col is None:
+        raise ValueError("Give a date column to choose the version by year, or name one version to use throughout")
+    known = [v for _, _, v in rurality_versions()]
+    if version is not None and version not in known:
+        raise ValueError(f"version must be one of {known}, not {version!r}")
+    _check_split(split)
+    table = scope(table, include_po_boxes, include_large_users)
+    chosen = (pd.Series(version, index=events.index, dtype="string") if version is not None
+              else rurality_version_for(events[date_col]))
+    parts = []
+    for v in chosen.dropna().unique():
+        rows = events[chosen == v]
+        code = _attach_column(rows, table, postcode_col, date_col, f"{stem(v)}_{fold}fold", prefix, split)
+        stored = _attach_column(rows, table, postcode_col, date_col, f"{stem(v)}_status", "_stored", split)
+        reason = stored["_stored_value"].where(code[f"{prefix}_status"].isin([UNIQUE, A_PART, SPLIT_CONSENSUS]))
+        code[f"{prefix}_status"] = reason.fillna(code[f"{prefix}_status"]).values
+        code[f"{prefix}_version"] = v
+        code[f"{prefix}_label"] = rurality_label(v, fold)
+        parts.append(code)
+    none = events[chosen.isna()].copy()
+    if len(none):
+        none[f"{prefix}_status"] = BEFORE_FIRST_VERSION
+        none[f"{prefix}_value"] = pd.NA
+        none[f"{prefix}_pc_norm"] = None
+        none[f"{prefix}_version"] = None
+        none[f"{prefix}_label"] = None
+        parts.append(none)
+    out = pd.concat(parts).loc[events.index]
+    out[f"{prefix}_value"] = out[f"{prefix}_value"].astype("Int8")
     assert len(out) == len(events)
     return out

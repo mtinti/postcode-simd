@@ -398,7 +398,8 @@ lives_on_date AS (
     -- postcode that contains the address date. A postcode can be deleted and later re-used
     -- elsewhere; the address date decides which life the record belongs to. A record deleted
     -- on the address date is not valid on it. Same-day records are never valid. This does
-    -- not reconstruct historical administrative or rurality snapshots.
+    -- not reconstruct historical administrative snapshots; the one historical classification
+    -- returned, rurality, is chosen by year in step 3b and read from the life selected here.
     SELECT c.postcode_key AS requested_key, c.address_date AS requested_date, p.*,
            DENSE_RANK() OVER (
                PARTITION BY c.postcode_key, c.address_date

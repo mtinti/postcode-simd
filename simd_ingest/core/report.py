@@ -181,6 +181,38 @@ def render(report: Report, registry: Registry, tables: dict, info: dict, mode: s
                          f"{rows_label} | {added or 'NOT RECORDED'} | {_passed(report, f'join.{name}.{kind}.{k}.every_record_matched')} |")
         L += [""]
 
+    # 7b. rurality
+    agreement = report.observations.get("rurality.agreement")
+    if registry.rurality_versions and agreement is not None:
+        gate = registry.rurality_published
+        L += ["## 7b. Urban Rural Classification, history table only", "",
+              f"Every life's own grid reference is placed in each of the {len(registry.rurality_versions)} published "
+              "Scottish Government classification versions. A point in no polygon is null with `outside_polygons`, never "
+              "the nearest polygon; a post-office box is null with `po_box` in every version because its grid reference "
+              "is the sorting office. The main table keeps only the 2022 code the lookup publishes.", "",
+              f"**The gate.** The {gate['version']} placement must reproduce the codes the directory publishes, before "
+              f"boxes are withheld, with every life in the denominator and a point in no polygon counted wrong: "
+              f"{gate['current_small_user']:.1%} for current small users and {gate['other_cohorts']:.0%} for every other "
+              f"cohort of more than {gate['min_cohort']:,} lives. Thresholds fixed before the first comparison.", "",
+              "| Cohort | Lives | Agreement | Gated | Result |", "| --- | ---: | ---: | --- | --- |"]
+        for cohort, v in agreement.items():
+            name = f"rurality.agreement.{cohort}"
+            gated = any(c.name == name for c in report.checks)
+            rate = "n/a" if v["agreement"] is None else f"{v['agreement']:.4%}"
+            L.append(f"| {cohort.replace('_', ' ')} | {v['lives']:,} | {rate} | {'yes' if gated else 'no, too few'} | "
+                     f"{_passed(report, name) if gated else 'reported'} |")
+        L += ["", "| Version | Reference year | Outside every polygon, boxes included | Ambiguous | Geometries repaired |",
+              "| --- | ---: | ---: | ---: | ---: |"]
+        for v in registry.rurality_versions:
+            k = f"rurality.{v['key']}"
+            L.append(f"| {v['key']} | {v['reference_year']} | {report.observations.get(k + '.outside_polygons', 'NOT RECORDED')} | "
+                     f"{report.observations.get(k + '.ambiguous_polygons', 'NOT RECORDED')} | "
+                     f"{report.observations.get(k + '.invalid_geometries_repaired', 'NOT RECORDED')} |")
+        boxes = report.observations.get("rurality.po_boxes_withheld")
+        L += ["", f"Post-office boxes withheld in every version: {'NOT RECORDED' if boxes is None else f'{boxes:,}'}. "
+              "Readback places every point again from the saved file's own grid references: "
+              f"{_passed(report, 'readback.history.rurality_values')}.", ""]
+
     # 8. output
     L += ["## 8. Output", ""]
     for name, i in info.items():

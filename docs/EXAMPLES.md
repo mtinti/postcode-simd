@@ -202,6 +202,28 @@ lack usable residential geography. Pass `include_po_boxes=True` to attach the SI
 directory assigns them, or `include_large_users=False` to exclude every large-user record.
 Other large users still use their own attached SIMD here, not their linked small user's.
 
+## Urban-rural class for the year, history table only
+
+`attach_rurality` returns the Scottish Government Urban Rural Classification of the record
+`attach` would choose, in the version that suits each event's year. The history table carries
+all nine published versions, 2003-2004 to 2022, each placed from the record's own grid
+reference. Which version suits a year is a project choice, the same as in the SPD SQL: by the
+year a version describes, until the next version's year, not by when it was published.
+
+```python
+out = lookup.attach_rurality(cohort, t, "postcode", "event_date")            # 6-fold, version by year
+out = lookup.attach_rurality(cohort, t, "postcode", "event_date", fold=8)
+out = lookup.attach_rurality(cohort, t, "postcode", None, version="2022")   # one version, current records
+```
+
+The result adds `rurality_status`, `rurality_value`, `rurality_pc_norm`, `rurality_version` and
+`rurality_label`. The status is `attach`'s, except where the chosen record has no code in that
+version: then it is the reason stored with the record, `outside_polygons`, `ambiguous_polygons`
+or `po_box`. An event before 2003 gets `before_first_version`. PO boxes are excluded unless
+you pass `include_po_boxes=True`, and then come back with no code and status `po_box`. The
+main table has no versions and is refused. On small-user postcodes the dated SQL query returns
+the same version and class; a test compares the two on the built table.
+
 ## What to state in your analysis
 
 The guidance's checklist, and where each item comes from here:

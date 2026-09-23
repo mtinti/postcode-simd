@@ -1,7 +1,7 @@
 Metadata-Version: 2.4
 Name: simd-ingest
-Version: 1.1.0
-Summary: Every edition of the Scottish Index of Multiple Deprivation attached to every record of the Scottish Postcode Directory, built from hash-pinned public sources with the lineage recorded.
+Version: 3.0.0
+Summary: Postcode-SIMD tables from the Scottish Statistics Postcode Lookup and Scottish Postcode Directory, built from hash-pinned sources with recorded lineage.
 Author: Michele Tinti
 License: MIT
 Requires-Python: >=3.12
@@ -13,202 +13,190 @@ Requires-Dist: pyarrow==24.0.0
 Requires-Dist: PyYAML==6.0.3
 Requires-Dist: dbfread==2.0.7
 Requires-Dist: requests==2.32.4
-Requires-Dist: dagster==1.13.21
-Requires-Dist: dagster-webserver==1.13.21
+Requires-Dist: geopandas==1.1.4
+Requires-Dist: shapely==2.1.2
+Requires-Dist: pyogrio==0.13.0
+Requires-Dist: pyproj==3.8.0
 Provides-Extra: dev
 Requires-Dist: pytest==9.1.1; extra == "dev"
 Requires-Dist: duckdb==1.5.5; extra == "dev"
 Dynamic: license-file
 
-# Postcode-SIMD reference table
+# Postcode-SIMD reference tables
 
-One Parquet file that attaches all six editions of the Scottish Index of Multiple Deprivation to
-every record of the Scottish Postcode Directory, built from hash-pinned public sources by a
-pipeline that records what it read, what it checked and why it made each choice.
+A CLI pipeline that rebuilds two postcode-to-SIMD tables from hash-pinned public files.
+Routine maintenance is a refresh of one of the two NRS postcode products. Adding a SIMD
+edition is a separate, less frequent change to the source registry and output schemas.
 
-It is for analysts who link health or social care records to area deprivation and want the
-whole history in one place: every postcode the directory has ever held, with its dates, and for
-each one the PHS population-weighted bands and the Scottish Government unweighted bands of every
-SIMD edition from 2004 to 2020v2. The lookups that come with it follow the PHS deprivation
-guidance for analysts, including the rule for choosing an edition by the year of the data and
-the handling of split postcodes.
+| Table | Postcode source | One row per | Key | Answers |
+| --- | --- | --- | --- | --- |
+| `postcode_simd.parquet`, the **main table** | Scottish Statistics Postcode Lookup (SSPL) 2026/2 | whole postcode, latest life, both user types: 230,103 rows × 146 columns | `pc_norm` | SIMD on the latest postcode; either one edition or edition by event year |
+| `postcode_simd_history.parquet`, the **history table** | Scottish Postcode Directory (SPD) 2026/2 | postcode life, both user types: 247,773 rows × 189 columns | `pc_norm`, `introduced_on` | date-valid postcode records, split parts, or explicitly chosen SPD latest linkage |
 
-Status: v1.1.0, built from Scottish Postcode Directory 2026/2. The repository holds the means
-to reproduce the table and the record of how it was built. It holds no source data and no
-output; a clone that runs the build gets the same file, hash for hash.
+Six SIMD editions (2004–2020v2) are attached to both. The two NRS products allocate data
+zones differently: the SSPL takes the zone containing the centroid of the postcode's 2022
+output area, the SPD the zone containing the postcode itself. Every build reports observed
+data-zone and band differences; release changes and source corrections can also contribute.
+Neither table has been validated against an official PHS postcode-level lookup. Choose one
+product consistently for an analysis. Each new release replaces its table completely.
 
-| | |
-| --- | --- |
-| Output | `results/postcode_simd.parquet`, 247,773 rows by 162 columns, plus `results/manifest.json` |
-| Sources | 13 objects from PHS, National Records of Scotland and maps.gov.scot, see `simd_ingest/sources.yaml` |
-| Decisions | `simd_ingest/decisions.yaml`, an upstream of every table |
-| Dictionary | `docs/DATA_DICTIONARY.md`, generated from the frozen schema |
-| Orchestration | Dagster, with the CLI as an equivalent path through the same functions |
+## Start here
 
-## Install
+For a human review, read [How it is built](docs/HOW_IT_IS_BUILT.md), then the build's
+`results/BUILD_REPORT.md`. The report shows the actual checks, changes since the previous
+snapshot, and an example postcode. [Updating the sources](docs/UPDATING.md) is the maintenance
+runbook. The data dictionaries describe the columns of the [main](docs/DATA_DICTIONARY.md) and
+[history](docs/DATA_DICTIONARY_HISTORY.md) tables.
 
-```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-```
+## Install and build
 
-Python 3.12 and the pinned versions in `requirements.txt` are what the v1.0 output was verified
-with. Nothing needs a GIS library; the shapefile attribute tables are read with `dbfread`.
-
-## Build
-
-Two modes, set in `config/workflow.yaml`. Both finish in the same verified state.
+Python 3.12 or newer; runtime versions are pinned in `pyproject.toml`.
 
 ```bash
-# offline: every pinned file already under manual_data/, no network access
-python -m simd_ingest.cli build
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
 
-# download: fetch the 13 pinned objects into data/cache, place the 17 files under data/sources
-python -m simd_ingest.cli build --source-mode download
+# Verify files already supplied under manual_data/, then rebuild.
+simd-ingest build
+
+# Or download the explicitly pinned release, then rebuild.
+simd-ingest build --source-mode download
 ```
 
-A build verifies every source hash, builds the three reference tables and the index, runs about
-450 checks, writes the table to a temporary file, reopens it, verifies it against the source
-lookups, renames it into place, then writes the manifest. A blocking failure stops before anything
-is written. The offline build takes about fifteen seconds.
+`python -m simd_ingest.cli` is equivalent to `simd-ingest`. Settings live in
+`config/workflow.yaml`; use `--config <path>` for a separate review output directory.
 
 ```bash
-python -m simd_ingest.cli audit     # re-verify the existing table against freshly verified sources
-python -m simd_ingest.cli fetch     # download and verify only
-```
-
-## Run it in Dagster
-
-```bash
-export DAGSTER_HOME=$PWD/.dagster
-dagster dev -m simd_ingest.orchestration.definitions
-```
-
-Open the URL it prints, select the `build_postcode_simd` job and materialise all. The graph has
-eighteen source assets, one per pinned file plus the decision log, and four table assets:
-`phs_bands`, `govscot_bands`, `postcode_index` and `postcode_simd`. Every check the CLI runs is
-attached to the asset it guards. Blocking checks fail the asset and nothing downstream runs. The
-population reconstruction is a warning and never blocks.
-
-The instance directory `.dagster` is the provenance record: every run, every materialisation with
-its metadata and data version, every check result. Back it up with `results/`. Intermediate tables
-go to `data/work`, which is disposable.
-
-To see why the data is the way it is, open the `source/decisions` asset, or read
-`simd_ingest/decisions.yaml` directly. Each table's materialisation records the hash of the
-decision log it was built under, and the manifest records it as `decisions_sha256`.
-
-## Run it in Docker
-
-The same pipeline as an image, with nothing baked in: sources, cache, results and the
-instance are mounted from the project directory. Inside Docker the default mode is download,
-so this works from a clean machine with no data. `docs/DOCKER.md` is the full walkthrough,
-including the air-gapped variant.
-
-```bash
-docker compose build                    # the image
-docker compose run --rm build           # fetch the pinned sources into ./data, build ./results
-docker compose run --rm test            # the test suite, against what the build fetched
-docker compose up dagster               # the UI on http://localhost:3000, instance in ./.dagster
-```
-
-The base image is pinned by digest in the `Dockerfile`. A download-mode build inside the
-container from an empty cache produces a Parquet file byte-identical to the native macOS
-build under the same inputs, so the image is a valid clean-machine reproduction.
-
-## Query it
-
-The table is wide and mostly historical. Most questions start by filtering to current records.
-
-```python
-import pandas as pd
-t = pd.read_parquet("results/postcode_simd.parquet")
-
-# Current SIMD 2020v2 quintile for a postcode as a person writes it.
-key = "G71 8BQ".upper().replace(" ", "")
-rows = t[t.is_current & (t.pc_base == key)]
-# len(rows) == 0: not found.  == 1: unique.  > 1: a split postcode; report it, never pick A.
-rows[["pc_norm", "DataZone2011Code", "simd2020v2_pw_scotland_quintile"]]
-
-# The record valid for a full postcode on a given day, half-open interval. The two date
-# columns arrive as Python dates; convert them once to compare with a Timestamp.
-for c in ("introduced_on", "deleted_on"):
-    t[c] = pd.to_datetime(t[c])
-day = pd.Timestamp("2015-06-01")
-asof = t[(t.pc_norm == "AB101BF") & (t.introduced_on <= day) & (t.deleted_on.isna() | (t.deleted_on > day))]
-```
-
-The same in DuckDB:
-
-```sql
-SELECT pc_norm, simd2020v2_pw_scotland_quintile
-FROM 'results/postcode_simd.parquet'
-WHERE is_current AND pc_base = 'G718BQ';
-
-SELECT *
-FROM 'results/postcode_simd.parquet'
-WHERE pc_norm = 'AB101BF'
-  AND introduced_on <= DATE '2015-06-01'
-  AND (deleted_on IS NULL OR deleted_on > DATE '2015-06-01');
-```
-
-For the lookups the PHS guidance describes, most recent or at a date, with split postcodes
-and cohort files handled, use `simd_ingest.lookup`. `docs/EXAMPLES.md` walks through four
-worked cases with real output. For linking a cohort by era, each event taking the edition
-the guidance recommends for its year, see `docs/LINKAGE_BY_ERA.md`, which gives the same
-rule in Python and in one SQL query that runs on DuckDB and SQL Server.
-
-Two rules from the PHS deprivation guidance are built into the column names. Columns named
-`simd{ed}_pw_*` are PHS population-weighted; `simd{ed}_uw_*` are Scottish Government unweighted.
-Never mix the two in one analysis, and say which you used. Within-board bands such as
-`simd{ed}_pw_hb_decile` are computed within the board in `phs_dz{vintage}_hb`; use that code, not
-the directory's `HealthBoardArea2019Code`, when reporting them.
-
-## Test
-
-```bash
+simd-ingest fetch --source-mode download  # download/verify only
+simd-ingest audit --source-mode download  # read-only audit of data/sources and results
+python -m simd_ingest.trace "AB12 3GQ"     # follow one main-table record back to its source rows
+python -m simd_ingest.trace "AB12 3GQA" --table history
 python -m pytest tests -q
 ```
 
-Unit tests on the core rules and the lookup statuses run without any data. With the pinned
-sources and a build present, the integration tests also run: a modified-cell readback failure,
-the Dagster job reproducing the CLI's fingerprint with repeated data versions, a corrupted source
-blocking downstream, an edited decision log changing its version, and the Python and SQL era
-linkage agreeing on a synthetic cohort. Without data those tests report themselves as skipped.
+Offline mode never accesses the network. Audit never downloads or repairs files, regardless
+of source mode. Download mode rechecks cached hashes; it does not discover or accept “latest”
+automatically.
 
-## Layout
+## What a build leaves
 
-```text
-config/workflow.yaml           source mode, roots, cache, work and results directories
-simd_ingest/sources.yaml       pinned objects, files, hashes, URLs, licences, column maps
-simd_ingest/decisions.yaml     the decision log
-simd_ingest/output_schema.yaml the frozen 162-column contract
-simd_ingest/core/              plain Python: fetch, phs, govscot, crosscheck, spd, join, output, checks
-simd_ingest/orchestration/     the Dagster code location
-simd_ingest/cli.py             fetch, build, audit; installed as the `simd-ingest` command
-simd_ingest/lookup.py          the guidance-following lookups
-simd_ingest/dictionary.py      regenerates docs/DATA_DICTIONARY.md
-docs/                          dictionary, examples, era linkage, Docker walkthrough, SQL, plans
-tests/                         the test suites
+- `results/postcode_simd.parquet`: the main table, keyed by `pc_norm`.
+- `results/postcode_simd_history.parquet`: the history table, keyed by `(pc_norm, introduced_on)`.
+  Besides SIMD it carries the Scottish Government Urban Rural Classification of all nine published
+  versions, 2003-2004 to 2022, for every postcode life: `urbanrural<version>_6fold`, `_8fold` and
+  `_status`. Each life's own grid reference is placed in that version's polygons, which reproduces
+  the 2022 codes NRS publishes on every current life. A code is null, and the status says why, for
+  a point outside every polygon, a point on an edge between two classes, and a post-office box.
+  Read with pandas, a nullable code column arrives as a float; cast it to `Int8`.
+  Release is metadata/an attribute of each table, not part of its key.
+- `results/postcode_simd.csv.gz` and `results/postcode_simd_history.csv.gz`: the same rows as a
+  gzipped CSV, the form in which a table is shared. They omit the grid reference and coordinate
+  columns, which the Parquet keeps. `results/CSV_README.txt` carries the attribution.
+- `results/BUILD_REPORT.md`: the human review entry point, including the agreement between the two tables.
+- `results/manifest.json`: all checks, observations, input pins and both tables' fingerprints.
+- `results/runs/<run-id>/`: retained configuration/source/schema/decision snapshots,
+  runtime and code hashes, and that run's report. Failed builds retain their error and checks too.
+
+The build writes both candidates, reopens them and checks saved values and metadata before
+replacing the current tables. Validation failure leaves the previous publication untouched. Run
+one writer per results directory; files are replaced atomically individually, not as a multi-file
+transaction. After an interrupted publication, run `audit`; if it fails, rebuild from pinned
+sources. Keep `results/runs`, source archives and the corresponding code in your backups.
+Old table copies are not retained.
+
+There is no scheduler, server, intermediate-table cache or orchestration database.
+The old orchestration plans remain [historical records](docs/plans/README.md).
+
+## Use the tables
+
+The main table has one row per whole postcode. To inspect its latest source record
+(including a deleted latest life):
+
+```sql
+SELECT pc_norm, is_current, simd2020v2_pw_scotland_quintile
+FROM 'results/postcode_simd.parquet'
+WHERE pc_norm = 'G718BQ';
 ```
 
-Install the package with `pip install -e ".[dev]"` to get the `simd-ingest` command and the
-test dependencies.
+The history table keeps every life and the NRS split parts. A question about a date, or
+about which split part applies, goes there:
 
-## Licences and attribution
+```sql
+SELECT pc_norm, pc_base, introduced_on, deleted_on, simd2020v2_pw_scotland_quintile
+FROM 'results/postcode_simd_history.parquet'
+WHERE pc_base = 'G718BQ' AND introduced_on <= DATE '2015-06-01'
+  AND (deleted_on IS NULL OR deleted_on > DATE '2015-06-01');
+```
 
-The code and documentation are MIT licensed. The data the pipeline downloads is not part of
-this repository and stays under its publishers' terms:
+`pc_norm` removes ASCII spaces; in the history table it keeps the NRS split suffix and
+`pc_base` removes a validated suffix from a flagged small-user record. Original postcode text
+is preserved. PHS population-weighted fields (`pw`) and Government unweighted fields (`uw`)
+are distinct.
 
-- Public Health Scotland, SIMD population-weighted lookups, Open Government Licence v3.0.
-- Scottish Government, SIMD ranks and unweighted bands via SpatialData.gov.scot, Open
-  Government Licence v3.0. Contains Scottish Government data.
-- National Records of Scotland, Scottish Postcode Directory. Confirm NRS terms before
-  redistributing the index or any table derived from it, which includes the output of this
-  pipeline.
+For cohort linkage in SQL there are [two sets of queries](docs/sql/README.md), one per
+postcode product and neither the default: `docs/sql/spd/` reads the history table and
+`docs/sql/sspl/` reads the main table. Each set has `link_by_era.sql`, which chooses the SIMD
+edition from the year of the health data by PHS Table 4, and `link_latest.sql`, which uses
+one edition throughout. Every query is standalone, written as numbered steps that name the
+guidance or project choice. All five queries share 41 core columns: statuses, product provenance,
+both record keys, the edition's data and intermediate zones and PHS geography codes, and all
+14 stored measures. Product-specific own-record context follows (89 total columns for SSPL,
+108 for SPD era/latest, 111 for SPD as-of); select shared columns by name when combining results.
+The SPD set selects the latest life and the A part itself;
+the SSPL set does not, because NRS did. Both attach a large user's SIMD through its linked
+small-user postcode and give PO boxes none. Applying that rule to SSPL is a project
+interpretation of PHS Appendix A, not verified parity with PHS's own lookup.
+[NRS recommends SSPL for statistical production and SPD for operational/administrative use](https://www.nrscotland.gov.uk/publications/geography-scottish-statistics-postcode-lookup-information-note/);
+the project keeps this choice explicit. The SPD set adds `link_as_of.sql` for a reliable
+address date: it selects the postcode life valid on that date, not historical administrative
+snapshots. The three SPD queries also return the Urban Rural Classification version that suits
+the year, chosen by reference year as a project choice, with a status saying why when it is
+empty. It needs only the address date: the year of that date chooses the
+edition, and `analysis_year` is an optional override for holding one edition across a study.
+The step-by-step commentary is in [LINKAGE_BY_ERA.md](docs/LINKAGE_BY_ERA.md).
 
-## Citing
+To review the logic before trusting it, read
+[walkthrough_as_of.sql](docs/sql/spd/walkthrough_as_of.sql): the dated query written short,
+every step with its reason, returning the rank, both publishers' bands and the urban-rural
+class. A test requires it to agree with the generated query case for case.
 
-If you use the table or the pipeline, cite the repository with its version tag and the
-`logical_fingerprint` from the manifest of the build you used, so the exact data can be
-identified.
+To load the shared CSVs into SQL Server, [import_csv.sql](docs/sql/import_csv.sql) stages and
+types each file and [check_loaded_digest.sql](docs/sql/check_loaded_digest.sql) verifies the
+structure, the key, the row count and the row digest the build recorded.
+`tests/ground_truth.csv` holds 360 boundary cases, a data zone at the edge of every quintile
+and decile for every edition and both publishers, each with a postcode, for testing a loaded
+table or a new query; regenerate it with `python -m simd_ingest.ground_truth --seed 2026`.
+
+The [Python helpers](docs/EXAMPLES.md) read either table: current lookups against the main
+table, current or as-of lookups against the history table, with own-record geography and an
+optional split consensus/conflict policy on history. Date-valid and split-report questions
+against the main table are refused; the SQL sets choose an edition by year without needing
+postcode history.
+Exclusions remain consumer choices, not deletions from the tables. Adding a source edition
+does not automatically change the analyst's edition-by-year policy.
+
+## Optional Docker runner
+
+```bash
+docker compose build
+docker compose run --rm build
+docker compose run --rm test
+```
+
+This packages the same CLI, with sources and results mounted from the host.
+See [Docker](docs/DOCKER.md) for offline and audit commands.
+
+## Code to read
+
+`cli.py` handles arguments; `pipeline.py` contains the single build sequence.
+`core/sspl.py` and `core/spd.py` read the two postcode products, `phs.py`, `govscot.py`,
+`join.py` and `output.py` contain the shared data rules, and `core/agreement.py` compares the
+two tables. `core/text_output.py` writes the shared CSV and the digest a database load is checked against.
+`sources.yaml` declares sources and editions, `sspl_schema.yaml` and
+`spd_schema.yaml` declare the postcode file headers, `output_schema.yaml` and
+`output_schema_history.yaml` declare the saved tables, `export_contract.yaml` says what leaves
+the build, and `decisions.yaml` records policy.
+Tests include synthetic postcode refreshes of both products, a new SIMD edition/vintage,
+corrupted inputs and saved files; downloaded-data tests also pin both tables' rows-only
+fingerprints.

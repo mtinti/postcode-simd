@@ -476,6 +476,12 @@ decisions:
       a large user reports its own point location rather than that of the small-user postcode it
       links to. Its demo input became three rows, and the equivalence test now compares these
       four columns too.
+    superseded_in_part: >-
+      rurality-by-version and rurality-version-by-reference-year, 21 September 2026. The limitation
+      this entry gives as its reason, that the directory carries only the 2022 classification so a
+      historical address is described by today's categories, no longer holds for the history table:
+      the walkthrough now also returns the version for the year. The two bandings and the published
+      2022 columns stand as decided here.
     reason: >-
       A reader validating the logic has to see that the same rank produces two different bands:
       PHS splits so each band holds a fifth or a tenth of the population, the Scottish Government

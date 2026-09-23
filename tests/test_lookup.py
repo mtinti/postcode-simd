@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+import unittest.mock
 from pathlib import Path
 
 import pandas as pd
@@ -143,3 +144,99 @@ class RealFile(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def rural_fixture() -> pd.DataFrame:
+    """fixture() plus two classification versions. The reused postcode's two lives sit in
+    different classes, one life is outside the polygons in 2005-2006, and a PO box has none."""
+    t = fixture()
+    t["spd_user_type"], t["LinkedSmallUserPostcode"] = "small_user", ""
+    box = pd.DataFrame([dict(pc_norm="AB991AA", pc_base="AB991AA", introduced_on=pd.Timestamp("2000-01-01"), deleted_on=pd.NaT,
+                             is_current=True, simd2020v2_pw_scotland_quintile=1, spd_user_type="large_user", LinkedSmallUserPostcode="NO LINKP")])
+    t = pd.concat([t, box], ignore_index=True)
+    for v, codes, statuses in (("2005_2006", [7, 2, 1, 1, 3, 3, 1, None], [None, None, None, None, None, None, None, "po_box"]),
+                               ("2022",      [7, 2, 1, 1, 3, 3, 1, None], [None, None, None, None, None, None, None, "po_box"])):
+        t[f"urbanrural{v}_8fold"] = pd.array(codes, dtype="Int8")
+        t[f"urbanrural{v}_6fold"] = pd.array([None if c is None else {1: 1, 2: 2, 3: 3, 7: 6}[c] for c in codes], dtype="Int8")
+        t[f"urbanrural{v}_status"] = pd.array(statuses, dtype="string")
+    t.loc[0, ["urbanrural2005_2006_6fold", "urbanrural2005_2006_8fold"]] = pd.NA      # the 2003 life, off the 2005-2006 coast
+    t.loc[0, "urbanrural2005_2006_status"] = "outside_polygons"
+    return t
+
+
+class Rurality(unittest.TestCase):
+    def setUp(self):
+        self.t = rural_fixture()
+        self.versions = [(2003, 2004, "2003-2004"), (2005, 2006, "2005-2006"), (2007, 2021, "2020"), (2022, 9999, "2022")]
+        self.patch = unittest.mock.patch.object(lookup, "rurality_versions", return_value=self.versions)
+        self.patch.start()
+
+    def tearDown(self):
+        self.patch.stop()
+
+    def test_version_by_year_and_the_reason_when_there_is_no_code(self):
+        # Only two versions exist as columns in the fixture; the windows name them by year.
+        self.versions[:] = [(2005, 2021, "2005-2006"), (2022, 9999, "2022")]
+        cohort = pd.DataFrame({"postcode": ["AB10 1BF", "AB10 1BF", "AB10 1BF", "G71 8BQ", "ZZ1 1ZZ", "AB10 1BF"],
+                               "on": ["2005-06-01", "2012-06-01", "2023-06-01", "2023-06-01", "2023-06-01", "2001-01-01"]})
+        out = lookup.attach_rurality(cohort, self.t, "postcode", "on")
+        self.assertEqual(out.rurality_status.tolist(), ["outside_polygons", "unique", "unique", "a_part", "not_found", "before_first_version"])
+        self.assertEqual([None if pd.isna(v) else int(v) for v in out.rurality_value], [None, 2, 2, 1, None, None])
+        self.assertEqual(out.rurality_version.tolist()[:5], ["2005-2006", "2005-2006", "2022", "2022", "2022"])
+        self.assertTrue(pd.isna(out.rurality_version.iloc[5]))
+        eight = lookup.attach_rurality(cohort, self.t, "postcode", "on", fold=8)
+        self.assertEqual(int(eight.rurality_value.iloc[1]), 2)
+        self.assertIn("project choice", out.rurality_label.iloc[0])
+
+    def test_one_version_throughout_and_current_records(self):
+        cohort = pd.DataFrame({"postcode": ["AB10 1BF", "G71 8BQ"]})
+        out = lookup.attach_rurality(cohort, self.t, "postcode", None, version="2022")
+        self.assertEqual(out.rurality_status.tolist(), ["unique", "a_part"])
+        self.assertEqual([int(v) for v in out.rurality_value], [2, 1])
+        with self.assertRaises(ValueError):
+            lookup.attach_rurality(cohort, self.t, "postcode", None)                 # no year and no version
+        with self.assertRaises(ValueError):
+            lookup.attach_rurality(cohort, self.t, "postcode", None, version="1999")
+        with self.assertRaises(ValueError):
+            lookup.attach_rurality(cohort, self.t, "postcode", None, version="2022", fold=3)
+
+    def test_po_boxes_are_excluded_unless_asked_for_and_then_say_why(self):
+        cohort = pd.DataFrame({"postcode": ["AB99 1AA"], "on": ["2023-01-01"]})
+        self.versions[:] = [(2005, 2021, "2005-2006"), (2022, 9999, "2022")]
+        self.assertEqual(lookup.attach_rurality(cohort, self.t, "postcode", "on").rurality_status.tolist(), ["not_found"])
+        out = lookup.attach_rurality(cohort, self.t, "postcode", "on", include_po_boxes=True)
+        self.assertEqual(out.rurality_status.tolist(), ["po_box"])
+        self.assertTrue(pd.isna(out.rurality_value.iloc[0]))
+
+    def test_a_table_without_versions_is_refused(self):
+        with self.assertRaises(ValueError):
+            lookup.attach_rurality(pd.DataFrame({"postcode": ["AB10 1BF"]}), fixture(), "postcode", None, version="2022")
+
+
+class RuralityOnTheBuiltTable(unittest.TestCase):
+    """Python and the dated SQL query choose the same record and the same version, so on
+    small-user postcodes they must return the same class."""
+
+    def test_python_agrees_with_the_dated_sql_query(self):
+        if not FILE.is_file():
+            self.skipTest("no built history table")
+        import duckdb
+        h = lookup.load(str(FILE))
+        if "urbanrural2022_6fold" not in h:
+            self.skipTest("the saved table predates the rurality columns")
+        cases = pd.DataFrame({"id": range(1, 7),
+                              "postcode": ["AB11 5FA", "AB11 5FA", "AB21 0SB", "FK17 8DS", "FK17 8DS", "TD9 7PQ"],
+                              "on": pd.to_datetime(["2005-06-10", "2015-06-01", "2015-06-01", "1990-06-01", "2020-06-01", "1998-05-15"])})
+        py = lookup.attach_rurality(cases, h, "postcode", "on")
+        con = duckdb.connect()
+        con.execute(f"CREATE VIEW postcode_simd_history AS SELECT * FROM read_parquet('{FILE}')")
+        con.register("cohort", cases.rename(columns={"on": "address_date"}).assign(analysis_year=pd.array([None] * 6, dtype="Int64")))
+        sql = (ROOT / "docs/sql/spd/link_as_of.sql").read_text()
+        demo = ("    SELECT 1 AS id, CAST('AB11 5FA' AS varchar(32)) AS postcode,\n"
+                "           CAST('2005-06-10' AS date) AS address_date, CAST(NULL AS int) AS analysis_year")
+        self.assertEqual(sql.count(demo), 1)
+        q = con.execute(sql.replace(demo, "    SELECT id, postcode, address_date, analysis_year FROM cohort")).df().sort_values("id")
+        self.assertEqual(py.rurality_version.fillna("none").tolist(), q.rurality_version.fillna("none").tolist())
+        self.assertEqual([None if pd.isna(v) else int(v) for v in py.rurality_value],
+                         [None if pd.isna(v) else int(v) for v in q.rurality_6fold])
+        self.assertEqual(py.rurality_status.replace({"unique": "matched", "a_part": "matched"}).tolist(), q.rurality_status.tolist())

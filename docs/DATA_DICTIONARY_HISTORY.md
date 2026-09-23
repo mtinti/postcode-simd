@@ -6,7 +6,7 @@ containing the postcode's own grid reference. For one row per whole postcode see
 [DATA_DICTIONARY.md](DATA_DICTIONARY.md). Generated from `simd_ingest/output_schema_history.yaml`; do not edit by hand.
 
 Current build: 247,773 rows by 189 columns, history index release 2026_2,
-allocation `postcode_grid_reference`, built 2026-09-21T19:36:32Z. Parquet SHA256 `03764e2db8bc12ef09c753f9d56d01eda7738e9bd7484475be2de4044094c954`; rows-only fingerprint
+allocation `postcode_grid_reference`, built 2026-09-23T06:10:24Z. Parquet SHA256 `61a72626ede689b0e7eb5802cfc28a81dc81abc108dbc5895bfdc724fa8797b2`; rows-only fingerprint
 `ddb162ef89c7d52acf0e7ba83c1b7432ca3df209458e32479b38a09a34fc0174`. The file hash also covers the embedded provenance metadata,
 so it changes when the decision log changes; compare fingerprints under the same pinned runtime.
 

@@ -93,6 +93,30 @@ The tests include a synthetic seventh edition on 2022 data zones requiring only 
 and schema additions. That proves extension for the supported CSV/DBF layout, not that
 every future publisher format can be handled without code changes.
 
+## Occasionally: new Urban Rural Classification version
+
+The Scottish Government publishes a new version roughly every two years at
+`https://maps.gov.scot/ATOM/shapefiles/SG_UrbanRural_<version>.zip`.
+
+1. Pin the archive in `sources.yaml` with its `.shp`, `.shx`, `.dbf` and `.prj` members, and add
+   a `rurality_versions` entry: its key, file, reference year, polygon count and the names of
+   its 6-fold and 8-fold columns. Reference years must increase; the loader refuses otherwise.
+2. Append three fields to `output_schema_history.yaml` on the existing pattern,
+   `urbanrural<version>_6fold`, `_8fold` and `_status`, add the status column to
+   `empty_is_null` in `export_contract.yaml`, and bump the schema version.
+3. If the new version replaces the one the directory publishes, move `rurality_published` to
+   it together with the directory refresh that carries its codes; the gate compares the
+   placement with those codes on every build.
+4. Build and audit in a review directory. The year windows in the SQL and the Python API are
+   derived from the reference years, so regenerate the SQL with
+   `python -m simd_ingest.sql_examples` and review which years now move to the new version.
+   Extend the independent year windows in `tests/test_sql_sets.py` by hand.
+
+A directory refresh alone also runs through the rurality gate: every build compares the
+placement with the 2022 codes the new release publishes, cohort by cohort, and stops below the
+thresholds in `rurality_published`. A failure there is a finding about the release or the
+method, not a threshold to relax.
+
 ## What to keep
 
 Keep the code revision, original hash-pinned sources/archives and `results/runs/<run-id>`.

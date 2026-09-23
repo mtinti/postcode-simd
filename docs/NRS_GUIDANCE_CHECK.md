@@ -36,7 +36,9 @@ not endorsement; authoritative confirmation or a PHS postcode-level oracle is st
 A dated question, which postcode life was valid on a reliable address date, is answered by
 `link_as_of.sql` in the SPD set and by the Python API, both from the SPD validity intervals;
 the SSPL cannot answer it. This project policy selects lives, not historical administrative
-or rurality snapshots. A general record edit date need not describe the person's address.
+snapshots. The one exception is rurality: the history table carries every published Urban Rural
+Classification version, placed from each life's own grid reference, and the SPD queries and the
+Python API return the version for the year. A general record edit date need not describe the person's address.
 
 Using an event year to choose a SIMD edition does **not** require historical postcode
 selection: the SQL era query uses the latest postcode with a Table 4 edition. Conversely,
