@@ -325,8 +325,19 @@ def test_the_import_recipe_restores_every_structural_null_rule(contract):
                 continue
             if column in structural:
                 assert f"CASE WHEN [{role}] = '{structural[column]}' THEN NULL ELSE ISNULL([{column}], N'') END" in text
+            elif column in (spec.get("empty_is_null") or []):
+                # Never blank, so an empty cell must come back as a null and never as a blank.
+                assert f"NULLIF([{column}], N'')" in text and f"ISNULL([{column}], N'')" not in text
             else:
                 assert f"ISNULL([{column}], N'')" in text
+        # The rule only makes sense for nullable text: anything else it names is a mistake.
+        nullable = {f["name"]: f["nullable"] for f in schema["fields"]}
+        for column in spec.get("empty_is_null") or []:
+            assert kinds[column] == "string" and nullable[column], column
+        # And every nullable integer is guarded, so an empty cell can never load as zero.
+        for column in tx.exported_columns(schema, contract, table):
+            if kinds[column] in ("int8", "int16") and nullable[column]:
+                assert f"NULLIF([{column}], '')" in text, column
 
 
 def test_the_check_script_states_what_it_cannot_establish():

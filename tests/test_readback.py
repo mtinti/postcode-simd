@@ -23,6 +23,9 @@ ROOT = Path(__file__).resolve().parent.parent
 def sample(tmp_path):
     registry = load_registry(ROOT / "simd_ingest/sources.yaml")
     schema = output.load_schema(ROOT / "simd_ingest/output_schema_history.yaml")
+    # Three invented rows have no grid reference to place. The rurality columns have their own
+    # readback tests on real points; here the schema is the table without them.
+    schema = {**schema, "fields": [f for f in schema["fields"] if f["source"] != "rurality"]}
     main_schema = output.load_schema(ROOT / "simd_ingest/output_schema.yaml")
     decisions = ROOT / "simd_ingest/decisions.yaml"
     digest = sha256(decisions)

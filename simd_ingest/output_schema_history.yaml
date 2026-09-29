@@ -1,12 +1,14 @@
 # Frozen output schema of the history table (Scottish Postcode Directory, every postcode life).
-# Order, Arrow type and nullability are the contract. Fields unchanged since postcode_simd_wide_v1.
-# 65 directory columns + 7 derived + 6 PHS geography + 6 editions x 14 SIMD fields = 162.
-version: postcode_simd_wide_v1
+# Order, Arrow type and nullability are the contract. postcode_simd_wide_v2 appends the 27 rurality
+# columns to the 162 of postcode_simd_wide_v1, which are unchanged and in the same order.
+# 65 directory columns + 7 derived + 6 PHS geography + 6 editions x 14 SIMD fields
+# + 9 classification versions x (6-fold, 8-fold, status) = 189.
+version: postcode_simd_wide_v2
 table: postcode_simd_history
 index_source: spd
 allocation: postcode_grid_reference
 key: [pc_norm, introduced_on]
-columns: 162
+columns: 189
 fields:
 - name: Postcode
   type: string
@@ -818,3 +820,138 @@ fields:
   nullable: false
   source: govscot
   note: Scottish Government unweighted vigintile; 1 = most deprived
+- name: urbanrural2003_2004_6fold
+  type: int8
+  nullable: true
+  source: rurality
+  note: Scottish Government Urban Rural Classification 2003-2004, 6-fold, placed from this record's own grid reference; null where urbanrural2003_2004_status says why
+- name: urbanrural2003_2004_8fold
+  type: int8
+  nullable: true
+  source: rurality
+  note: Scottish Government Urban Rural Classification 2003-2004, 8-fold, placed from this record's own grid reference; null where urbanrural2003_2004_status says why
+- name: urbanrural2003_2004_status
+  type: string
+  nullable: true
+  source: rurality
+  note: null where the 2003-2004 codes are present; otherwise outside_polygons, ambiguous_polygons or po_box
+- name: urbanrural2005_2006_6fold
+  type: int8
+  nullable: true
+  source: rurality
+  note: Scottish Government Urban Rural Classification 2005-2006, 6-fold, placed from this record's own grid reference; null where urbanrural2005_2006_status says why
+- name: urbanrural2005_2006_8fold
+  type: int8
+  nullable: true
+  source: rurality
+  note: Scottish Government Urban Rural Classification 2005-2006, 8-fold, placed from this record's own grid reference; null where urbanrural2005_2006_status says why
+- name: urbanrural2005_2006_status
+  type: string
+  nullable: true
+  source: rurality
+  note: null where the 2005-2006 codes are present; otherwise outside_polygons, ambiguous_polygons or po_box
+- name: urbanrural2007_2008_6fold
+  type: int8
+  nullable: true
+  source: rurality
+  note: Scottish Government Urban Rural Classification 2007-2008, 6-fold, placed from this record's own grid reference; null where urbanrural2007_2008_status says why
+- name: urbanrural2007_2008_8fold
+  type: int8
+  nullable: true
+  source: rurality
+  note: Scottish Government Urban Rural Classification 2007-2008, 8-fold, placed from this record's own grid reference; null where urbanrural2007_2008_status says why
+- name: urbanrural2007_2008_status
+  type: string
+  nullable: true
+  source: rurality
+  note: null where the 2007-2008 codes are present; otherwise outside_polygons, ambiguous_polygons or po_box
+- name: urbanrural2009_2010_6fold
+  type: int8
+  nullable: true
+  source: rurality
+  note: Scottish Government Urban Rural Classification 2009-2010, 6-fold, placed from this record's own grid reference; null where urbanrural2009_2010_status says why
+- name: urbanrural2009_2010_8fold
+  type: int8
+  nullable: true
+  source: rurality
+  note: Scottish Government Urban Rural Classification 2009-2010, 8-fold, placed from this record's own grid reference; null where urbanrural2009_2010_status says why
+- name: urbanrural2009_2010_status
+  type: string
+  nullable: true
+  source: rurality
+  note: null where the 2009-2010 codes are present; otherwise outside_polygons, ambiguous_polygons or po_box
+- name: urbanrural2011_2012_6fold
+  type: int8
+  nullable: true
+  source: rurality
+  note: Scottish Government Urban Rural Classification 2011-2012, 6-fold, placed from this record's own grid reference; null where urbanrural2011_2012_status says why
+- name: urbanrural2011_2012_8fold
+  type: int8
+  nullable: true
+  source: rurality
+  note: Scottish Government Urban Rural Classification 2011-2012, 8-fold, placed from this record's own grid reference; null where urbanrural2011_2012_status says why
+- name: urbanrural2011_2012_status
+  type: string
+  nullable: true
+  source: rurality
+  note: null where the 2011-2012 codes are present; otherwise outside_polygons, ambiguous_polygons or po_box
+- name: urbanrural2013_2014_6fold
+  type: int8
+  nullable: true
+  source: rurality
+  note: Scottish Government Urban Rural Classification 2013-2014, 6-fold, placed from this record's own grid reference; null where urbanrural2013_2014_status says why
+- name: urbanrural2013_2014_8fold
+  type: int8
+  nullable: true
+  source: rurality
+  note: Scottish Government Urban Rural Classification 2013-2014, 8-fold, placed from this record's own grid reference; null where urbanrural2013_2014_status says why
+- name: urbanrural2013_2014_status
+  type: string
+  nullable: true
+  source: rurality
+  note: null where the 2013-2014 codes are present; otherwise outside_polygons, ambiguous_polygons or po_box
+- name: urbanrural2016_6fold
+  type: int8
+  nullable: true
+  source: rurality
+  note: Scottish Government Urban Rural Classification 2016, 6-fold, placed from this record's own grid reference; null where urbanrural2016_status says why
+- name: urbanrural2016_8fold
+  type: int8
+  nullable: true
+  source: rurality
+  note: Scottish Government Urban Rural Classification 2016, 8-fold, placed from this record's own grid reference; null where urbanrural2016_status says why
+- name: urbanrural2016_status
+  type: string
+  nullable: true
+  source: rurality
+  note: null where the 2016 codes are present; otherwise outside_polygons, ambiguous_polygons or po_box
+- name: urbanrural2020_6fold
+  type: int8
+  nullable: true
+  source: rurality
+  note: Scottish Government Urban Rural Classification 2020, 6-fold, placed from this record's own grid reference; null where urbanrural2020_status says why
+- name: urbanrural2020_8fold
+  type: int8
+  nullable: true
+  source: rurality
+  note: Scottish Government Urban Rural Classification 2020, 8-fold, placed from this record's own grid reference; null where urbanrural2020_status says why
+- name: urbanrural2020_status
+  type: string
+  nullable: true
+  source: rurality
+  note: null where the 2020 codes are present; otherwise outside_polygons, ambiguous_polygons or po_box
+- name: urbanrural2022_6fold
+  type: int8
+  nullable: true
+  source: rurality
+  note: Scottish Government Urban Rural Classification 2022, 6-fold, placed from this record's own grid reference; null where urbanrural2022_status says why
+- name: urbanrural2022_8fold
+  type: int8
+  nullable: true
+  source: rurality
+  note: Scottish Government Urban Rural Classification 2022, 8-fold, placed from this record's own grid reference; null where urbanrural2022_status says why
+- name: urbanrural2022_status
+  type: string
+  nullable: true
+  source: rurality
+  note: null where the 2022 codes are present; otherwise outside_polygons, ambiguous_polygons or po_box

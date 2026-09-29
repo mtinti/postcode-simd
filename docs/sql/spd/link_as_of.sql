@@ -47,6 +47,25 @@ era AS (
         (2017, 9999, '2020v2', 2011)
     ) AS v(year_from, year_to, edition, data_zone_vintage)
 ),
+rurality_era AS (
+    -- STEP 3b. RURALITY VERSION (SPD only). PROJECT CHOICE: there is no PHS table for this.
+    -- The Scottish Government Urban Rural Classification version is chosen by its REFERENCE
+    -- year, the year it describes, not the date it was published: the 2022 version describes
+    -- Census Day 2022 and appeared on 16 December 2024. A version applies until the year before
+    -- the next one. Before 2003 there is no version. The year is the same year that chose the
+    -- SIMD edition, so an overriding analysis_year holds the classification fixed as well.
+    SELECT * FROM (VALUES
+        (2003, 2004, '2003-2004'),
+        (2005, 2006, '2005-2006'),
+        (2007, 2008, '2007-2008'),
+        (2009, 2010, '2009-2010'),
+        (2011, 2012, '2011-2012'),
+        (2013, 2015, '2013-2014'),
+        (2016, 2019, '2016'),
+        (2020, 2021, '2020'),
+        (2022, 9999, '2022')
+    ) AS v(year_from, year_to, version)
+),
 chosen AS (
     SELECT r.id, r.postcode, r.address_date, r.analysis_year, r.postcode_key,
            e.edition AS simd_edition, e.data_zone_vintage,
@@ -56,33 +75,73 @@ chosen AS (
                WHEN r.analysis_year < 1 OR r.analysis_year > 9999 THEN 'invalid_year'
                WHEN e.edition IS NULL THEN 'no_edition'
                ELSE 'ok'
-           END AS edition_status
+           END AS edition_status,
+           u.version AS rurality_version,
+           'project choice: classification version by reference year of the health data' AS rurality_policy
     FROM requested r
     LEFT JOIN era e ON r.analysis_year BETWEEN e.year_from AND e.year_to
+    LEFT JOIN rurality_era u ON r.analysis_year BETWEEN u.year_from AND u.year_to
 ),
 lookup_requests AS (
     -- Resolve each postcode/date pair once, then join back to every original input row.
     -- No unique patient ID or execution-dependent row number is needed (project choice).
     SELECT DISTINCT postcode_key, address_date FROM requested
 ),
-lives_on_date AS (
+lives_containing_date AS (
     -- STEP 4. LIFE VALID ON THE ADDRESS DATE (SPD only, project policy). A life runs from
     -- introduced_on up to but not including deleted_on. Take every life of the ordinary
     -- postcode that contains the address date. A postcode can be deleted and later re-used
     -- elsewhere; the address date decides which life the record belongs to. A record deleted
     -- on the address date is not valid on it. Same-day records are never valid. This does
-    -- not reconstruct historical administrative or rurality snapshots.
-    SELECT c.postcode_key AS requested_key, c.address_date AS requested_date, p.*,
-           DENSE_RANK() OVER (
-               PARTITION BY c.postcode_key, c.address_date
-               ORDER BY CASE WHEN SUBSTRING(p.pc_norm, LEN(p.pc_base) + 1, 10) = '' THEN 'A' ELSE SUBSTRING(p.pc_norm, LEN(p.pc_base) + 1, 10) END,
-                        p.introduced_on DESC
-           ) AS priority
+    -- not reconstruct historical administrative snapshots; the one historical classification
+    -- returned, rurality, is chosen by year in step 3b and read from the life selected here.
+    SELECT c.postcode_key AS requested_key, c.address_date AS requested_date, p.*
     FROM lookup_requests c
     JOIN postcode_simd_history p
       ON p.pc_base = c.postcode_key
      AND p.introduced_on <= c.address_date
      AND (p.deleted_on IS NULL OR p.deleted_on > c.address_date)
+),
+key_lives AS (
+    -- When no life contains the date, say where the date falls relative to the lives that
+    -- exist: before the first life, after the last, or in a gap between two lives. And find
+    -- the last day any real life ended before the date, for step 4b.
+    SELECT c.postcode_key AS requested_key, c.address_date AS requested_date,
+           MIN(p.introduced_on) AS first_introduced_on,
+           MAX(CASE WHEN p.deleted_on IS NOT NULL AND p.deleted_on <= c.address_date THEN p.deleted_on END) AS previous_life_deleted_on,
+           MIN(CASE WHEN p.introduced_on > c.address_date THEN p.introduced_on END) AS next_life_introduced_on,
+           MAX(CASE WHEN p.deleted_on <= c.address_date AND p.introduced_on < p.deleted_on THEN p.deleted_on END) AS fallback_deleted_on
+    FROM lookup_requests c
+    JOIN postcode_simd_history p ON p.pc_base = c.postcode_key
+    GROUP BY c.postcode_key, c.address_date
+),
+lives_on_date AS (
+    -- STEP 4b. THE PREVIOUS LIFE (project policy). When no life contains the address date
+    -- but the postcode had one that ended before it, use that life: the postcode was retired,
+    -- or retired and later reissued elsewhere, after the address was recorded. The usual
+    -- cause is a Royal Mail recoding that the patient record never caught up with, and the
+    -- building did not move. Never a later life. Such rows report postcode_status
+    -- previous_life, and previous_life_deleted_on and next_life_introduced_on show the gap.
+    SELECT l.*, 0 AS from_previous_life FROM lives_containing_date l
+    UNION ALL
+    SELECT c.postcode_key AS requested_key, c.address_date AS requested_date, p.*, 1 AS from_previous_life
+    FROM lookup_requests c
+    JOIN key_lives k ON k.requested_key = c.postcode_key AND k.requested_date = c.address_date
+    JOIN postcode_simd_history p
+      ON p.pc_base = c.postcode_key
+     AND p.deleted_on = k.fallback_deleted_on
+     AND p.introduced_on < p.deleted_on
+    WHERE NOT EXISTS (SELECT 1 FROM lives_containing_date d
+                      WHERE d.requested_key = c.postcode_key AND d.requested_date = c.address_date)
+),
+ranked_lives AS (
+    SELECT l.*,
+           DENSE_RANK() OVER (
+               PARTITION BY l.requested_key, l.requested_date
+               ORDER BY CASE WHEN SUBSTRING(l.pc_norm, LEN(l.pc_base) + 1, 10) = '' THEN 'A' ELSE SUBSTRING(l.pc_norm, LEN(l.pc_base) + 1, 10) END,
+                        l.introduced_on DESC
+           ) AS priority
+    FROM lives_on_date l
 ),
 candidates AS (
     -- STEP 5. SPLIT PARTS (SPD only). Among the lives valid on the date, PHS "lookups include
@@ -94,28 +153,18 @@ candidates AS (
     SELECT l.*,
            COUNT(*) OVER (PARTITION BY l.requested_key, l.requested_date) AS candidate_count,
            ROW_NUMBER() OVER (PARTITION BY l.requested_key, l.requested_date ORDER BY l.pc_norm) AS candidate_number
-    FROM lives_on_date l
+    FROM ranked_lives l
     WHERE l.priority = 1
 ),
 representative AS (
     SELECT * FROM candidates WHERE candidate_number = 1
 ),
-key_lives AS (
-    -- When no life contains the date, say where the date falls relative to the lives that
-    -- exist: before the first life, after the last, or in a gap between two lives.
-    SELECT c.postcode_key AS requested_key, c.address_date AS requested_date,
-           MIN(p.introduced_on) AS first_introduced_on,
-           MAX(CASE WHEN p.deleted_on IS NOT NULL AND p.deleted_on <= c.address_date THEN p.deleted_on END) AS previous_life_deleted_on,
-           MIN(CASE WHEN p.introduced_on > c.address_date THEN p.introduced_on END) AS next_life_introduced_on
-    FROM lookup_requests c
-    JOIN postcode_simd_history p ON p.pc_base = c.postcode_key
-    GROUP BY c.postcode_key, c.address_date
-),
 matched AS (
     -- STEP 6. LARGE USERS. PHS v3.5 Appendix A, p.30: a large-user postcode has no boundary;
     -- where NRS could link it to a small-user postcode, that postcode supplies the geography;
     -- a PO box (NO LINKP) or an unlinked large user (NO LINK) gets none. The linked small-user
-    -- record must itself be valid on the address date (project policy), by its exact key
+    -- record must itself be valid on the address date, or for a previous life on that life's
+    -- last day (project policy), by its exact key
     -- including any A/B/C suffix. A small user supplies its own geography. Never the large
     -- user's own zone, another product, or a chain through a second large user.
     SELECT c.*,
@@ -123,7 +172,7 @@ matched AS (
            r.is_current AS matched_is_current, r.spd_user_type AS matched_user_type,
            r.LinkedSmallUserPostcode AS requested_link_postcode,
            r.candidate_count AS matched_candidate_count, r.spd_release AS index_release,
-           r.pc_base AS matched_pc_base,
+           r.pc_base AS matched_pc_base, r.from_previous_life,
            k.first_introduced_on, k.previous_life_deleted_on, k.next_life_introduced_on,
            r.Postcode AS matched_postcode,
            r.PostcodeDistrict,
@@ -186,6 +235,33 @@ matched AS (
            r.GridLinkPositionalAccuracy,
            r.NeverDigitised,
            r.LinkedSmallUserPostcode,
+           r.urbanrural2003_2004_6fold,
+           r.urbanrural2003_2004_8fold,
+           r.urbanrural2003_2004_status,
+           r.urbanrural2005_2006_6fold,
+           r.urbanrural2005_2006_8fold,
+           r.urbanrural2005_2006_status,
+           r.urbanrural2007_2008_6fold,
+           r.urbanrural2007_2008_8fold,
+           r.urbanrural2007_2008_status,
+           r.urbanrural2009_2010_6fold,
+           r.urbanrural2009_2010_8fold,
+           r.urbanrural2009_2010_status,
+           r.urbanrural2011_2012_6fold,
+           r.urbanrural2011_2012_8fold,
+           r.urbanrural2011_2012_status,
+           r.urbanrural2013_2014_6fold,
+           r.urbanrural2013_2014_8fold,
+           r.urbanrural2013_2014_status,
+           r.urbanrural2016_6fold,
+           r.urbanrural2016_8fold,
+           r.urbanrural2016_status,
+           r.urbanrural2020_6fold,
+           r.urbanrural2020_8fold,
+           r.urbanrural2020_status,
+           r.urbanrural2022_6fold,
+           r.urbanrural2022_8fold,
+           r.urbanrural2022_status,
            g.pc_norm AS source_pc_norm,
            g.introduced_on AS source_introduced_on,
            g.is_current AS source_is_current,
@@ -296,8 +372,10 @@ matched AS (
              WHEN r.spd_user_type = 'small_user' THEN r.pc_norm
              ELSE UPPER(REPLACE(r.LinkedSmallUserPostcode, ' ', ''))
          END
-     AND g.introduced_on <= c.address_date
-     AND (g.deleted_on IS NULL OR g.deleted_on > c.address_date)
+     AND ((r.from_previous_life = 0 AND g.introduced_on <= c.address_date
+           AND (g.deleted_on IS NULL OR g.deleted_on > c.address_date))
+       OR (r.from_previous_life = 1 AND g.introduced_on < r.deleted_on
+           AND (g.deleted_on IS NULL OR g.deleted_on >= r.deleted_on)))
 ),
 selected AS (
     -- STEP 7. VALUES. Copy the stored values of the chosen edition from the record that
@@ -443,6 +521,39 @@ selected AS (
                WHEN '2016'   THEN m.simd2016_uw_scotland_vigintile
                WHEN '2020v2' THEN m.simd2020v2_uw_scotland_vigintile
            END AS gov_uw_scotland_vigintile,
+           CASE m.rurality_version
+               WHEN '2003-2004' THEN m.urbanrural2003_2004_6fold
+               WHEN '2005-2006' THEN m.urbanrural2005_2006_6fold
+               WHEN '2007-2008' THEN m.urbanrural2007_2008_6fold
+               WHEN '2009-2010' THEN m.urbanrural2009_2010_6fold
+               WHEN '2011-2012' THEN m.urbanrural2011_2012_6fold
+               WHEN '2013-2014' THEN m.urbanrural2013_2014_6fold
+               WHEN '2016'   THEN m.urbanrural2016_6fold
+               WHEN '2020'   THEN m.urbanrural2020_6fold
+               WHEN '2022'   THEN m.urbanrural2022_6fold
+           END AS rurality_6fold_stored,
+           CASE m.rurality_version
+               WHEN '2003-2004' THEN m.urbanrural2003_2004_8fold
+               WHEN '2005-2006' THEN m.urbanrural2005_2006_8fold
+               WHEN '2007-2008' THEN m.urbanrural2007_2008_8fold
+               WHEN '2009-2010' THEN m.urbanrural2009_2010_8fold
+               WHEN '2011-2012' THEN m.urbanrural2011_2012_8fold
+               WHEN '2013-2014' THEN m.urbanrural2013_2014_8fold
+               WHEN '2016'   THEN m.urbanrural2016_8fold
+               WHEN '2020'   THEN m.urbanrural2020_8fold
+               WHEN '2022'   THEN m.urbanrural2022_8fold
+           END AS rurality_8fold_stored,
+           CASE m.rurality_version
+               WHEN '2003-2004' THEN m.urbanrural2003_2004_status
+               WHEN '2005-2006' THEN m.urbanrural2005_2006_status
+               WHEN '2007-2008' THEN m.urbanrural2007_2008_status
+               WHEN '2009-2010' THEN m.urbanrural2009_2010_status
+               WHEN '2011-2012' THEN m.urbanrural2011_2012_status
+               WHEN '2013-2014' THEN m.urbanrural2013_2014_status
+               WHEN '2016'   THEN m.urbanrural2016_status
+               WHEN '2020'   THEN m.urbanrural2020_status
+               WHEN '2022'   THEN m.urbanrural2022_status
+           END AS rurality_stored_status,
            '1 = most deprived' AS band_direction
     FROM matched m
 ),
@@ -463,6 +574,7 @@ reported AS (
                WHEN s.matched_user_type = 'large_user'
                     AND UPPER(REPLACE(COALESCE(s.requested_link_postcode, ''), ' ', '')) IN ('', 'NOLINK') THEN 'unlinked_large_user'
                WHEN s.source_pc_norm IS NULL THEN 'linked_small_user_not_found'
+               WHEN s.from_previous_life = 1 THEN 'previous_life'
                WHEN s.matched_user_type = 'large_user' THEN 'linked_small_user'
                WHEN SUBSTRING(s.matched_pc_norm, LEN(s.matched_pc_base) + 1, 10) = 'A' THEN 'a_part'
                ELSE 'matched'
@@ -478,7 +590,7 @@ SELECT
        s.postcode_status,
        CASE
            WHEN s.edition_status <> 'ok' THEN s.edition_status
-           WHEN s.postcode_status NOT IN ('matched', 'a_part', 'linked_small_user') THEN s.postcode_status
+           WHEN s.postcode_status NOT IN ('matched', 'a_part', 'linked_small_user', 'previous_life') THEN s.postcode_status
            WHEN s.simd_rank IS NULL OR s.phs_pw_scotland_quintile IS NULL OR s.phs_pw_scotland_decile IS NULL OR s.phs_pw_hb_quintile IS NULL OR s.phs_pw_hb_decile IS NULL OR s.phs_pw_hscp_quintile IS NULL OR s.phs_pw_hscp_decile IS NULL OR s.phs_pw_ca_quintile IS NULL OR s.phs_pw_ca_decile IS NULL OR s.phs_pw_most15pc IS NULL OR s.phs_pw_least15pc IS NULL OR s.gov_uw_scotland_quintile IS NULL OR s.gov_uw_scotland_decile IS NULL OR s.gov_uw_scotland_vigintile IS NULL OR s.data_zone_code IS NULL OR s.phs_hb_code IS NULL OR s.phs_hscp_code IS NULL OR s.phs_ca_code IS NULL THEN 'missing_simd'
            ELSE 'matched'
        END AS simd_status,
@@ -504,6 +616,25 @@ SELECT
        s.gov_uw_scotland_decile,
        s.gov_uw_scotland_vigintile,
        s.band_direction,
+       -- Rurality: the matched record's own Urban Rural Classification, in the version step 3b
+       -- chose. rurality_status says whether the two codes can be used and, when they are
+       -- empty, why: a postcode problem first, then no version for the year, then the reason
+       -- stored with the record (outside_polygons, ambiguous_polygons, po_box). The codes come
+       -- from this record's own grid reference, so read them beside matched_user_type; an
+       -- ambiguous postcode or a B or C part has no single record and so no codes.
+       s.rurality_version, s.rurality_policy,
+       CASE WHEN s.postcode_status IN ('ambiguous_postcode', 'split_a_missing') THEN NULL ELSE s.rurality_6fold_stored END AS rurality_6fold,
+       CASE WHEN s.postcode_status IN ('ambiguous_postcode', 'split_a_missing') THEN NULL ELSE s.rurality_8fold_stored END AS rurality_8fold,
+       CASE
+           WHEN s.matched_pc_norm IS NULL THEN s.postcode_status
+           WHEN s.postcode_status IN ('ambiguous_postcode', 'split_a_missing') THEN s.postcode_status
+           WHEN s.rurality_version IS NULL AND s.analysis_year IS NULL THEN 'missing_year'
+           WHEN s.rurality_version IS NULL AND (s.analysis_year < 1 OR s.analysis_year > 9999) THEN 'invalid_year'
+           WHEN s.rurality_version IS NULL AND s.analysis_year < 2003 THEN 'before_first_version'
+           WHEN s.rurality_version IS NULL THEN 'invalid_year'
+           WHEN s.rurality_stored_status IS NOT NULL THEN s.rurality_stored_status
+           ELSE 'matched'
+       END AS rurality_status,
        -- Own-record context: the matched record's NRS fields as ingested, names unchanged
        -- (Postcode as matched_postcode). For a large user these are its own fields, not the
        -- linked small user's; compare DataZone2011Code here with simd_source_pc_norm above.

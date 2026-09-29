@@ -45,6 +45,8 @@ class Registry:
     directory_rank: dict | None
     sspl_release: str
     sspl_file: dict
+    rurality_versions: tuple = ()
+    rurality_published: dict | None = None
 
     @property
     def files(self) -> tuple:
@@ -84,12 +86,34 @@ def load_registry(path: Path) -> Registry:
                    phs_editions=tuple(raw["phs_editions"]), govscot_editions=tuple(raw["govscot_editions"]),
                    spd_files=tuple(raw["spd_files"]), spd_published_totals=raw["spd_published_totals"],
                    directory_rank=raw.get("directory_rank"),
-                   sspl_release=str(raw["sspl_release"]), sspl_file=raw["sspl_file"])
+                   sspl_release=str(raw["sspl_release"]), sspl_file=raw["sspl_file"],
+                   rurality_versions=tuple(raw.get("rurality_versions", ())),
+                   rurality_published=raw.get("rurality_published"))
     known = set(paths)
     for section in (reg.phs_editions, reg.govscot_editions, reg.spd_files, (reg.sspl_file,)):
         for entry in section:
             if entry["file"] not in known:
                 raise ValueError(f"{entry['file']} is referenced but not pinned as a logical file")
+    # A shapefile is four files; reading the geometry with one missing fails late and obscurely.
+    for entry in reg.rurality_versions:
+        stem = entry["file"].removesuffix(".shp")
+        if entry["file"] not in known or stem == entry["file"]:
+            raise ValueError(f"{entry['file']} is not a pinned .shp logical file")
+        missing = [ext for ext in (".shx", ".dbf", ".prj") if stem + ext not in known]
+        if missing:
+            raise ValueError(f"{entry['key']}: shapefile members not pinned: {missing}")
+        if set(entry["columns"]) != {"sixfold", "eightfold"} or entry["polygons"] < 1:
+            raise ValueError(f"{entry['key']}: declare the sixfold and eightfold columns and a polygon count")
+    versions = [e["key"] for e in reg.rurality_versions]
+    years = [e["reference_year"] for e in reg.rurality_versions]
+    if len(set(versions)) != len(versions) or years != sorted(set(years)):
+        raise ValueError("Rurality versions need unique keys and strictly increasing reference years")
+    gate = reg.rurality_published
+    if reg.rurality_versions and not gate:
+        raise ValueError("Rurality versions are declared without rurality_published: the placement would go unchecked")
+    if gate and (gate["version"] not in versions or not 0 < gate["other_cohorts"] <= gate["current_small_user"] <= 1
+                 or gate["min_cohort"] < 1):
+        raise ValueError("rurality_published must name a declared version and sensible thresholds")
     if len({o.key for o in objects}) != len(objects):
         raise ValueError("Duplicate remote object key")
     phs = {e["key"]: e for e in reg.phs_editions}

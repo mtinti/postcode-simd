@@ -68,7 +68,9 @@ def render(table: pd.DataFrame, schema: dict, columns: list, contract: dict) -> 
                 raise ReservedCharacter(f"{name}: source text contains {found!r}, which the digest framing reserves")
             values = values.fillna(marker)
         else:
-            values = column.map(lambda v: str(int(v)))
+            # An integer may be null (the rurality codes). A null is marked like any other null;
+            # it is never written as a number, and an empty cell can never be read as zero.
+            values = column.map(lambda v: marker if v is None or pd.isna(v) else str(int(v)))
         out[name] = values.astype("string")
     return pd.DataFrame(out, index=table.index)[columns]
 

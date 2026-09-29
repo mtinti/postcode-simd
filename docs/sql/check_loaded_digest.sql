@@ -203,7 +203,34 @@ BEGIN
     (N'simd2020v2_least15pc', 155, N'tinyint', 0),
     (N'simd2020v2_uw_scotland_quintile', 156, N'tinyint', 0),
     (N'simd2020v2_uw_scotland_decile', 157, N'tinyint', 0),
-    (N'simd2020v2_uw_scotland_vigintile', 158, N'tinyint', 0);
+    (N'simd2020v2_uw_scotland_vigintile', 158, N'tinyint', 0),
+    (N'urbanrural2003_2004_6fold', 159, N'tinyint', 1),
+    (N'urbanrural2003_2004_8fold', 160, N'tinyint', 1),
+    (N'urbanrural2003_2004_status', 161, N'nvarchar', 1),
+    (N'urbanrural2005_2006_6fold', 162, N'tinyint', 1),
+    (N'urbanrural2005_2006_8fold', 163, N'tinyint', 1),
+    (N'urbanrural2005_2006_status', 164, N'nvarchar', 1),
+    (N'urbanrural2007_2008_6fold', 165, N'tinyint', 1),
+    (N'urbanrural2007_2008_8fold', 166, N'tinyint', 1),
+    (N'urbanrural2007_2008_status', 167, N'nvarchar', 1),
+    (N'urbanrural2009_2010_6fold', 168, N'tinyint', 1),
+    (N'urbanrural2009_2010_8fold', 169, N'tinyint', 1),
+    (N'urbanrural2009_2010_status', 170, N'nvarchar', 1),
+    (N'urbanrural2011_2012_6fold', 171, N'tinyint', 1),
+    (N'urbanrural2011_2012_8fold', 172, N'tinyint', 1),
+    (N'urbanrural2011_2012_status', 173, N'nvarchar', 1),
+    (N'urbanrural2013_2014_6fold', 174, N'tinyint', 1),
+    (N'urbanrural2013_2014_8fold', 175, N'tinyint', 1),
+    (N'urbanrural2013_2014_status', 176, N'nvarchar', 1),
+    (N'urbanrural2016_6fold', 177, N'tinyint', 1),
+    (N'urbanrural2016_8fold', 178, N'tinyint', 1),
+    (N'urbanrural2016_status', 179, N'nvarchar', 1),
+    (N'urbanrural2020_6fold', 180, N'tinyint', 1),
+    (N'urbanrural2020_8fold', 181, N'tinyint', 1),
+    (N'urbanrural2020_status', 182, N'nvarchar', 1),
+    (N'urbanrural2022_6fold', 183, N'tinyint', 1),
+    (N'urbanrural2022_8fold', 184, N'tinyint', 1),
+    (N'urbanrural2022_status', 185, N'nvarchar', 1);
 
     INSERT INTO #result
     SELECT N'postcode_simd_history', N'columns declared and in order', N'0 differences',
@@ -307,7 +334,16 @@ BEGIN
        OR DATALENGTH(REPLACE(REPLACE([phs_dz2001_ca] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([phs_dz2001_ca])
        OR DATALENGTH(REPLACE(REPLACE([phs_dz2011_hb] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([phs_dz2011_hb])
        OR DATALENGTH(REPLACE(REPLACE([phs_dz2011_hscp] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([phs_dz2011_hscp])
-       OR DATALENGTH(REPLACE(REPLACE([phs_dz2011_ca] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([phs_dz2011_ca]);
+       OR DATALENGTH(REPLACE(REPLACE([phs_dz2011_ca] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([phs_dz2011_ca])
+       OR DATALENGTH(REPLACE(REPLACE([urbanrural2003_2004_status] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([urbanrural2003_2004_status])
+       OR DATALENGTH(REPLACE(REPLACE([urbanrural2005_2006_status] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([urbanrural2005_2006_status])
+       OR DATALENGTH(REPLACE(REPLACE([urbanrural2007_2008_status] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([urbanrural2007_2008_status])
+       OR DATALENGTH(REPLACE(REPLACE([urbanrural2009_2010_status] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([urbanrural2009_2010_status])
+       OR DATALENGTH(REPLACE(REPLACE([urbanrural2011_2012_status] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([urbanrural2011_2012_status])
+       OR DATALENGTH(REPLACE(REPLACE([urbanrural2013_2014_status] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([urbanrural2013_2014_status])
+       OR DATALENGTH(REPLACE(REPLACE([urbanrural2016_status] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([urbanrural2016_status])
+       OR DATALENGTH(REPLACE(REPLACE([urbanrural2020_status] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([urbanrural2020_status])
+       OR DATALENGTH(REPLACE(REPLACE([urbanrural2022_status] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([urbanrural2022_status]);
 
     -- 4. The digest. Each row is rendered as the CSV renders it, with NCHAR(0) for a null so a
     -- null and a blank differ, the fields joined with NCHAR(31) in contract order, converted to
@@ -485,7 +521,34 @@ BEGIN
            ISNULL(CONVERT(varchar(11), [simd2020v2_least15pc]), NCHAR(0)),
            ISNULL(CONVERT(varchar(11), [simd2020v2_uw_scotland_quintile]), NCHAR(0)),
            ISNULL(CONVERT(varchar(11), [simd2020v2_uw_scotland_decile]), NCHAR(0)),
-           ISNULL(CONVERT(varchar(11), [simd2020v2_uw_scotland_vigintile]), NCHAR(0))) COLLATE Latin1_General_100_BIN2_UTF8)), 1, 8)))) AS total
+           ISNULL(CONVERT(varchar(11), [simd2020v2_uw_scotland_vigintile]), NCHAR(0)),
+           ISNULL(CONVERT(varchar(11), [urbanrural2003_2004_6fold]), NCHAR(0)),
+           ISNULL(CONVERT(varchar(11), [urbanrural2003_2004_8fold]), NCHAR(0)),
+           ISNULL([urbanrural2003_2004_status], NCHAR(0)),
+           ISNULL(CONVERT(varchar(11), [urbanrural2005_2006_6fold]), NCHAR(0)),
+           ISNULL(CONVERT(varchar(11), [urbanrural2005_2006_8fold]), NCHAR(0)),
+           ISNULL([urbanrural2005_2006_status], NCHAR(0)),
+           ISNULL(CONVERT(varchar(11), [urbanrural2007_2008_6fold]), NCHAR(0)),
+           ISNULL(CONVERT(varchar(11), [urbanrural2007_2008_8fold]), NCHAR(0)),
+           ISNULL([urbanrural2007_2008_status], NCHAR(0)),
+           ISNULL(CONVERT(varchar(11), [urbanrural2009_2010_6fold]), NCHAR(0)),
+           ISNULL(CONVERT(varchar(11), [urbanrural2009_2010_8fold]), NCHAR(0)),
+           ISNULL([urbanrural2009_2010_status], NCHAR(0)),
+           ISNULL(CONVERT(varchar(11), [urbanrural2011_2012_6fold]), NCHAR(0)),
+           ISNULL(CONVERT(varchar(11), [urbanrural2011_2012_8fold]), NCHAR(0)),
+           ISNULL([urbanrural2011_2012_status], NCHAR(0)),
+           ISNULL(CONVERT(varchar(11), [urbanrural2013_2014_6fold]), NCHAR(0)),
+           ISNULL(CONVERT(varchar(11), [urbanrural2013_2014_8fold]), NCHAR(0)),
+           ISNULL([urbanrural2013_2014_status], NCHAR(0)),
+           ISNULL(CONVERT(varchar(11), [urbanrural2016_6fold]), NCHAR(0)),
+           ISNULL(CONVERT(varchar(11), [urbanrural2016_8fold]), NCHAR(0)),
+           ISNULL([urbanrural2016_status], NCHAR(0)),
+           ISNULL(CONVERT(varchar(11), [urbanrural2020_6fold]), NCHAR(0)),
+           ISNULL(CONVERT(varchar(11), [urbanrural2020_8fold]), NCHAR(0)),
+           ISNULL([urbanrural2020_status], NCHAR(0)),
+           ISNULL(CONVERT(varchar(11), [urbanrural2022_6fold]), NCHAR(0)),
+           ISNULL(CONVERT(varchar(11), [urbanrural2022_8fold]), NCHAR(0)),
+           ISNULL([urbanrural2022_status], NCHAR(0))) COLLATE Latin1_General_100_BIN2_UTF8)), 1, 8)))) AS total
         FROM postcode_simd_history) AS q
     WHERE e.name = N'postcode_simd_history';
 END

@@ -15,7 +15,8 @@ A study makes two choices, in this order. Neither has a default.
 The SPD set has a third query, `link_as_of.sql`, for a postcode with a reliable address date:
 it uses the postcode life valid on that date, not the latest life, and still chooses the
 edition from the year of the health data. This is a project policy, not a reconstruction of
-historical administrative or rurality snapshots. A general record edit date is not necessarily
+historical administrative snapshots. All three SPD queries also return the Urban Rural
+Classification version that suits the year, with its version, policy and status. A general record edit date is not necessarily
 an address date. The SSPL cannot answer a postcode-life question, because NRS kept one life
 per postcode.
 
@@ -31,7 +32,7 @@ project choice. The five files are generated from the schemas by
 them; a test fails if a committed file drifts from the generator.
 
 All five queries share the first **41 columns**, through `band_direction`. They then append
-different own-record context: **89 columns** in SSPL, **103** in SPD era/latest, **106** in
+different own-record context: **89 columns** in SSPL, **108** in SPD era/latest, **111** in
 SPD as-of. To combine products, select the shared columns by name; do not use `SELECT *` or
 a positional union of the full results. The columns and statuses are described in
 [LINKAGE_BY_ERA.md](../LINKAGE_BY_ERA.md).

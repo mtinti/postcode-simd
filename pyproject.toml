@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "simd-ingest"
-version = "2.3.0"
+version = "3.0.0"
 description = "Postcode-SIMD tables from the Scottish Statistics Postcode Lookup and Scottish Postcode Directory, built from hash-pinned sources with recorded lineage."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -18,6 +18,10 @@ dependencies = [
     "PyYAML==6.0.3",
     "dbfread==2.0.7",
     "requests==2.32.4",
+    "geopandas==1.1.4",
+    "shapely==2.1.2",
+    "pyogrio==0.13.0",
+    "pyproj==3.8.0",
 ]
 
 [project.optional-dependencies]

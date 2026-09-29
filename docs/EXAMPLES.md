@@ -84,7 +84,8 @@ AB10 1BF on 2012-06-01: unique, SIMD 2012, ..., split postcodes resolved to the 
 ```
 
 A postcode can be out of use on the date you ask about. AB10 1BF was deleted in 2005 and
-reintroduced in 2011:
+reintroduced in 2011, so on 2008-01-01 no record is valid. The life that ended in 2005 is
+used, and the status says so:
 
 ```python
 r = lookup.lookup(t, "AB10 1BF", edition=lookup.recommended_edition(2008), on="2008-01-01")
@@ -92,11 +93,15 @@ print(r)
 print(r.candidates[["pc_norm", "introduced_on", "deleted_on"]])
 ```
 ```text
-AB10 1BF on 2008-01-01: deleted, SIMD 2009v2, ..., split postcodes resolved to the A part = None
+AB10 1BF on 2008-01-01: previous_life, SIMD 2009v2, ..., split postcodes resolved to the A part = 3
 pc_norm introduced_on deleted_on
 AB101BF    2003-04-15 2005-10-05
-AB101BF    2011-10-13        NaT
 ```
+
+Never the 2011 reissue, which may be somewhere else entirely. This is a project choice: the
+usual reason a record carries a retired postcode is a Royal Mail recoding it never caught up
+with, and the building did not move. `candidates` shows the life used, so its deletion date
+tells you how stale the postcode was.
 
 Validity is the half-open interval `introduced_on <= day < deleted_on`. On 2004-06-01 the
 first record applies and the answer is quintile 3 in SIMD 2004.
@@ -185,9 +190,11 @@ analysis-year edition selection and both publishers' full measures, use the
 | `a_part` | Several split parts valid; the A part was used, following NRS's convention. Default rule only | The A part's value |
 | `split_consensus` | Several valid records, all with the same value for the requested measure. Report rule only | The shared value |
 | `split_conflict` | Several valid records with different values. Report rule only | Null |
-| `deleted` | The postcode exists but no record is valid on that day, or none is current | Null |
-| `not_found` | No record has that postcode, or the postcode is missing, or it is a PO box under the default | Null |
+| `previous_life` | No record is valid on that day, but the postcode had a life that ended before it; that life was used. Dated lookups only | The previous life's value |
+| `deleted` | The postcode exists but no record is valid on that day and none ended before it, or none is current | Null |
+| `not_found` | No record has that postcode, or the postcode is missing, or the record that answers is a PO box under the default | Null |
 | `no_edition` | The event is before 1996; the guidance points to Carstairs. `attach_by_era` only | Null |
+| `missing_date` | A dated question with no date for this row. Never read as an early date | Null |
 
 Three rules sit behind them. A record is valid for `introduced_on <= day < deleted_on`, with a
 null deletion meaning current. An ordinary postcode matches every record whose base it is, so a
@@ -197,10 +204,36 @@ builds the Scottish Statistics Postcode Lookup, because A is the part with more 
 report rule refuses instead. Neither rule averages or votes.
 
 One more Python default to know about. Records with `NO LINKP` or `NO LINK` in the linked
-postcode field are excluded, so they come back `not_found`. Appendix A explains why PO boxes
+postcode field are excluded, so they come back `not_found`. The record is chosen first and the
+exclusion applied to it afterwards, so a date that a PO-box life covers is `not_found`, never
+answered by an older life of the same postcode. Appendix A explains why PO boxes
 lack usable residential geography. Pass `include_po_boxes=True` to attach the SIMD the
 directory assigns them, or `include_large_users=False` to exclude every large-user record.
 Other large users still use their own attached SIMD here, not their linked small user's.
+
+## Urban-rural class for the year, history table only
+
+`attach_rurality` returns the Scottish Government Urban Rural Classification of the record
+`attach` would choose, in the version that suits each event's year. The history table carries
+all nine published versions, 2003-2004 to 2022, each placed from the record's own grid
+reference. Which version suits a year is a project choice, the same as in the SPD SQL: by the
+year a version describes, until the next version's year, not by when it was published.
+
+```python
+out = lookup.attach_rurality(cohort, t, "postcode", "event_date")            # 6-fold, version by year
+out = lookup.attach_rurality(cohort, t, "postcode", "event_date", fold=8)
+out = lookup.attach_rurality(cohort, t, "postcode", None, version="2022")   # one version, current records
+```
+
+The result adds `rurality_status`, `rurality_value`, `rurality_pc_norm`, `rurality_version` and
+`rurality_label`. The status is `attach`'s, except where the chosen record has no code in that
+version: then it is the reason stored with the record, `outside_polygons`, `ambiguous_polygons`
+or `po_box`. The class and its reason come from one record, and split parts agree only if they
+agree on both, a missing class included. An event before 2003 gets `before_first_version`, and
+an event with no date `missing_date`. PO boxes are excluded unless
+you pass `include_po_boxes=True`, and then come back with no code and status `po_box`. The
+main table has no versions and is refused. On small-user postcodes the dated SQL query returns
+the same version and class; a test compares the two on the built table.
 
 ## What to state in your analysis
 

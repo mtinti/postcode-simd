@@ -59,6 +59,10 @@ reads which product a table came from and refuses a dated question against the m
 | Turn only the eight early-edition PHS bands | `core/phs.py: canonicalise_phs` | 2004/2006: `11 - decile`, `6 - quintile`; ranks and flags unchanged |
 | Use the right data-zone vintage for each edition | `sources.yaml`, `core/join.py` | Same rows after each join; every record matched |
 | PHS within-area bands use PHS geography | `pipeline.prepare`, `join_edition` | HB/HSCP/CA codes agree across editions sharing a vintage before storing one set |
+| History table carries every Urban Rural Classification version, placed from each life's own grid reference | `core/rurality.py: classify, attach_rurality` | Declared columns, British National Grid, polygon count, 6-fold nests in 8-fold, no area lost in the cut; readback places every point again from the saved file |
+| The placement must reproduce the 2022 codes the directory publishes | `core/rurality.py: agreement_gate` | Before boxes are withheld, every life counted, per cohort: 99.5% current small users, 99% other cohorts over 1,000 lives |
+| A point outside every polygon, or on an edge between two classes, has no class; a PO box has none in any version | `core/rurality.py: place, attach_rurality` | Null codes with `outside_polygons`, `ambiguous_polygons` or `po_box` in the row's status column |
+| The rurality version for a year is chosen by reference year (project choice) | `sql_examples.py: _rurality_windows`, `lookup.py: rurality_versions` | Windows derived from the registry; SQL and Python tested against independently stated windows |
 | Copy published values, do not reconstruct bands | `core/phs.py`, `core/govscot.py` | Source pins, value ranges/direction, PHS/Government zone and rank agreement |
 
 The directory's own published SIMD rank is also compared with the attached rank; its column
@@ -119,9 +123,9 @@ and the A part itself; `docs/sql/sspl/` reads the main table, where NRS already 
 Both follow a large user's link to its small-user postcode; applying that rule to SSPL is a
 project interpretation of PHS Appendix A, which does not settle overriding its own allocated
 geography. Both share 41 core columns, followed by product-specific context (89 columns for
-SSPL, 103 for SPD era/latest, 106 for SPD as-of). The SPD set also has `link_as_of.sql`, which
-uses the postcode life valid on a reliable address date, not historical administrative or
-rurality snapshots. Each set chooses the SIMD edition either by the year of the
+SSPL, 108 for SPD era/latest, 111 for SPD as-of). The SPD set also has `link_as_of.sql`, which
+uses the postcode life valid on a reliable address date, not historical administrative
+snapshots. The SPD queries return the Urban Rural Classification version for the year as well. Each set chooses the SIMD edition either by the year of the
 health data (Table 4) or once for the whole study. NRS recommends SSPL for statistical production
 and SPD for operational/administrative use; no automatic default does not change that advice.
 The five files are generated from the

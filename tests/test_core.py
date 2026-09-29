@@ -80,8 +80,16 @@ class KeyAndDateRules(unittest.TestCase):
 class SourceSafety(unittest.TestCase):
     def test_registry_loads_and_wrong_bytes_fail_verification(self):
         reg = load_registry(ROOT / "simd_ingest" / "sources.yaml")
-        self.assertEqual(len(reg.objects), 14)
-        self.assertEqual(len(reg.files), 20)
+        self.assertEqual(len(reg.objects), 23)
+        self.assertEqual(len(reg.files), 56)
+        # Nine classification versions, each a whole shapefile: four pinned members apiece.
+        self.assertEqual([v["key"] for v in reg.rurality_versions],
+                         ["2003-2004", "2005-2006", "2007-2008", "2009-2010", "2011-2012",
+                          "2013-2014", "2016", "2020", "2022"])
+        pinned = {f.path for f in reg.files}
+        for v in reg.rurality_versions:
+            stem = v["file"][:-4]
+            self.assertTrue(all(stem + ext in pinned for ext in (".shp", ".shx", ".dbf", ".prj")), v["key"])
         with tempfile.TemporaryDirectory() as temp:
             f = reg.files[0]
             path = Path(temp) / f.path
@@ -135,12 +143,13 @@ class SavedTableIntegrity(unittest.TestCase):
                 or sorted(o["sha256"] for o in manifest["sources"]) != sorted(o.sha256 for o in cls.registry.objects)):
             raise unittest.SkipTest("saved artifact belongs to another source/schema contract")
         cls.decisions_sha = manifest["decisions_sha256"]
+        cls.source = source
 
     def test_good_file_passes_and_modified_cell_fails(self):
         path = ROOT / "results" / "postcode_simd_history.parquet"
         report = Report()
         self.output.readback(path, self.schema, self.index, self.simd, self.gov, self.registry, report,
-                             decisions_sha256=self.decisions_sha)
+                             decisions_sha256=self.decisions_sha, source_root=self.source)
         self.assertEqual([c.name for c in report.blocking_failures], [])
         table = pq.read_table(path)
         with tempfile.TemporaryDirectory() as temp:
@@ -153,5 +162,35 @@ class SavedTableIntegrity(unittest.TestCase):
             pq.write_table(table2, bad)
             report = Report()
             self.output.readback(bad, self.schema, self.index, self.simd, self.gov, self.registry, report,
-                                 decisions_sha256=self.decisions_sha)
+                                 decisions_sha256=self.decisions_sha, source_root=self.source)
             self.assertIn("readback.attached_values", [c.name for c in report.blocking_failures])
+
+    def test_a_changed_rurality_value_fails_readback_in_an_old_version_as_well_as_2022(self):
+        """The rurality columns are neither index columns nor re-looked-up SIMD, so before they
+        had a check of their own a derived code could be changed from 1 to 6 after writing and
+        nothing failed. Readback now places every point again from the saved grid references.
+        One file carries three kinds of damage, in an early version as well as the latest."""
+        import pyarrow as pa
+        table = pq.read_table(ROOT / "results" / "postcode_simd_history.parquet")
+
+        def change(table, name, fn):
+            at = table.schema.get_field_index(name)
+            values = table.column(at).to_pylist()
+            row = next(i for i, v in enumerate(values) if fn(v) is not None)
+            values[row] = fn(values[row])
+            return table.set_column(at, table.schema.field(at), pa.array(values, type=table.schema.field(at).type))
+
+        table = change(table, "urbanrural2005_2006_6fold", lambda v: (6 if v == 1 else 1) if v is not None else None)
+        table = change(table, "urbanrural2022_status", lambda v: "po_box" if v is None else None)
+        table = change(table, "urbanrural2013_2014_8fold", lambda v: 1 if v is None else None)   # a value where none belongs
+        with tempfile.TemporaryDirectory() as temp:
+            bad = Path(temp) / "bad.parquet"
+            pq.write_table(table, bad)
+            report = Report()
+            self.output.readback(bad, self.schema, self.index, self.simd, self.gov, self.registry, report,
+                                 decisions_sha256=self.decisions_sha, source_root=self.source)
+        failed = {c.name: c for c in report.blocking_failures}
+        self.assertIn("readback.rurality_values", failed)
+        self.assertEqual(failed["readback.rurality_values"].actual,
+                         {"urbanrural2005_2006_6fold": 1, "urbanrural2013_2014_8fold": 1, "urbanrural2022_status": 1})
+        self.assertNotIn("readback.attached_values", failed)

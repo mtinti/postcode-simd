@@ -144,6 +144,7 @@ def _import_sql(table: str, product: dict, schema: dict, contract: dict) -> str:
     spec, name = contract["tables"][table], product["table"]
     role_column = spec.get("role_column", "spd_user_type")
     structural = {c: role for role, cols in (spec.get("structural_nulls") or {}).items() for c in cols}
+    empty_is_null = set(spec.get("empty_is_null") or [])
 
     staging = ",\n    ".join(
         f"[{c}] varchar({STAGING_WIDTH}) COLLATE {COLLATION} NULL" for c in columns)
@@ -163,7 +164,12 @@ def _import_sql(table: str, product: dict, schema: dict, contract: dict) -> str:
         elif kind == "bool":
             restore.append(f"CASE [{c}] WHEN '1' THEN CONVERT(bit, 1) WHEN '0' THEN CONVERT(bit, 0) END")
         elif kind in ("int8", "int16"):
-            restore.append(f"CONVERT({SQL_TYPE[kind]}, [{c}])")
+            # NULLIF for the same reason as a date: an empty string converts to 0, which is a
+            # value the file never held. Only a nullable integer can be empty at all.
+            restore.append(f"CONVERT({SQL_TYPE[kind]}, NULLIF([{c}], ''))")
+        elif c in empty_is_null:
+            # Never blank by construction, so an empty cell is a null for every row.
+            restore.append(f"NULLIF([{c}], N'')")
         elif c in structural:
             # This column exists in only one of the two source files, so it is a real null for
             # the other record type and a source blank for its own.

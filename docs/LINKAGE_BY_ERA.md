@@ -111,18 +111,26 @@ the original inputs. This preserves duplicate rows and duplicate/null IDs withou
 generated row number. Different analysis years still select their own editions.
 
 This selects a postcode life from the downloaded SPD release. It does not reconstruct what
-administrative boundaries or rurality classifications were published on the address date;
-the returned context remains the fields supplied for that life in the downloaded release.
+administrative boundaries were published on the address date; the returned context remains the
+fields supplied for that life in the downloaded release. Rurality is the one exception, below.
 
-When no life contains the date, the query says where the date falls and returns the nearest
-lives as context (`first_introduced_on`, `previous_life_deleted_on`, `next_life_introduced_on`):
+When no life contains the date but the postcode had a life that ended before it, the query
+uses that life. This is a **project choice**. The postcode was retired, or retired and later
+reissued elsewhere, after the address was recorded. The usual cause is a Royal Mail recoding
+that the record never caught up with, and the building did not move. The row reports
+`postcode_status` `previous_life`, which carries SIMD like `matched`. It is never a later life,
+and a same-day record never counts as a life. Every other rule still applies to the life used:
+a retired PO box still gets nothing, and a retired large user takes its link as it stood on the
+life's last day. The nearest lives are always returned as context (`first_introduced_on`,
+`previous_life_deleted_on`, `next_life_introduced_on`), so the gap can be judged, and a
+reissue shows as a non-null `next_life_introduced_on`.
 
 | `postcode_status` | Meaning |
 | --- | --- |
+| `previous_life` | no life contains the date; the last life that ended before it was used |
 | `postcode_not_yet_introduced` | the date is before the postcode's first life |
-| `between_lives` | the date is in a gap between two lives |
-| `postcode_deleted_by_date` | the date is after the postcode's last life ended |
 | `missing_address_date` | no date was supplied |
+| `between_lives`, `postcode_deleted_by_date` | the date is in a gap, or after the last life, and no real life ended before it. Only same-day records can cause this |
 
 FK17 8DS was in use from August 1973 to April 1978 in S01013116 and again from November
 1978 in S01013113. Asked with the 2020v2 edition:
@@ -130,23 +138,60 @@ FK17 8DS was in use from August 1973 to April 1978 in S01013116 and again from N
 | `address_date` | `postcode_status` | `matched_introduced_on` | `data_zone_code` | `phs_pw_scotland_quintile` |
 | --- | --- | --- | --- | --- |
 | 1975-06-01 | `matched`, life since ended | 1973-08-01 | S01013116 | 5 |
-| 1978-06-01 | `between_lives` | | | |
+| 1978-06-01 | `previous_life`, in the gap | 1973-08-01 | S01013116 | 5 |
 | 1990-06-01 | `matched` | 1978-11-01 | S01013113 | 3 |
 
 `link_by_era.sql` would give quintile 3 for all three, because it takes the latest life.
 TD9 7PQ, one life deleted on 22 March 1999, is `matched` with `matched_is_current` false on
-15 May 1990, `postcode_deleted_by_date` on the deletion day itself, and
+15 May 1990, `previous_life` on the deletion day itself and after it, and
 `postcode_not_yet_introduced` on 1 January 1970.
 
 The Python API answers the same question for one postcode or a frame
 (`lookup.lookup(h, postcode, edition, on=date)`, `lookup.attach`, `lookup.attach_by_era`)
 with its own large-user policy, see [Examples](EXAMPLES.md).
 
+## Rurality, SPD set only
+
+The directory publishes one Urban Rural Classification, the 2022 one. The history table also
+carries every version the Scottish Government has published, 2003-2004 to 2022, placed from
+each life's own grid reference in that version's polygons, and the three SPD queries return
+the one that suits the year:
+
+- **Which version is a project choice.** PHS publishes no table for it. A version is chosen by
+  its reference year, the year it describes, and applies until the year before the next one:
+  2003-2004, 2005-2006, 2007-2008, 2009-2010, 2011-2012, 2013 to 2015, 2016 to 2019, 2020 to
+  2021, and 2022 onwards. Not by publication date: the 2022 version describes Census Day 2022
+  and was published on 16 December 2024, so events in 2022 to 2024 take it. The year is the
+  one that chose the SIMD edition, so an overriding `analysis_year` fixes both.
+  `link_latest.sql` has no year and uses the latest version throughout.
+- **The four early versions are confirmed by the publisher.** The catalogue record links only the
+  versions from 2011-2012 onwards; 2003-2004 to 2009-2010 are served from the same address but not
+  listed. On 25 September 2026 the Scottish Government's Rural Statistics team confirmed that those
+  four, under the same Open Government Licence, are the most appropriate versions for their
+  periods; that previous versions are appropriate for historical analysis, although they encourage
+  the most recent one otherwise; and that there were no major methodological changes making the
+  versions not comparable. They did not address reference year against publication date, which
+  stays a project choice.
+- **Whose rurality.** The matched record's own, like the rest of the own-record context, not
+  the record that supplied the data zone. A large user reports its own location.
+- **`rurality_status`** says whether `rurality_6fold` and `rurality_8fold` can be used and,
+  when they are empty, why: a postcode status where no single record stands for the postcode;
+  `missing_year`; `before_first_version` for a year before 2003, where SIMD still has an
+  edition; `invalid_year`; or the reason stored with the record, `outside_polygons`,
+  `ambiguous_polygons` or `po_box`. A PO box has no derived class because NRS puts its grid
+  reference at the sorting office.
+
+The published 2022 codes are still returned among the own-record context, so the two can be
+compared. The SSPL set returns only those: the lookup keeps one life per postcode and
+allocates from output-area centroids, so it has no per-life point to place.
+
 ## The output: common core, different context
 
 The first 41 columns, from `id` through `band_direction`, are identical in name and order
-across all five queries. Own-record context follows and differs by product: 89 total columns
-for SSPL, 103 for SPD era/latest and 106 for SPD as-of. Select common columns explicitly by
+across all five queries. What follows differs by product: the SPD set adds five rurality columns
+(`rurality_version`, `rurality_policy`, `rurality_6fold`, `rurality_8fold`, `rurality_status`)
+and then own-record context. 89 total columns for SSPL, 108 for SPD era/latest and 111 for SPD
+as-of. Select common columns explicitly by
 name when combining results; the full outputs are not interchangeable via `SELECT *` or
 positional `UNION ALL`.
 

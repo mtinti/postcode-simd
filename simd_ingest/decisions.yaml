@@ -476,6 +476,12 @@ decisions:
       a large user reports its own point location rather than that of the small-user postcode it
       links to. Its demo input became three rows, and the equivalence test now compares these
       four columns too.
+    superseded_in_part: >-
+      rurality-by-version and rurality-version-by-reference-year, 21 September 2026. The limitation
+      this entry gives as its reason, that the directory carries only the 2022 classification so a
+      historical address is described by today's categories, no longer holds for the history table:
+      the walkthrough now also returns the version for the year. The two bandings and the published
+      2022 columns stand as decided here.
     reason: >-
       A reader validating the logic has to see that the same rank produces two different bands:
       PHS splits so each band holds a fifth or a tenth of the population, the Scottish Government
@@ -520,3 +526,182 @@ decisions:
       postcode ending in B and the B-and-C-only case. Commit 413c024. Column counts quoted in
       sql-two-products and sql-as-of-address-date, 91, 107 and 110, predate shared-exports,
       which removed the coordinate columns: the queries now return 89, 103 and 106.
+
+  - id: rurality-by-version
+    date: 2026-09-21
+    status: implemented
+    decision: >-
+      The history table carries the Scottish Government Urban Rural Classification of all nine
+      published versions, 2003-2004 to 2022, for every postcode life: per version a 6-fold and
+      an 8-fold code and a status, 27 nullable columns appended to the 162 of
+      postcode_simd_wide_v1, which are unchanged and in the same order. The schema becomes
+      postcode_simd_wide_v2. Each life's own grid reference is placed in that version's pinned
+      polygons (core/rurality.py). A point in no polygon is null with status outside_polygons,
+      with no nearest-polygon fallback. A point on an edge between two classes is null with
+      ambiguous_polygons. A post-office box, a large user linked NO LINKP, is null in every
+      version with status po_box, because NRS puts its grid reference at the sorting or
+      delivery office. The two 2022 columns NRS publishes are kept exactly as supplied; the
+      derived 2022 columns sit beside them. The main table is unchanged: SSPL allocates from
+      output-area centroids and keeps one life per postcode, so it has no per-life point.
+    reason: >-
+      The directory carries one classification, the 2022 one, so a historical address was
+      described by today's categories while its data zone and SIMD were read at the right
+      vintage. About one life in nine has a different 6-fold class in a version before 2020
+      than the 2022 code it carries. Every version's polygons are still published, so one
+      postcode file and one method give every version without archived lookups. The status is
+      stored per row because a null can mean three different things and a count in the build
+      report cannot say which rows. Keeping the published columns beside the derived ones
+      leaves the validation permanently visible rather than overwriting a publisher's value.
+    evidence: >-
+      Gate fixed before the run at 99.5% for current small users and 99% for other cohorts
+      over 1,000 lives: point-in-polygon on the 2022 polygons reproduces NRS's published 2022
+      codes on 247,770 of 247,773 lives, 100% of current lives, and all three misses are
+      deleted lives outside every polygon, none a different class. In the built table the
+      derived 2022 codes equal the published ones on all 216,045 placed rows; 31,725 boxes are
+      withheld; outside_polygons is 3 to 34 per version except 767 non-box lives in 2005-2006,
+      whose coastline is drawn tighter. The original 162 columns keep fingerprint
+      59369357e44e45a5, now pinned as wide_v1_columns_fingerprint; the main table keeps
+      9515021d99099b43. Readback places every point again from the saved grid references, and
+      a test changes a 2005-2006 code, a 2013-2014 code and a 2022 status after writing and
+      requires each to be caught. Plan and feasibility result:
+      docs/plans/Rurality_By_Version_Plan.md.
+
+  - id: nullable-integers-and-never-blank-text
+    date: 2026-09-21
+    status: implemented
+    decision: >-
+      The writers now carry two kinds of column the tables never had. A nullable integer is
+      written to Parquet as a null, rendered in the CSV as an empty cell and in the digest as
+      the null marker, and restored on import with NULLIF, never as zero. A nullable text
+      column that is never blank is named under empty_is_null in the export contract, and the
+      import restores its empty cells as nulls; every other text column keeps its existing
+      rule, blank or structural null by record type.
+    reason: >-
+      The rurality codes are the first nullable integers and their statuses the first text
+      that is either a value or null. Without the rules an empty code would load as 0, a class
+      that does not exist, and an empty status would load as a blank, which the digest would
+      then report as corruption of a faithful load.
+    evidence: >-
+      Verified on SQL Server 2022 (16.0, RTM-CU24-GDR) in the local container with the shipped
+      import and check scripts: 230,103 and 247,773 rows, all ten checks pass, history digest
+      -3244194952865985434297 over 185 exported columns equal to the manifest's. The main
+      table's digest, 600732040592218046898, is unchanged. tests/test_exports.py requires the
+      NULLIF guard on every nullable integer and the rule on every empty_is_null column.
+
+  - id: rurality-version-by-reference-year
+    date: 2026-09-21
+    status: implemented
+    decision: >-
+      The three SPD queries and the walkthrough return the Urban Rural Classification version
+      that suits the year, as rurality_version, rurality_policy, rurality_6fold, rurality_8fold
+      and rurality_status, placed after the shared 41-column core. The version is chosen by
+      reference year, the year it describes, and applies until the year before the next
+      version: 2003-2004, 2005-2006, 2007-2008, 2009-2010, 2011-2012, 2013 to 2015, 2016 to
+      2019, 2020 to 2021, 2022 onwards. The year is the one that chose the SIMD edition, so an
+      overriding analysis_year fixes both. link_latest.sql uses the latest version throughout.
+      The codes are the matched record's own. rurality_status reports a postcode status where
+      no single record stands for the postcode, then missing_year, before_first_version or
+      invalid_year, then the reason stored with the record. The windows are generated from the
+      registry's reference years. The SSPL set is unchanged.
+    reason: >-
+      PHS publishes no equivalent of Table 4 for rurality, so this is a project choice and is
+      labelled as one in the queries and their output. Reference year rather than publication
+      date because the purpose is to describe where a person lived, not what was knowable when:
+      by publication date, events from 2022 to most of 2024 would take the 2020 version, since
+      the 2022 version appeared on 16 December 2024. A separate status is needed because the
+      SIMD status cannot express these outcomes: 1996 has a SIMD edition and no rurality
+      version.
+    evidence: >-
+      gov.scot: Urban Rural Classification 2022 published 16 December 2024, built on the
+      Census 2022 settlements. Output columns: SSPL 89 unchanged, SPD era and latest 108, SPD
+      as-of 111. tests/test_sql_sets.py states the versions and the year windows independently
+      of the generator and checks fourteen years, the statuses, a large user reporting its own
+      class while its SIMD comes from its link, and that the SSPL set has no rurality column.
+      The walkthrough agrees with the generated query on the four rurality columns across
+      fifteen cases on the built table.
+
+  - id: previous-life-fallback
+    date: 2026-09-23
+    status: implemented
+    decision: >-
+      When no postcode life contains the address date but the postcode had a life that ended
+      before it, the dated SQL query, the walkthrough and the Python dated lookups use that
+      life: the one whose deletion date is the latest on or before the address date, excluding
+      same-day records, and never a later life. The row reports postcode_status previous_life,
+      or in Python status previous_life, which carries SIMD and rurality like matched. Every
+      rule that applies to a record still applies: a retired PO box gets nothing, and a retired
+      large user's linked small-user record must be valid on the last day of the life used.
+      The context columns first_introduced_on, previous_life_deleted_on and
+      next_life_introduced_on are unchanged, so the gap and any reissue stay visible.
+      between_lives and postcode_deleted_by_date remain for the case where only same-day
+      records ended before the date. No gap tolerance is applied.
+    reason: >-
+      A record carrying a postcode after its retirement is most often a Royal Mail recoding
+      the record never caught up with: the building did not move, so the retired postcode's
+      last location is where the person lived. The latest-life queries already gave retired
+      postcodes their last life's SIMD, so the dated query was stricter than its siblings by
+      accident rather than by design. Reporting a status of its own keeps the choice
+      reviewable and lets an analyst exclude it with one filter. A later life is excluded
+      because a reissue can be anywhere.
+    evidence: >-
+      On the built table: G3 8NR, retired July 2015 and reissued in a different data zone in
+      January 2018, asked for June 2016 returns its 1978 life in S01010278, quintile 1, not the
+      reissue's S01010283, quintile 4. FK17 8DS in its 1978 gap returns its 1973 life, and TD9
+      7PQ, retired in 1999, returns its only life for 2020. tests/test_sql_sets.py and
+      tests/test_lookup.py cover the gap, the date after the last life, three lives with two
+      gaps, a same-day record, a retired PO box, and a retired large user whose link ended
+      the same day or earlier; the walkthrough agrees with the generated query. This changes
+      what the dated SQL and the Python dated lookups return for those rows, and is part of
+      the 3.0.0 release.
+
+  - id: python-lookups-choose-then-exclude
+    date: 2026-09-23
+    status: implemented
+    decision: >-
+      The Python lookups choose the record first, on the whole table, and apply the PO-box and
+      large-user exclusions to the record chosen. A date that an excluded record covers is
+      not_found; it is never answered by an older life. The shared resolver takes several
+      value columns and resolves them as one tuple from one record, a null counting as a
+      value, so a rurality class and its stored reason can never come from different split
+      parts. attach_by_era and attach_rurality reassemble the cohort by position, not index
+      label, and accept an empty cohort. A row with no date gets missing_date in attach,
+      attach_by_era and attach_rurality, rather than deleted, no_edition or
+      before_first_version.
+    reason: >-
+      Review of 9fa39d4 found four faults, all in Python and none in SQL. Excluding PO boxes
+      before choosing the life let the previous-life fallback answer AB10 1WS in 2025 from a
+      1996 life although a PO-box life covers that date; the SQL chooses the life first and
+      returns no value. Resolving a class and its reason separately, with nulls ignored in the
+      agreement check, gave HS6 5HT class 6 beside outside_polygons and PA66 6BN not_found
+      although both of its parts exist. Label-based reassembly duplicated rows sharing an index
+      label and failed on an empty cohort. A missing date read as a date before the first
+      edition or version. The last two were already in attach_by_era on main.
+    evidence: >-
+      On the built table: AB10 1WS on 2025-01-01 is not_found, and unique with its own value
+      only when PO boxes are asked for; HS6 5HT in 2005-2006 is split_conflict under the
+      report rule and the A part, class 6, by default, as in SQL; PA66 6BN is
+      outside_polygons under both rules. tests/test_lookup.py pins each fault on a small
+      table and the reviewer's postcodes on the built one. No SQL, schema or built data
+      changed.
+
+  - id: rurality-early-versions-confirmed
+    date: 2026-09-25
+    status: implemented
+    decision: >-
+      The four Urban Rural Classification versions not linked from the catalogue record,
+      2003-2004, 2005-2006, 2007-2008 and 2009-2010, stay in the registry and in the history
+      table on the same footing as the five catalogued ones. Version by reference year remains
+      a project choice.
+    reason: >-
+      They were found at the publisher's own download address but are absent from the
+      catalogue record, so their standing needed confirming before they supported historical
+      analysis. The publisher has now confirmed it.
+    evidence: >-
+      Email reply from the Scottish Government's Rural Statistics team, 25 September 2026, to a
+      query sent to RuralStatistics@gov.scot with GI-SAT@gov.scot copied. Having consulted
+      colleagues, they confirmed that the four versions, under the same Open Government
+      Licence, are the most appropriate ones for the relevant time periods; that they encourage
+      the most recent version in general but that previous versions are appropriate for
+      historical analysis; and that there were no major methodological changes making the
+      versions not comparable. The reply did not address reference year against publication
+      date.

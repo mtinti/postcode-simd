@@ -209,6 +209,39 @@ def test_registry_rejects_incomplete_or_inconsistent_edition_registration(tmp_pa
         load_registry(path)
 
 
+@pytest.mark.parametrize("fault", ["member_not_pinned", "shp_not_pinned", "duplicate_version", "years_out_of_order", "missing_fold",
+                                   "no_gate", "gate_names_unknown_version", "gate_thresholds_inverted"])
+def test_registry_rejects_an_incomplete_or_inconsistent_rurality_version(tmp_path, fault):
+    """A shapefile is four files and a version is read for two named columns. Each of these
+    would otherwise fail late, inside the geometry library, or silently pick the wrong year."""
+    from support import ROOT
+    real = yaml.safe_load((ROOT / "simd_ingest" / "sources.yaml").read_text())
+    path = tmp_path / "sources.yaml"
+    path.write_text(yaml.safe_dump(real))
+    load_registry(path)                                   # the real registry is accepted as it stands
+    versions = real["rurality_versions"]
+    if fault == "member_not_pinned":
+        obj = next(o for o in real["remote_objects"] if o["key"] == "sg_urbanrural_2022")
+        obj["files"] = [f for f in obj["files"] if not f["path"].endswith(".prj")]
+    elif fault == "shp_not_pinned":
+        versions[0]["file"] = "data.gov.uk/SG_UrbanRural_1999/SG_UrbanRural_1999.shp"
+    elif fault == "duplicate_version":
+        versions.append(dict(versions[-1]))
+    elif fault == "years_out_of_order":
+        versions[0]["reference_year"], versions[1]["reference_year"] = versions[1]["reference_year"], versions[0]["reference_year"]
+    elif fault == "missing_fold":
+        del versions[0]["columns"]["eightfold"]
+    elif fault == "no_gate":
+        del real["rurality_published"]                    # versions with nothing to check them against
+    elif fault == "gate_names_unknown_version":
+        real["rurality_published"]["version"] = "1999"
+    else:
+        real["rurality_published"].update(current_small_user=0.9, other_cohorts=0.99)
+    path.write_text(yaml.safe_dump(real))
+    with pytest.raises(ValueError):
+        load_registry(path)
+
+
 def test_real_pinned_data_build_matches_contract_and_known_fingerprint(tmp_path):
     from support import ROOT, known_snapshot, source_root, write_config
     source = source_root()
@@ -228,6 +261,16 @@ def test_real_pinned_data_build_matches_contract_and_known_fingerprint(tmp_path)
         known = known_snapshot(result, name)
         if known is not None:
             assert result["tables"][name]["logical_fingerprint"] == known[fingerprint]
+    known = known_snapshot(result, "history")
+    if known is not None:
+        # The rurality columns were appended; the 162 columns that were there before must be
+        # exactly what they were, which the whole-table fingerprint can no longer show.
+        import pyarrow.parquet as pq
+        from simd_ingest.core.output import logical_fingerprint
+        saved = pq.ParquetFile(tmp_path / "results" / "postcode_simd_history.parquet").read().to_pandas(date_as_object=False)
+        original = [f["name"] for f in history["fields"] if f["source"] != "rurality"]
+        assert len(original) == 162 and list(saved.columns[:162]) == original
+        assert logical_fingerprint(saved[original]) == known["wide_v1_columns_fingerprint"]
     assert main(["audit", "--config", str(cfg)]) == 0
 
 
