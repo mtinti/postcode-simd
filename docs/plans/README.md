@@ -26,4 +26,6 @@ or intermediate-table cache is required.
 | `SSPL_Main_Table_Plan.md` | 12 September | Historical proposal; option A implemented, then corrected and refreshed to SSPL 2026/2. See its correction notice and the current runbook. |
 | `SQL_Two_Products_Plan.md` | 13 September | Historical proposal, implemented in 2.1.0; review corrections clarify shared core versus raw context and guidance versus project interpretations. See the current SQL guide. |
 | `Exports_Plan.md` | 16 September | The shared CSV rendering, coordinate-free SQL output and the database load check. Implemented in 2.2.0. |
-| `Rurality_By_Version_Plan.md` | 21 September | Implemented on the feature branch, not yet released. A contemporary urban-rural class for every postcode life, by placing each life's grid reference in each of the nine published classification shapefiles, gated on reproducing the published 2022 codes. |
+| `Rurality_By_Version_Plan.md` | 21 September | Implemented and released in 3.0.0. A contemporary urban-rural class for every postcode life, by placing each life's grid reference in each of the nine published classification shapefiles, gated on reproducing the published 2022 codes. |
+| `brainstorm.md` | 24 September | Ideas only, nothing decided. Updating with minimal hand edits when a release keeps its format, and one packaged tool that attaches SIMD and rurality to a file. |
+| `Python_On_SQL_Plan.md` | 24 September | Proposed, deferred beyond 3.0.0. The Python API answers through the committed SQL in DuckDB, so Python and SQL give one answer. |

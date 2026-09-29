@@ -287,7 +287,10 @@ govscot_editions:
 # grid reference (docs/plans/Rurality_By_Version_Plan.md). Every version is eight multipolygons
 # in British National Grid carrying the 6-fold and the 8-fold; the column names changed in 2016.
 # reference_year is the first year in the version's name, not its publication date: the 2022
-# version was published on 16 December 2024.
+# version was published on 16 December 2024. 2003-2004 to 2009-2010 are not linked from the
+# catalogue record; the Scottish Government's Rural Statistics team confirmed on 25 September 2026
+# that they are the appropriate versions for their periods, under the same licence
+# (decisions.yaml: rurality-early-versions-confirmed).
 rurality_versions:
   - {key: '2003-2004', file: data.gov.uk/SG_UrbanRural_2003_2004/SG_UrbanRural_2003_2004.shp, reference_year: 2003, polygons: 8,
      columns: {sixfold: UR6FOLD, eightfold: UR8FOLD}}

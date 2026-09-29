@@ -164,6 +164,14 @@ the one that suits the year:
   and was published on 16 December 2024, so events in 2022 to 2024 take it. The year is the
   one that chose the SIMD edition, so an overriding `analysis_year` fixes both.
   `link_latest.sql` has no year and uses the latest version throughout.
+- **The four early versions are confirmed by the publisher.** The catalogue record links only the
+  versions from 2011-2012 onwards; 2003-2004 to 2009-2010 are served from the same address but not
+  listed. On 25 September 2026 the Scottish Government's Rural Statistics team confirmed that those
+  four, under the same Open Government Licence, are the most appropriate versions for their
+  periods; that previous versions are appropriate for historical analysis, although they encourage
+  the most recent one otherwise; and that there were no major methodological changes making the
+  versions not comparable. They did not address reference year against publication date, which
+  stays a project choice.
 - **Whose rurality.** The matched record's own, like the rest of the own-record context, not
   the record that supplied the data zone. A large user reports its own location.
 - **`rurality_status`** says whether `rurality_6fold` and `rurality_8fold` can be used and,

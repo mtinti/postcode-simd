@@ -683,3 +683,25 @@ decisions:
       outside_polygons under both rules. tests/test_lookup.py pins each fault on a small
       table and the reviewer's postcodes on the built one. No SQL, schema or built data
       changed.
+
+  - id: rurality-early-versions-confirmed
+    date: 2026-09-25
+    status: implemented
+    decision: >-
+      The four Urban Rural Classification versions not linked from the catalogue record,
+      2003-2004, 2005-2006, 2007-2008 and 2009-2010, stay in the registry and in the history
+      table on the same footing as the five catalogued ones. Version by reference year remains
+      a project choice.
+    reason: >-
+      They were found at the publisher's own download address but are absent from the
+      catalogue record, so their standing needed confirming before they supported historical
+      analysis. The publisher has now confirmed it.
+    evidence: >-
+      Email reply from the Scottish Government's Rural Statistics team, 25 September 2026, to a
+      query sent to RuralStatistics@gov.scot with GI-SAT@gov.scot copied. Having consulted
+      colleagues, they confirmed that the four versions, under the same Open Government
+      Licence, are the most appropriate ones for the relevant time periods; that they encourage
+      the most recent version in general but that previous versions are appropriate for
+      historical analysis; and that there were no major methodological changes making the
+      versions not comparable. The reply did not address reference year against publication
+      date.

@@ -27,7 +27,7 @@ Verified on 21 September 2026 against the built table and the live publisher.
 | --- | --- |
 | Every life has a grid reference | 247,773 lives, none missing, including all 85,724 deleted lives |
 | A recycled postcode's lives carry their own points | 7,101 of 7,419 multi-life small-user postcodes have different points between lives |
-| Nine versions are downloadable, not five | The catalogue record 564db46c-3153-423c-ac84-90d41ec2652c links 2011-2012, 2013-2014, 2016, 2020 and 2022; the same URL pattern also returns 2003-2004, 2005-2006, 2007-2008 and 2009-2010 |
+| Nine versions are downloadable, not five | The catalogue record 564db46c-3153-423c-ac84-90d41ec2652c links 2011-2012, 2013-2014, 2016, 2020 and 2022; the same URL pattern also returns 2003-2004, 2005-2006, 2007-2008 and 2009-2010. Confirmed as the appropriate versions for their periods, under the same licence and comparable in method, by the Scottish Government's Rural Statistics team on 25 September 2026 |
 | The directory's published code is the postcode's own, not its link's | Of 13,933 large users whose link resolves, 44 have a published 2022 code different from the linked small user's |
 | Every post-office box carries a published code | All 31,725 `NO LINKP` rows have one, so suppression must not enter the comparison |
 | The 2022 version describes 2022 but appeared in 2024 | gov.scot: published 16 December 2024, built on the Census 2022 settlements released May 2024 |

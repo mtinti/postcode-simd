@@ -8,7 +8,7 @@ postcode-in-zone allocation see the history table, [DATA_DICTIONARY_HISTORY.md](
 Generated from `simd_ingest/output_schema.yaml`; do not edit by hand.
 
 Current build: 230,103 rows by 146 columns, main index release 2026_2,
-allocation `oa2022_centroid`, built 2026-09-23T21:30:56Z. Parquet SHA256 `ebebb4826193dedf3b734b06f51408ddee445f128f618adc9bd5621b096329ec`; rows-only fingerprint
+allocation `oa2022_centroid`, built 2026-09-25T06:19:19Z. Parquet SHA256 `1d578235176992d9abdbb5c697769d36dade2827374f02e81e5de95ce424a8a7`; rows-only fingerprint
 `9515021d99099b437950960380313e6fac7a9a6393858c4d6115fef43a94e564`. The file hash also covers the embedded provenance metadata,
 so it changes when the decision log changes; compare fingerprints under the same pinned runtime.
 
