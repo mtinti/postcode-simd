@@ -1,4 +1,4 @@
-# Data dictionary: postcode_simd, schema `postcode_simd_sspl_v2`
+# Data dictionary: postcode_simd, schema `postcode_simd_sspl_v3`
 
 The **main table**: one row per whole postcode from the Scottish Statistics Postcode Lookup (SSPL), both user types, the
 latest life of each postcode (deleted ones included), with all 6 SIMD editions attached.
@@ -7,9 +7,9 @@ Every geography, including both data-zone vintages, is the one containing the ce
 postcode-in-zone allocation see the history table, [DATA_DICTIONARY_HISTORY.md](DATA_DICTIONARY_HISTORY.md).
 Generated from `simd_ingest/output_schema.yaml`; do not edit by hand.
 
-Current build: 230,103 rows by 146 columns, main index release 2026_2,
-allocation `oa2022_centroid`, built 2026-09-25T06:19:19Z. Parquet SHA256 `1d578235176992d9abdbb5c697769d36dade2827374f02e81e5de95ce424a8a7`; rows-only fingerprint
-`9515021d99099b437950960380313e6fac7a9a6393858c4d6115fef43a94e564`. The file hash also covers the embedded provenance metadata,
+Current build: 230,103 rows by 187 columns, main index release 2026_2,
+allocation `oa2022_centroid`, built 2026-09-29T22:12:42Z. Parquet SHA256 `1e2b2d43faa3bcd60ae5cd827a4f77b25ffa2481a70af6ee4da73fc8f985ea6b`; rows-only fingerprint
+`e15e38d6d5ea419a533864e81ee30c794d57495428180f5d058d46259cd3364d`. The file hash also covers the embedded provenance metadata,
 so it changes when the decision log changes; compare fingerprints under the same pinned runtime.
 
 ## Key
@@ -66,7 +66,7 @@ the same guidance describes for pre-1996 data is not included.
 ## The CSV rendering
 
 Every build also writes `results/postcode_simd.csv.gz`, the form in which this table is shared.
-It carries 144 of the 146 columns in the same order: `GridReferenceEasting`, `GridReferenceNorthing` are not exported.
+It carries 185 of the 187 columns in the same order: `GridReferenceEasting`, `GridReferenceNorthing` are not exported.
 
   Do not carry coordinate fields into outputs whose purpose is deprivation and area context. A project data-minimisation choice, not an anonymisation guarantee.
 
@@ -123,7 +123,7 @@ Licences: phs: Open Government Licence v3.0, stated in the PHS open data package
 
 ## Columns
 
-146 columns: 50 from the lookup, 6 derived,
+187 columns: 50 from the lookup, 6 derived,
 6 PHS geography, and 14 per edition for 6 editions.
 
 ### Per-edition SIMD columns
@@ -146,6 +146,12 @@ Licences: phs: Open Government Licence v3.0, stated in the PHS open data package
 | `simd{ed}_uw_scotland_quintile` | int8 | Scottish Government unweighted quintile; 1 = most deprived |
 | `simd{ed}_uw_scotland_decile` | int8 | Scottish Government unweighted decile; 1 = most deprived |
 | `simd{ed}_uw_scotland_vigintile` | int8 | Scottish Government unweighted vigintile; 1 = most deprived |
+| `simd{ed}_income_domain_rank` | rank | Scottish Government SIMD 2004 income domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| `simd{ed}_employment_domain_rank` | rank | Scottish Government SIMD 2004 employment domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| `simd{ed}_health_domain_rank` | rank | Scottish Government SIMD 2004 health domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| `simd{ed}_education_domain_rank` | rank | Scottish Government SIMD 2004 education domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| `simd{ed}_access_domain_rank` | rank | Scottish Government SIMD 2004 access to services domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| `simd{ed}_housing_domain_rank` | rank | Scottish Government SIMD 2004 housing domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
 
 ### All columns in file order
 
@@ -297,3 +303,44 @@ Licences: phs: Open Government Licence v3.0, stated in the PHS open data package
 | 144 | `simd2020v2_uw_scotland_quintile` | int8 | no | govscot | Scottish Government unweighted quintile; 1 = most deprived |
 | 145 | `simd2020v2_uw_scotland_decile` | int8 | no | govscot | Scottish Government unweighted decile; 1 = most deprived |
 | 146 | `simd2020v2_uw_scotland_vigintile` | int8 | no | govscot | Scottish Government unweighted vigintile; 1 = most deprived |
+| 147 | `simd2004_income_domain_rank` | rank | no | govscot | Scottish Government SIMD 2004 income domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 148 | `simd2004_employment_domain_rank` | rank | no | govscot | Scottish Government SIMD 2004 employment domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 149 | `simd2004_health_domain_rank` | rank | no | govscot | Scottish Government SIMD 2004 health domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 150 | `simd2004_education_domain_rank` | rank | no | govscot | Scottish Government SIMD 2004 education domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 151 | `simd2004_access_domain_rank` | rank | no | govscot | Scottish Government SIMD 2004 access to services domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 152 | `simd2004_housing_domain_rank` | rank | no | govscot | Scottish Government SIMD 2004 housing domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 153 | `simd2006_income_domain_rank` | rank | no | govscot | Scottish Government SIMD 2006 income domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 154 | `simd2006_employment_domain_rank` | rank | no | govscot | Scottish Government SIMD 2006 employment domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 155 | `simd2006_health_domain_rank` | rank | no | govscot | Scottish Government SIMD 2006 health domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 156 | `simd2006_education_domain_rank` | rank | no | govscot | Scottish Government SIMD 2006 education domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 157 | `simd2006_access_domain_rank` | rank | no | govscot | Scottish Government SIMD 2006 access to services domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 158 | `simd2006_crime_domain_rank` | rank | no | govscot | Scottish Government SIMD 2006 crime domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 159 | `simd2006_housing_domain_rank` | rank | no | govscot | Scottish Government SIMD 2006 housing domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 160 | `simd2009v2_income_domain_rank` | rank | no | govscot | Scottish Government SIMD 2009v2 income domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 161 | `simd2009v2_employment_domain_rank` | rank | no | govscot | Scottish Government SIMD 2009v2 employment domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 162 | `simd2009v2_health_domain_rank` | rank | no | govscot | Scottish Government SIMD 2009v2 health domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 163 | `simd2009v2_education_domain_rank` | rank | no | govscot | Scottish Government SIMD 2009v2 education domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 164 | `simd2009v2_access_domain_rank` | rank | no | govscot | Scottish Government SIMD 2009v2 access to services domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 165 | `simd2009v2_crime_domain_rank` | rank | no | govscot | Scottish Government SIMD 2009v2 crime domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 166 | `simd2009v2_housing_domain_rank` | rank | no | govscot | Scottish Government SIMD 2009v2 housing domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 167 | `simd2012_income_domain_rank` | rank | no | govscot | Scottish Government SIMD 2012 income domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 168 | `simd2012_employment_domain_rank` | rank | no | govscot | Scottish Government SIMD 2012 employment domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 169 | `simd2012_health_domain_rank` | rank | no | govscot | Scottish Government SIMD 2012 health domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 170 | `simd2012_education_domain_rank` | rank | no | govscot | Scottish Government SIMD 2012 education domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 171 | `simd2012_access_domain_rank` | rank | no | govscot | Scottish Government SIMD 2012 access to services domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 172 | `simd2012_crime_domain_rank` | rank | no | govscot | Scottish Government SIMD 2012 crime domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 173 | `simd2012_housing_domain_rank` | rank | no | govscot | Scottish Government SIMD 2012 housing domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 174 | `simd2016_income_domain_rank` | rank | no | govscot | Scottish Government SIMD 2016 income domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 175 | `simd2016_employment_domain_rank` | rank | no | govscot | Scottish Government SIMD 2016 employment domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 176 | `simd2016_health_domain_rank` | rank | no | govscot | Scottish Government SIMD 2016 health domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 177 | `simd2016_education_domain_rank` | rank | no | govscot | Scottish Government SIMD 2016 education domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 178 | `simd2016_access_domain_rank` | rank | no | govscot | Scottish Government SIMD 2016 access to services domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 179 | `simd2016_crime_domain_rank` | rank | no | govscot | Scottish Government SIMD 2016 crime domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 180 | `simd2016_housing_domain_rank` | rank | no | govscot | Scottish Government SIMD 2016 housing domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 181 | `simd2020v2_income_domain_rank` | rank | no | govscot | Scottish Government SIMD 2020v2 income domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 182 | `simd2020v2_employment_domain_rank` | rank | no | govscot | Scottish Government SIMD 2020v2 employment domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 183 | `simd2020v2_health_domain_rank` | rank | no | govscot | Scottish Government SIMD 2020v2 health domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 184 | `simd2020v2_education_domain_rank` | rank | no | govscot | Scottish Government SIMD 2020v2 education domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 185 | `simd2020v2_access_domain_rank` | rank | no | govscot | Scottish Government SIMD 2020v2 access to services domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 186 | `simd2020v2_crime_domain_rank` | rank | no | govscot | Scottish Government SIMD 2020v2 crime domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |
+| 187 | `simd2020v2_housing_domain_rank` | rank | no | govscot | Scottish Government SIMD 2020v2 housing domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5 |

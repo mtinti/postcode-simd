@@ -2,13 +2,15 @@
 # Order, Arrow type and nullability are the contract. postcode_simd_wide_v2 appends the 27 rurality
 # columns to the 162 of postcode_simd_wide_v1, which are unchanged and in the same order.
 # 65 directory columns + 7 derived + 6 PHS geography + 6 editions x 14 SIMD fields
-# + 9 classification versions x (6-fold, 8-fold, status) = 189.
-version: postcode_simd_wide_v2
+# + 9 classification versions x (6-fold, 8-fold, status) = 189. postcode_simd_wide_v3 appends the 41
+# Scottish Government domain ranks, the 189 unchanged and in the same order: 6 domains for 2004,
+# which had no crime domain, and 7 for each later edition = 230.
+version: postcode_simd_wide_v3
 table: postcode_simd_history
 index_source: spd
 allocation: postcode_grid_reference
 key: [pc_norm, introduced_on]
-columns: 189
+columns: 230
 fields:
 - name: Postcode
   type: string
@@ -955,3 +957,208 @@ fields:
   nullable: true
   source: rurality
   note: null where the 2022 codes are present; otherwise outside_polygons, ambiguous_polygons or po_box
+- name: simd2004_income_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2004 income domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2004_employment_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2004 employment domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2004_health_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2004 health domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2004_education_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2004 education domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2004_access_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2004 access to services domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2004_housing_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2004 housing domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2006_income_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2006 income domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2006_employment_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2006 employment domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2006_health_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2006 health domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2006_education_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2006 education domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2006_access_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2006 access to services domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2006_crime_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2006 crime domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2006_housing_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2006 housing domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2009v2_income_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2009v2 income domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2009v2_employment_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2009v2 employment domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2009v2_health_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2009v2 health domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2009v2_education_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2009v2 education domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2009v2_access_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2009v2 access to services domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2009v2_crime_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2009v2 crime domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2009v2_housing_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2009v2 housing domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2012_income_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2012 income domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2012_employment_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2012 employment domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2012_health_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2012 health domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2012_education_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2012 education domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2012_access_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2012 access to services domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2012_crime_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2012 crime domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2012_housing_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2012 housing domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2016_income_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2016 income domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2016_employment_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2016 employment domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2016_health_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2016 health domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2016_education_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2016 education domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2016_access_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2016 access to services domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2016_crime_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2016 crime domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2016_housing_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2016 housing domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2020v2_income_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2020v2 income domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2020v2_employment_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2020v2 employment domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2020v2_health_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2020v2 health domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2020v2_education_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2020v2 education domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2020v2_access_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2020v2 access to services domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2020v2_crime_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2020v2 crime domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5
+- name: simd2020v2_housing_domain_rank
+  type: rank
+  nullable: false
+  source: govscot
+  note: Scottish Government SIMD 2020v2 housing domain rank, unweighted, 1 = most deprived; copied exactly as published, may end in .5

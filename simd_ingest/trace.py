@@ -20,7 +20,8 @@ import pandas as pd
 from .config import load_config
 from .core.checks import Report
 from .core.govscot import build_govscot_bands
-from .core.phs import BANDS, FLAGS, build_phs_bands
+from .core.join import PHS_FIELDS, gov_fields
+from .core.phs import build_phs_bands
 from .core.sources import load_registry, verify_root
 from .core.spd import normalise_postcode
 
@@ -53,17 +54,16 @@ def trace(table: pd.DataFrame, phs: pd.DataFrame, gov: pd.DataFrame, registry, p
         lines.append(f"  PHS row     {ed['file']}  rank {p['rank']}"
                      + ("  (bands inverted from source: 11 - decile, 6 - quintile)" if ed["invert_bands"] else ""))
         lines.append(f"  gov row     {gov_file}  rank {g['rank']}  population {g['population']}")
-        checks = []
-        for f in ["rank", *BANDS.values(), *FLAGS.values()]:
-            out, src = row[f"simd{key_}_{f}"], p[f]
-            checks.append((f, out, src))
-        for f in ["uw_scotland_quintile", "uw_scotland_decile", "uw_scotland_vigintile"]:
-            checks.append((f, row[f"simd{key_}_{f}"], g[f]))
-        bad = [(f, o, s) for f, o, s in checks if int(o) != int(s)]
+        # Every measure this edition publishes, read from the registry, domain ranks included.
+        # Compared exactly: a domain rank may end in .5, so no value passes through an integer.
+        gov_ed = next(e for e in registry.govscot_editions if e["key"] == key_)
+        checks = [(f, row[f"simd{key_}_{f}"], p[f]) for f in PHS_FIELDS]
+        checks += [(f, row[f"simd{key_}_{f}"], g[f]) for f in gov_fields(gov_ed)]
+        bad = [(f, o, s) for f, o, s in checks if pd.isna(o) or pd.isna(s) or float(o) != float(s)]
         ok &= not bad
-        shown = ", ".join(f"{f}={int(o)}" for f, o, _ in checks[:4]) + ", ..."
+        shown = ", ".join(f"{f}={o:g}" for f, o, _ in checks[:4]) + ", ..."
         lines.append(f"  output      {shown}")
-        lines.append(f"  agreement   {'all 14 values equal the source rows' if not bad else 'DIFFER: ' + str(bad)}")
+        lines.append(f"  agreement   {f'all {len(checks)} values equal the source rows' if not bad else 'DIFFER: ' + str(bad)}")
         lines.append("")
     lines.append("result   " + ("every SIMD value traces to its source row" if ok else "MISMATCH FOUND"))
     return lines

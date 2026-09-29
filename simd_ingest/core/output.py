@@ -17,7 +17,10 @@ from .checks import Report
 from .join import attach
 from .sources import Registry, sha256
 
-ARROW = {"string": pa.string(), "date32": pa.date32(), "bool": pa.bool_(), "int8": pa.int8(), "int16": pa.int16()}
+# rank: a published SIMD domain rank, which may end in .5. Every multiple of 0.5 up to the zone
+# count is exact in binary floating point, so float64 keeps it without rounding.
+ARROW = {"string": pa.string(), "date32": pa.date32(), "bool": pa.bool_(), "int8": pa.int8(), "int16": pa.int16(),
+         "rank": pa.float64()}
 
 BAND_CONVENTION = (
     "Every band column reads 1 as most deprived. The PHS 2004 and 2006 population-weighted "
@@ -82,6 +85,9 @@ def _column(series: pd.Series, field: dict) -> pa.Array:
         return pa.array(values, type=pa.string())
     if kind == "bool":
         return pa.array(series.astype(bool).tolist(), type=pa.bool_())
+    if kind == "rank":
+        # Never through an integer: a published 5955.5 must stay 5955.5.
+        return pa.array([None if pd.isna(v) else float(v) for v in series], type=pa.float64())
     if field["nullable"]:
         # A nullable integer: a missing value stays missing. Only the rurality codes are declared
         # so; a required column still goes through the strict path below and fails loudly on a null.
@@ -155,7 +161,7 @@ def readback(path: Path, schema: dict, index: pd.DataFrame, simd: pd.DataFrame, 
     expected = attach(saved, simd, gov, registry)
     bad = {}
     for column in expected.columns:
-        kind = "string" if column.startswith("phs_dz") else "Int64"
+        kind = "string" if column.startswith("phs_dz") else "Float64" if column.endswith("_domain_rank") else "Int64"
         same = same_values(saved[column].astype(kind), expected[column].astype(kind))
         if not same.all():
             bad[column] = int((~same).sum())

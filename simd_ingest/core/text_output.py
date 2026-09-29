@@ -67,6 +67,9 @@ def render(table: pd.DataFrame, schema: dict, columns: list, contract: dict) -> 
             if found:
                 raise ReservedCharacter(f"{name}: source text contains {found!r}, which the digest framing reserves")
             values = values.fillna(marker)
+        elif kind == "rank":
+            # Always one decimal place, so 5955 and 5955.0 are one text and the digest is stable.
+            values = column.map(lambda v: marker if v is None or pd.isna(v) else f"{float(v):.1f}")
         else:
             # An integer may be null (the rurality codes). A null is marked like any other null;
             # it is never written as a number, and an empty cell can never be read as zero.

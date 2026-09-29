@@ -28,7 +28,11 @@ IMPORT_OUT = ROOT / "docs" / "sql" / "import_csv.sql"
 STAGING_WIDTH, TEXT_WIDTH = 400, 200
 
 # The declared SQL type for each schema type. The import recipe must use these.
-SQL_TYPE = {"string": "nvarchar", "date32": "date", "bool": "bit", "int8": "tinyint", "int16": "smallint"}
+SQL_TYPE = {"string": "nvarchar", "date32": "date", "bool": "bit", "int8": "tinyint", "int16": "smallint",
+            "rank": "decimal"}
+# The declared column type where it needs more than the name the structure check compares.
+# decimal(6,1) holds a domain rank exactly and renders it with one decimal place, as the CSV does.
+SQL_DECLARED = {"rank": "decimal(6,1)"}
 # UTF-8 bytes, so HASHBYTES sees exactly what Python hashed. Verified on SQL Server 2022.
 COLLATION = "Latin1_General_100_BIN2_UTF8"
 
@@ -42,6 +46,8 @@ def _render(name: str, kind: str) -> str:
         return f"ISNULL(CONVERT(varchar(1), CONVERT(tinyint, [{name}])), NCHAR(0))"
     if kind in ("int8", "int16"):
         return f"ISNULL(CONVERT(varchar(11), [{name}]), NCHAR(0))"
+    if kind == "rank":
+        return f"ISNULL(CONVERT(varchar(12), CONVERT(decimal(6,1), [{name}])), NCHAR(0))"
     return f"ISNULL([{name}], NCHAR(0))"
 
 
@@ -149,7 +155,7 @@ def _import_sql(table: str, product: dict, schema: dict, contract: dict) -> str:
     staging = ",\n    ".join(
         f"[{c}] varchar({STAGING_WIDTH}) COLLATE {COLLATION} NULL" for c in columns)
     typed = ",\n    ".join(
-        f"[{c}] " + ({"string": f"nvarchar({TEXT_WIDTH})"}.get(kinds[c], SQL_TYPE[kinds[c]]))
+        f"[{c}] " + ({"string": f"nvarchar({TEXT_WIDTH})", **SQL_DECLARED}.get(kinds[c], SQL_TYPE[kinds[c]]))
         + ("" if nullable[c] else " NOT NULL") for c in columns)
     key = ", ".join(f"[{k}]" for k in schema["key"])
 
@@ -163,6 +169,9 @@ def _import_sql(table: str, product: dict, schema: dict, contract: dict) -> str:
             restore.append(f"CONVERT(date, NULLIF([{c}], ''), 23)")
         elif kind == "bool":
             restore.append(f"CASE [{c}] WHEN '1' THEN CONVERT(bit, 1) WHEN '0' THEN CONVERT(bit, 0) END")
+        elif kind == "rank":
+            # Exact: decimal, never float and never an integer.
+            restore.append(f"CONVERT(decimal(6,1), NULLIF([{c}], ''))")
         elif kind in ("int8", "int16"):
             # NULLIF for the same reason as a date: an empty string converts to 0, which is a
             # value the file never held. Only a nullable integer can be empty at all.

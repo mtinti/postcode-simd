@@ -12,12 +12,22 @@ import pandas as pd
 
 from .checks import Report
 from .phs import BANDS, FLAGS
-from .sources import Registry
+from .sources import Registry, declared_domains
 
 PHS_FIELDS = ["rank", *BANDS.values(), *FLAGS.values()]
 GOV_FIELDS = ["uw_scotland_quintile", "uw_scotland_decile", "uw_scotland_vigintile"]
 GEOGRAPHY = ["hb", "hscp", "ca"]
 WIDTH = {"decile": 10, "quintile": 5, "vigintile": 20}
+
+
+def gov_fields(ed: dict) -> list:
+    """The government fields one edition supplies: the three bands, then the domain ranks that
+    edition published. 2004 has no crime domain, so it has no crime field."""
+    return GOV_FIELDS + [f"{d}_domain_rank" for d in declared_domains(ed)]
+
+
+def is_domain_rank(column: str) -> bool:
+    return column.endswith("_domain_rank")
 
 
 def simd_columns(edition: str) -> list:
@@ -41,7 +51,7 @@ def join_edition(table: pd.DataFrame, edition_table: pd.DataFrame, ed: dict, kin
     """
     key, vintage = ed["key"], int(ed["dz_vintage"])
     dz_col = f"DataZone{vintage}Code"
-    fields = PHS_FIELDS if kind == "phs" else GOV_FIELDS
+    fields = PHS_FIELDS if kind == "phs" else gov_fields(ed)
     right = edition_table.set_index("dz_code")[fields].rename(columns={f: f"simd{key}_{f}" for f in fields})
     if kind == "phs" and key == first_edition_of_vintage(registry, vintage):
         geo = edition_table.set_index("dz_code")[GEOGRAPHY].rename(columns={g: f"phs_dz{vintage}_{g}" for g in GEOGRAPHY})
@@ -86,6 +96,12 @@ def finish(table: pd.DataFrame, index: pd.DataFrame, registry: Registry, columns
     report.equal(f"{label}.rows", len(table), len(index), detail="every accepted index record, no more")
     report.equal(f"{label}.primary_key_unique", int(table.duplicated(key).sum()), 0, detail=f"key {key}")
     simd_cols = [c for c in added.columns if c.startswith("simd")]
+    ranks = [c for c in simd_cols if is_domain_rank(c)]
+    if ranks:
+        # Copied as published, so only their shape is checked here: readback compares every value.
+        values = added[ranks]
+        report.equal(f"{label}.domain_ranks_half_units", int(((values * 2) % 1 != 0).sum().sum()), 0)
+        report.equal(f"{label}.domain_ranks_positive", bool((values >= 1).all().all()), True)
     geo_cols = [c for c in added.columns if c.startswith("phs_dz")]
     report.equal(f"{label}.simd_values_nonnull", int(added[simd_cols].isna().sum().sum()), 0)
     report.equal(f"{label}.geography_nonnull", int(added[geo_cols].isna().sum().sum()), 0)
@@ -93,6 +109,8 @@ def finish(table: pd.DataFrame, index: pd.DataFrame, registry: Registry, columns
     report.equal(f"{label}.logical_matches", int(added[[f"simd{e['key']}_rank" for e in registry.phs_editions]].notna().sum().sum()), len(table) * editions)
     for c in simd_cols:
         kind = c.rsplit("_", 1)[-1]
+        if is_domain_rank(c):
+            continue
         if kind in WIDTH:
             report.equal(f"{label}.{c}.range", bool(added[c].between(1, WIDTH[kind]).all()), True)
         elif kind in ("most15pc", "least15pc"):
@@ -115,6 +133,7 @@ def attach(index: pd.DataFrame, simd: pd.DataFrame, gov: pd.DataFrame, registry:
         codes = index[f"DataZone{vintage}Code"]
         for g in GEOGRAPHY:
             added[f"phs_dz{vintage}_{g}"] = codes.map(geo[g])
+    gov_eds = {e["key"]: e for e in registry.govscot_editions}
     for ed in registry.phs_editions:
         key, vintage = ed["key"], int(ed["dz_vintage"])
         codes = index[f"DataZone{vintage}Code"]
@@ -122,6 +141,6 @@ def attach(index: pd.DataFrame, simd: pd.DataFrame, gov: pd.DataFrame, registry:
         g = gov[gov["edition"] == key].set_index("dz_code")
         for f in PHS_FIELDS:
             added[f"simd{key}_{f}"] = codes.map(p[f])
-        for f in GOV_FIELDS:
+        for f in gov_fields(gov_eds[key]):
             added[f"simd{key}_{f}"] = codes.map(g[f])
     return pd.DataFrame(added, index=index.index)

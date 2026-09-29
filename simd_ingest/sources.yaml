@@ -268,20 +268,30 @@ phs_editions:
 
 # Scottish Government unweighted bands and population, one shapefile attribute table per
 # edition. Column names differ between layers, so each edition declares its own map.
+# domains names each published SIMD domain rank of the edition. It is the single statement of
+# which domain exists in which edition: 2004 has no crime domain, which began in 2006, and the
+# 2020 file's income rank is the revised 2020v2 one. Ranks are copied exactly as published; they
+# may end in .5 (docs/plans/Domain_Ranks_Plan.md).
 # The SIMD2009 layer holds the 2009v2 ranks; the SIMD2020 layer holds 2020v2.
 govscot_editions:
   - {key: '2004',   file: data.gov.uk/SG_SIMD_2004/SG_SIMD_2004.dbf, dz_vintage: 2001, rows: 6505,
-     columns: {datazone: datazone, rank: rank,   quintile: quintile,   decile: decile,   vigintile: vigintile,  population: totpop2001}}
+     columns: {datazone: datazone, rank: rank,   quintile: quintile,   decile: decile,   vigintile: vigintile,  population: totpop2001},
+     domains: {income: incrank, employment: emprank, health: hlthrank, education: edurank, access: gaccrank, housing: houserank}}
   - {key: '2006',   file: data.gov.uk/SG_SIMD_2006/SG_SIMD_2006.dbf, dz_vintage: 2001, rows: 6505,
-     columns: {datazone: datazone, rank: rank,   quintile: quintile,   decile: decile,   vigintile: vigintile,  population: sape2004}}
+     columns: {datazone: datazone, rank: rank,   quintile: quintile,   decile: decile,   vigintile: vigintile,  population: sape2004},
+     domains: {income: incrank, employment: emprank, health: hlthrank, education: edurank, access: gaccrank, crime: crimerank, housing: houserank}}
   - {key: '2009v2', file: data.gov.uk/SG_SIMD_2009/SG_SIMD_2009.dbf, dz_vintage: 2001, rows: 6505,
-     columns: {datazone: datazone, rank: rank,   quintile: quintile,   decile: decile,   vigintile: vigintile,  population: sape2007}}
+     columns: {datazone: datazone, rank: rank,   quintile: quintile,   decile: decile,   vigintile: vigintile,  population: sape2007},
+     domains: {income: incrank, employment: emprank, health: hlthrank, education: edurank, access: gaccrank, crime: crimerank, housing: houserank}}
   - {key: '2012',   file: data.gov.uk/SG_SIMD_2012/SG_SIMD_2012.dbf, dz_vintage: 2001, rows: 6505,
-     columns: {datazone: datazone, rank: rank,   quintile: quintile,   decile: decile,   vigintile: vigintile,  population: sape2010}}
+     columns: {datazone: datazone, rank: rank,   quintile: quintile,   decile: decile,   vigintile: vigintile,  population: sape2010},
+     domains: {income: incrank, employment: emprank, health: hlthrank, education: edurank, access: gaccrank, crime: crimerank, housing: houserank}}
   - {key: '2016',   file: data.gov.uk/SG_SIMD_2016/SG_SIMD_2016.dbf, dz_vintage: 2011, rows: 6976,
-     columns: {datazone: datazone, rank: rank,   quintile: quintile,   decile: decile,   vigintile: vigintile,  population: sape2014}}
+     columns: {datazone: datazone, rank: rank,   quintile: quintile,   decile: decile,   vigintile: vigintile,  population: sape2014},
+     domains: {income: incrank, employment: emprank, health: hlthrank, education: edurank, access: gaccrank, crime: crimerank, housing: houserank}}
   - {key: '2020v2', file: data.gov.uk/SG_SIMD_2020/SG_SIMD_2020.dbf, dz_vintage: 2011, rows: 6976,
-     columns: {datazone: datazone, rank: rankv2, quintile: quintilev2, decile: decilev2, vigintile: vigintilv2, population: sape2017}}
+     columns: {datazone: datazone, rank: rankv2, quintile: quintilev2, decile: decilev2, vigintile: vigintilv2, population: sape2017},
+     domains: {income: incrankv2, employment: emprank, health: hlthrank, education: edurank, access: gaccrank, crime: crimerank, housing: houserank}}
 
 # Urban Rural Classification versions, placed by point-in-polygon on each postcode life's own
 # grid reference (docs/plans/Rurality_By_Version_Plan.md). Every version is eight multipolygons

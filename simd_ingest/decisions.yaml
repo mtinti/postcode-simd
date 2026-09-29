@@ -705,3 +705,35 @@ decisions:
       historical analysis; and that there were no major methodological changes making the
       versions not comparable. The reply did not address reference year against publication
       date.
+
+  - id: simd-domain-ranks
+    date: 2026-09-29
+    status: implemented
+    decision: >-
+      Both tables carry the Scottish Government's published SIMD domain ranks for every edition,
+      simd<edition>_<domain>_domain_rank for income, employment, health, education, access,
+      crime and housing, copied exactly as published and appended after every existing column:
+      41 columns, schemas postcode_simd_wide_v3 and postcode_simd_sspl_v3. 2004 published no
+      crime domain and has no crime column. A new schema type, rank, keeps a value that may end
+      in .5 exactly: float64 in Parquet, one decimal place in the CSV, decimal(6,1) in SQL
+      Server and in the digest, a float in Python, never an integer anywhere. The registry's
+      domains map per government edition is the single statement of which domain exists in
+      which edition; the reader, join, readback, trace, SQL generator and Python API all read
+      it. The SQL output core grows from 41 to 48 columns with seven gov_<domain>_domain_rank
+      measures; for an edition that did not publish a domain the measure is null and the result
+      is still matched. Python answers an unpublished domain with a null value and a label, not
+      an error. Ranks only: no domain bands or n-tiles. Released as 4.0.0.
+    reason: >-
+      The HEAL-Scot DRS asks for domain-level data and other projects will. The ranks were
+      already pinned in the Government shapefile attribute tables. They are not whole numbers,
+      and ties are only mostly averaged, so they are copied rather than recomputed, and every
+      layer is held to exactness. The new columns change both schemas, the CSV digest and the
+      loader's expectations, the same reasoning that made the rurality work 3.0.0.
+    evidence: >-
+      7,796 published domain-rank values end in .5, for example 2020v2 income for S01006523 is
+      5955.5; of 5,188 tied groups 4,116 carry their average position and 1,072 do not, such as
+      2009 income 5521 and 2020v2 income 6969. Every value is a whole multiple of 0.5. The saved
+      2020v2 ranks equal the Government's SIMD 2020v2 ranks workbook, a retired pin, on all
+      6,976 zones in all seven domains. The 189 existing history columns keep fingerprint
+      ddb162ef89c7d52a and the 146 existing main columns 9515021d99099b43, both now pinned.
+      Plan and review: docs/plans/Domain_Ranks_Plan.md.

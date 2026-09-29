@@ -165,6 +165,47 @@ class SavedTableIntegrity(unittest.TestCase):
                                  decisions_sha256=self.decisions_sha, source_root=self.source)
             self.assertIn("readback.attached_values", [c.name for c in report.blocking_failures])
 
+    def test_a_changed_domain_rank_fails_readback_and_trace(self):
+        """Domain ranks are re-looked-up like every government field, and compared exactly: a
+        2004 rank changed, a 2020v2 half turned into its whole neighbour, and a 2020v2 half
+        corrupted to 123.5 must each be caught. The trace, which once checked a fixed list of 14
+        measures and compared after int(), must report the corrupted value too."""
+        import pyarrow as pa
+        from simd_ingest.trace import trace
+        table = pq.read_table(ROOT / "results" / "postcode_simd_history.parquet")
+        saved = table.to_pandas(date_as_object=False)
+        target = int(saved.index[saved["DataZone2011Code"] == "S01006523"][0])
+        assert saved.at[target, "simd2020v2_income_domain_rank"] == 5955.5
+
+        def change(table, name, row, value):
+            at = table.schema.get_field_index(name)
+            values = table.column(at).to_pylist()
+            values[row] = value
+            return table.set_column(at, table.schema.field(at), pa.array(values, type=table.schema.field(at).type))
+
+        damaged = change(table, "simd2004_income_domain_rank", 0, saved.at[0, "simd2004_income_domain_rank"] + 1)
+        damaged = change(damaged, "simd2020v2_income_domain_rank", target, 5955.0)        # a half lost
+        with tempfile.TemporaryDirectory() as temp:
+            bad = Path(temp) / "bad.parquet"
+            pq.write_table(damaged, bad)
+            report = Report()
+            self.output.readback(bad, self.schema, self.index, self.simd, self.gov, self.registry, report,
+                                 decisions_sha256=self.decisions_sha, source_root=self.source)
+        failed = {c.name: c for c in report.blocking_failures}
+        self.assertIn("readback.attached_values", failed)
+        self.assertIn("simd2004_income_domain_rank", str(failed["readback.attached_values"].detail))
+        self.assertIn("simd2020v2_income_domain_rank", str(failed["readback.attached_values"].detail))
+
+        # The trace of the same record, clean and then corrupted to 123.5.
+        postcode, introduced = saved.at[target, "pc_norm"], saved.at[target, "introduced_on"]
+        clean = trace(saved, self.simd, self.gov, self.registry, postcode, introduced)
+        self.assertEqual(clean[-1], "result   every SIMD value traces to its source row")
+        corrupted = saved.copy()
+        corrupted.loc[target, "simd2020v2_income_domain_rank"] = 123.5
+        lines = trace(corrupted, self.simd, self.gov, self.registry, postcode, introduced)
+        self.assertEqual(lines[-1], "result   MISMATCH FOUND")
+        self.assertTrue(any("income_domain_rank" in l and "123.5" in l for l in lines))
+
     def test_a_changed_rurality_value_fails_readback_in_an_old_version_as_well_as_2022(self):
         """The rurality columns are neither index columns nor re-looked-up SIMD, so before they
         had a check of their own a derived code could be changed from 1 to 6 after writing and

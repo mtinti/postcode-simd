@@ -1,7 +1,7 @@
 # Plan: the SIMD domain ranks
 
-Drafted 29 September 2026 and revised the same day after review. Status: proposed; decisions
-settled, ready to implement as release 4.0.0.
+Drafted 29 September 2026 and revised the same day after review. Status: implemented for
+release 4.0.0 (decision simd-domain-ranks).
 
 The review found three gaps, all accepted: domain ranks are not whole numbers (the type), 2004 has
 no crime rank (availability by edition), and the trace command would not see the new columns
@@ -155,6 +155,19 @@ domain.
 - **Trace.** A corrupted domain rank, 123.5 against 5955.5, must report a mismatch.
 - **Fingerprints.** The 189 existing history columns and the 146 existing main columns unchanged.
 - **Independent check.** The 2020v2 workbook comparison.
+
+## Found during implementation
+
+The dated query (`spd/link_as_of.sql`) and the walkthrough found the geography record with a
+join whose condition mixed a computed key with alternative date ranges, and matched the date
+bounds null-safely with an OR. Engines could not hash either join, so they compared every pair of
+rows. The 41 wider rows made DuckDB reverse the join and a full-history cohort went from 87
+seconds to over 15 minutes. The key is now computed first and each join is on plain equality, a
+missing date compared through a stand-in date rather than `IS NOT DISTINCT FROM`, which SQL
+Server supports only from 2022. The results are identical on every one of the 247,745 recorded
+lives: the dated query takes 0.9 seconds in DuckDB and 5 in SQL Server, the walkthrough 0.3
+and 50. The missing-SIMD test names only the editions that did not publish a domain, with
+plain comparisons, since an `IN` list there cost a join each.
 
 ## For HEAL-Scot meanwhile
 

@@ -235,6 +235,20 @@ you pass `include_po_boxes=True`, and then come back with no code and status `po
 main table has no versions and is refused. On small-user postcodes the dated SQL query returns
 the same version and class; a test compares the two on the built table.
 
+## Domain ranks
+
+The Scottish Government's domain ranks are measures like any other:
+
+```python
+r = lookup.lookup(t, "AB11 5FA", edition="2020v2", measure="income_domain_rank", on="2020-06-01")
+out = lookup.attach_by_era(cohort, t, "postcode", "event_date", measure="crime_domain_rank")
+```
+
+They are the Government's unweighted ranks, 1 most deprived, copied exactly as published, so they
+are not whole numbers: the value comes back as a decimal and may end in .5. No band exists for them.
+A domain an edition did not publish, crime in SIMD 2004, is not an error: the record is still
+found, the value is null, and the label says the measure was not published for that edition.
+
 ## What to state in your analysis
 
 The guidance's checklist, and where each item comes from here:

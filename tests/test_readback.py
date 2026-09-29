@@ -14,7 +14,7 @@ from simd_ingest.core import output
 from simd_ingest.core.checks import BuildStopped, Report
 from simd_ingest.core.join import attach
 from simd_ingest.core.phs import BANDS, FLAGS
-from simd_ingest.core.sources import load_registry, sha256
+from simd_ingest.core.sources import declared_domains, load_registry, sha256
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -46,7 +46,8 @@ def sample(tmp_path):
                              **{c: 1 for c in BANDS.values()}, **{c: 0 for c in FLAGS.values()})
                         for ed in registry.phs_editions])
     gov = pd.DataFrame([dict(edition=ed["key"], dz_code=f"DZ{ed['dz_vintage']}",
-                             uw_scotland_quintile=1, uw_scotland_decile=1, uw_scotland_vigintile=1)
+                             uw_scotland_quintile=1, uw_scotland_decile=1, uw_scotland_vigintile=1,
+                             **{f"{d}_domain_rank": 1.5 for d in declared_domains(ed)})
                         for ed in registry.govscot_editions])
     table = pd.concat([index, attach(index, phs, gov, registry)], axis=1)[[f["name"] for f in schema["fields"]]]
     path = tmp_path / "table.parquet"

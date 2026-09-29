@@ -86,13 +86,32 @@ def column(edition: str, measure: str) -> str:
     return f"simd{edition}_{measure}"
 
 
-def label(col: str, split: str = "a_part") -> str:
+def _value_dtype(measure: str) -> str:
+    """A domain rank may end in .5 and is never passed through an integer."""
+    return "Float64" if measure.endswith("_domain_rank") else "Int64"
+
+
+def _with_measure(table: pd.DataFrame, col: str) -> tuple:
+    """The table, and whether the measure is published for this edition. A domain rank an
+    edition did not publish, such as crime in 2004, is answered as not published: an empty
+    column, so the record is still found and its value is null, never an error."""
+    if col in table.columns or not col.endswith("_domain_rank"):
+        return table, True
+    return table.assign(**{col: pd.Series(float("nan"), index=table.index, dtype="float64")}), False
+
+
+def label(col: str, split: str = "a_part", published: bool = True) -> str:
     """The label the guidance's checklist requires, derived from the column name, plus how
     split postcodes were resolved."""
-    return _measure_label(col) + (", split postcodes resolved to the A part" if split == "a_part" else ", split postcodes reported")
+    text = _measure_label(col) + (", split postcodes resolved to the A part" if split == "a_part" else ", split postcodes reported")
+    return text if published else text + "; not published for this edition, so every value is null"
 
 
 def _measure_label(col: str) -> str:
+    domain = re.fullmatch(r"simd(?P<ed>[0-9v]+)_(?P<domain>[a-z]+)_domain_rank", col)
+    if domain:
+        return (f"SIMD {domain['ed']} {domain['domain']} domain rank, Scottish Government unweighted, 1 = most deprived, "
+                "copied exactly as published (may end in .5)")
     m = re.fullmatch(r"simd(?P<ed>[0-9v]+)_(?:(?P<w>pw|uw)_(?P<scope>[a-z]+)_(?P<measure>[a-z]+)|(?P<other>rank|most15pc|least15pc))", col)
     if not m:
         raise ValueError(f"not a SIMD column: {col}")
@@ -173,6 +192,7 @@ def lookup(table: pd.DataFrame, postcode: str, edition: str, measure: str = "pw_
     _check_split(split)
     table = _prepare(table, on is not None, split)
     col = column(edition, measure)
+    table, published = _with_measure(table, col)
     key = normalise_postcode(pd.Series([postcode])).iloc[0]
     when = None if on is None else pd.Timestamp(on)
     # An ordinary postcode matches every record whose base it is: the unsplit record of any
@@ -182,7 +202,7 @@ def lookup(table: pd.DataFrame, postcode: str, edition: str, measure: str = "pw_
     by_part = (table["pc_norm"] == key) & (table["pc_norm"] != table["pc_base"])
     cand = table[by_part] if by_part.any() else table[by_base]
     if cand.empty:
-        return Result(postcode, key, edition, measure, when, NOT_FOUND, None, label(col, split), cand)
+        return Result(postcode, key, edition, measure, when, NOT_FOUND, None, label(col, split, published), cand)
     if when is None:
         valid = cand[cand["is_current"]]
     else:
@@ -194,15 +214,15 @@ def lookup(table: pd.DataFrame, postcode: str, edition: str, measure: str = "pw_
         if len(ended):
             valid, previous = ended[ended["deleted_on"] == ended["deleted_on"].max()], True
     if valid.empty:
-        return Result(postcode, key, edition, measure, when, DELETED, None, label(col, split), cand)
+        return Result(postcode, key, edition, measure, when, DELETED, None, label(col, split, published), cand)
     # The exclusions judge the record that answers the question, after it has been chosen.
     kept = valid[~_excluded(valid, include_po_boxes, include_large_users)]
     if kept.empty:
-        return Result(postcode, key, edition, measure, when, NOT_FOUND, None, label(col, split), valid)
+        return Result(postcode, key, edition, measure, when, NOT_FOUND, None, label(col, split, published), valid)
     status, value = _resolve(kept, col, split)
     if previous and status in _RESOLVED:
         status = PREVIOUS_LIFE
-    return Result(postcode, key, edition, measure, when, status, value, label(col, split), kept)
+    return Result(postcode, key, edition, measure, when, status, value, label(col, split, published), kept)
 
 
 def attach(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, date_col: str | None,
@@ -217,9 +237,10 @@ def attach(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, date_co
     _check_split(split)
     table = _prepare(table, date_col is not None, split)
     col = column(edition, measure)
+    table, published = _with_measure(table, col)
     out = _attach_column(events, table, postcode_col, date_col, [col], prefix, split, include_po_boxes, include_large_users)
-    out[f"{prefix}_value"] = out[f"{prefix}_value"].astype("Int64")
-    out.attrs[f"{prefix}_label"] = label(col, split)
+    out[f"{prefix}_value"] = pd.array(out[f"{prefix}_value"], dtype=_value_dtype(measure))
+    out.attrs[f"{prefix}_label"] = label(col, split, published)
     return out
 
 
@@ -358,13 +379,13 @@ def attach_by_era(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, 
         part = attach(rows, table, postcode_col, date_col, edition=ed, measure=measure, prefix=prefix,
                       include_po_boxes=include_po_boxes, include_large_users=include_large_users, split=split)
         part[f"{prefix}_edition"] = ed
-        part[f"{prefix}_label"] = label(column(ed, measure), split)
+        part[f"{prefix}_label"] = part.attrs.get(f"{prefix}_label", label(column(ed, measure), split))
         return part
 
     out = _by_group(events, edition, resolve, prefix,
                     {"status": NO_EDITION, "value": pd.NA, "pc_norm": None, "edition": None, "label": None})
     out.loc[dates.isna().to_numpy(), f"{prefix}_status"] = MISSING_DATE
-    out[f"{prefix}_value"] = pd.array(out[f"{prefix}_value"], dtype="Int64")
+    out[f"{prefix}_value"] = pd.array(out[f"{prefix}_value"], dtype=_value_dtype(measure))
     return out
 
 

@@ -31,8 +31,9 @@ project choice. The five files are generated from the schemas by
 `python -m simd_ingest.sql_examples`, so a new SIMD edition or a changed header regenerates
 them; a test fails if a committed file drifts from the generator.
 
-All five queries share the first **41 columns**, through `band_direction`. They then append
-different own-record context: **89 columns** in SSPL, **108** in SPD era/latest, **111** in
+All five queries share the first **48 columns**, through `band_direction`, including the seven
+Scottish Government domain ranks. They then append different own-record context: **96 columns**
+in SSPL, **115** in SPD era/latest, **118** in
 SPD as-of. To combine products, select the shared columns by name; do not use `SELECT *` or
 a positional union of the full results. The columns and statuses are described in
 [LINKAGE_BY_ERA.md](../LINKAGE_BY_ERA.md).
