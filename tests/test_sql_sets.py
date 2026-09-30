@@ -687,6 +687,21 @@ def test_as_of_real_recycled_and_deleted_postcodes(real):
         WHERE r.simd_status = 'matched' AND ({differences})""").fetchone()[0] == 0
 
 
+def test_as_of_a_missing_date_never_meets_a_real_date_equal_to_the_stand_in(real):
+    """The null-safe date match compares a missing date through a stand-in, 0001-01-01, and a
+    flag. Without the flag a request on that real date and one with no date would each match
+    both summaries, and every such input row would come back twice."""
+    cohort = pd.DataFrame({"id": [1, 2, 3], "postcode": ["FK17 8DS"] * 3,
+                           "address_date": pd.to_datetime([None, "0001-01-01", "1990-06-01"]),
+                           "analysis_year": [2020] * 3})
+    real.register("stand_in_cases", cohort)
+    sql = (SQL / "spd" / "link_as_of.sql").read_text().replace(
+        DEMO["link_as_of"], "    SELECT id, postcode, address_date, analysis_year FROM stand_in_cases")
+    out = real.execute(sql).df().sort_values("id")
+    assert out.id.tolist() == [1, 2, 3]
+    assert out.postcode_status.tolist() == ["missing_address_date", "postcode_not_yet_introduced", "matched"]
+
+
 def test_the_walkthrough_gives_the_same_answers_as_the_generated_dated_query(real):
     """docs/sql/spd/walkthrough_as_of.sql is written by hand so that a reviewer can read the
     logic. It returns fewer columns, but the ones it returns must agree case for case."""

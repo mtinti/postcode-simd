@@ -170,7 +170,8 @@ resolved AS (
     -- The key of the record that supplies the geography is worked out here, and the record
     -- found in step 6a, so that every join is on plain equality: an engine can then match by
     -- hashing instead of comparing every pair of rows. A missing address date is compared
-    -- through a stand-in date, as a null never equals a null.
+    -- through a stand-in date, as a null never equals a null, and a flag, so that a real date
+    -- equal to the stand-in never meets a missing one.
     SELECT c.*,
            r.pc_norm AS matched_pc_norm, r.introduced_on AS matched_introduced_on,
            r.is_current AS matched_is_current, r.spd_user_type AS matched_user_type,
@@ -278,6 +279,8 @@ resolved AS (
     LEFT JOIN key_lives k ON k.requested_key = c.postcode_key
                         AND COALESCE(k.requested_date, CAST('0001-01-01' AS date))
                           = COALESCE(c.address_date, CAST('0001-01-01' AS date))
+                        AND CASE WHEN k.requested_date IS NULL THEN 1 ELSE 0 END
+                          = CASE WHEN c.address_date IS NULL THEN 1 ELSE 0 END
 ),
 geography_matches AS (
     -- STEP 6a. THE GEOGRAPHY RECORD, once per postcode and date. A request without a date

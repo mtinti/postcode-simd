@@ -110,8 +110,15 @@ def test_the_sql_server_scripts_keep_the_half():
     importer = (ROOT / "docs/sql/import_csv.sql").read_text()
     check = (ROOT / "docs/sql/check_loaded_digest.sql").read_text()
     assert "[simd2020v2_income_domain_rank] decimal(6,1) NOT NULL" in importer
-    assert "CONVERT(decimal(6,1), NULLIF([simd2020v2_income_domain_rank], ''))" in importer
-    assert "CONVERT(varchar(12), CONVERT(decimal(6,1), [simd2020v2_income_domain_rank]))" in check
+    # Text that would be rounded on the way in, 5955.54 to 5955.5, is refused, not converted.
+    c = "[simd2020v2_income_domain_rank]"
+    assert (f"CASE WHEN CONVERT(varchar(12), CONVERT(decimal(6,1), NULLIF({c}, ''))) = {c} "
+            f"THEN CONVERT(decimal(6,1), {c}) END") in importer
+    # The check fixes precision and scale, then hashes the stored value without rounding it.
+    assert "(N'simd2020v2_income_domain_rank', 220, N'decimal', 6, 1, 0)" in check
+    assert "c.NUMERIC_PRECISION = d.numeric_precision AND c.NUMERIC_SCALE = d.numeric_scale" in check
+    assert f"ISNULL(CONVERT(varchar(12), {c}), NCHAR(0))" in check
+    assert f"CONVERT(decimal(6,1), {c})" not in check
     assert "simd2004_crime_domain_rank" not in importer and "simd2004_crime_domain_rank" not in check
 
 
@@ -169,3 +176,17 @@ def test_python_keeps_halves_and_answers_2004_crime_as_not_published(built):
     assert "not published" in out.simd_label.iloc[0] and "not published" not in out.simd_label.iloc[1]
     income = lookup.attach_by_era(cohort.iloc[[1]], table, "pc", "on", measure="income_domain_rank")
     assert str(income.simd_value.dtype) == "Float64" and income.simd_value.iloc[0] == 3313.5
+
+
+def test_python_refuses_an_unknown_domain_and_a_missing_published_column(built):
+    table = lookup.load(str(HISTORY))
+    cohort = pd.DataFrame({"pc": ["AB11 5FA"], "on": ["2021-06-10"]})
+    with pytest.raises(ValueError, match="unknown SIMD domain"):
+        lookup.attach_by_era(cohort, table, "pc", "on", measure="incmoe_domain_rank")
+    # A published column absent from the table is an error, never "not published".
+    with pytest.raises(ValueError, match="simd2020v2_income_domain_rank is not in the table"):
+        lookup.attach_by_era(cohort, table.drop(columns="simd2020v2_income_domain_rank"), "pc", "on",
+                             measure="income_domain_rank")
+    with pytest.raises(ValueError, match="not in the table"):
+        lookup.lookup(table, "AB11 5FA", "2020v2", measure="pw_scotland_quintlie", on="2021-06-10")
+

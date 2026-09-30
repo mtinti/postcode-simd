@@ -163,11 +163,18 @@ join whose condition mixed a computed key with alternative date ranges, and matc
 bounds null-safely with an OR. Engines could not hash either join, so they compared every pair of
 rows. The 41 wider rows made DuckDB reverse the join and a full-history cohort went from 87
 seconds to over 15 minutes. The key is now computed first and each join is on plain equality, a
-missing date compared through a stand-in date rather than `IS NOT DISTINCT FROM`, which SQL
-Server supports only from 2022. The results are identical on every one of the 247,745 recorded
+missing date compared through a stand-in date and a null flag, so a real date equal to the
+stand-in never meets a missing one, rather than `IS NOT DISTINCT FROM`, which SQL Server
+supports only from 2022. The results are identical on every one of the 247,745 recorded
 lives: the dated query takes 0.9 seconds in DuckDB and 5 in SQL Server, the walkthrough 0.3
 and 50. The missing-SIMD test names only the editions that did not publish a domain, with
 plain comparisons, since an `IN` list there cost a join each.
+
+Review of the implementation added three guards. Python checks a domain against the registry:
+an unknown domain or a published column missing from the table is an error, never "not
+published". The SQL Server check compares a rank column's precision and scale as well as its
+type and hashes the stored value unrounded, and the import converts a rank only when its text
+survives the round trip, so 5955.54 can neither load as 5955.5 nor pass as it.
 
 ## For HEAL-Scot meanwhile
 

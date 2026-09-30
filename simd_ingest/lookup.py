@@ -26,11 +26,14 @@ that agree give `split_consensus`, parts that disagree give `split_conflict` wit
 
 from __future__ import annotations
 
+import functools
 import re
 from dataclasses import dataclass
+from pathlib import Path
 
 import pandas as pd
 
+from .core.sources import DOMAINS, declared_domains, load_registry
 from .core.spd import normalise_postcode, part_of
 
 # PHS deprivation guidance for analysts v3.5, table 4: years of health data -> edition.
@@ -91,13 +94,29 @@ def _value_dtype(measure: str) -> str:
     return "Float64" if measure.endswith("_domain_rank") else "Int64"
 
 
-def _with_measure(table: pd.DataFrame, col: str) -> tuple:
-    """The table, and whether the measure is published for this edition. A domain rank an
-    edition did not publish, such as crime in 2004, is answered as not published: an empty
-    column, so the record is still found and its value is null, never an error."""
-    if col in table.columns or not col.endswith("_domain_rank"):
-        return table, True
-    return table.assign(**{col: pd.Series(float("nan"), index=table.index, dtype="float64")}), False
+@functools.lru_cache(maxsize=None)
+def _published_domains() -> dict:
+    """Edition -> the domains its Scottish Government file published, from the registry."""
+    registry = load_registry(Path(__file__).resolve().parent / "sources.yaml")
+    return {ed["key"]: frozenset(declared_domains(ed)) for ed in registry.govscot_editions}
+
+
+def _with_measure(table: pd.DataFrame, edition: str, measure: str) -> tuple:
+    """The table, and whether the measure is published for this edition. A domain rank the
+    registry says an edition did not publish, such as crime in 2004, is answered as not
+    published: an empty column, so the record is still found and its value is null, never an
+    error. Anything else must be in the table: an unknown domain or a published column that is
+    missing is refused, never reported as unpublished."""
+    col = column(edition, measure)
+    if measure.endswith("_domain_rank"):
+        domain = measure[:-len("_domain_rank")]
+        if domain not in DOMAINS:
+            raise ValueError(f"unknown SIMD domain {domain!r} in {measure!r}; the domains are {', '.join(DOMAINS)}")
+        if edition in _published_domains() and domain not in _published_domains()[edition]:
+            return table.assign(**{col: pd.Series(float("nan"), index=table.index, dtype="float64")}), False
+    if col not in table.columns:
+        raise ValueError(f"{col} is not in the table")
+    return table, True
 
 
 def label(col: str, split: str = "a_part", published: bool = True) -> str:
@@ -192,7 +211,7 @@ def lookup(table: pd.DataFrame, postcode: str, edition: str, measure: str = "pw_
     _check_split(split)
     table = _prepare(table, on is not None, split)
     col = column(edition, measure)
-    table, published = _with_measure(table, col)
+    table, published = _with_measure(table, edition, measure)
     key = normalise_postcode(pd.Series([postcode])).iloc[0]
     when = None if on is None else pd.Timestamp(on)
     # An ordinary postcode matches every record whose base it is: the unsplit record of any
@@ -237,7 +256,7 @@ def attach(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, date_co
     _check_split(split)
     table = _prepare(table, date_col is not None, split)
     col = column(edition, measure)
-    table, published = _with_measure(table, col)
+    table, published = _with_measure(table, edition, measure)
     out = _attach_column(events, table, postcode_col, date_col, [col], prefix, split, include_po_boxes, include_large_users)
     out[f"{prefix}_value"] = pd.array(out[f"{prefix}_value"], dtype=_value_dtype(measure))
     out.attrs[f"{prefix}_label"] = label(col, split, published)
