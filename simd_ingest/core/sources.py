@@ -53,6 +53,19 @@ class Registry:
         return tuple(f for o in self.objects for f in o.files)
 
 
+# The SIMD domains, in output order. An edition declares the ones it published.
+DOMAINS = ("income", "employment", "health", "education", "access", "crime", "housing")
+
+
+def domain_column(edition: str, domain: str) -> str:
+    return f"simd{edition}_{domain}_domain_rank"
+
+
+def declared_domains(ed: dict) -> list:
+    """The domains a government edition published, in DOMAINS order."""
+    return [d for d in DOMAINS if d in (ed.get("domains") or {})]
+
+
 def sha256(path: Path) -> str:
     h = hashlib.sha256()
     with Path(path).open("rb") as fh:
@@ -120,6 +133,10 @@ def load_registry(path: Path) -> Registry:
     gov = {e["key"]: e for e in reg.govscot_editions}
     if not phs or len(phs) != len(reg.phs_editions) or len(gov) != len(reg.govscot_editions):
         raise ValueError("Edition keys must be nonempty and unique within each publisher")
+    for key, ed in gov.items():
+        unknown = sorted(set(ed.get("domains") or {}) - set(DOMAINS))
+        if unknown:
+            raise ValueError(f"{key}: unknown SIMD domain(s) {unknown}; the vocabulary is {list(DOMAINS)}")
     if phs.keys() != gov.keys():
         raise ValueError("PHS and Government must declare the same edition keys")
     for key, ed in phs.items():

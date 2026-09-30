@@ -29,3 +29,4 @@ or intermediate-table cache is required.
 | `Rurality_By_Version_Plan.md` | 21 September | Implemented and released in 3.0.0. A contemporary urban-rural class for every postcode life, by placing each life's grid reference in each of the nine published classification shapefiles, gated on reproducing the published 2022 codes. |
 | `brainstorm.md` | 24 September | Ideas only, nothing decided. Updating with minimal hand edits when a release keeps its format, and one packaged tool that attaches SIMD and rurality to a file. |
 | `Python_On_SQL_Plan.md` | 24 September | Proposed, deferred beyond 3.0.0. The Python API answers through the committed SQL in DuckDB, so Python and SQL give one answer. |
+| `Domain_Ranks_Plan.md` | 29 September | Implemented for 4.0.0. The Scottish Government SIMD domain ranks for every edition, copied as published into both tables as half-unit ranks; no 2004 crime column. |

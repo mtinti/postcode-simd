@@ -28,7 +28,13 @@ IMPORT_OUT = ROOT / "docs" / "sql" / "import_csv.sql"
 STAGING_WIDTH, TEXT_WIDTH = 400, 200
 
 # The declared SQL type for each schema type. The import recipe must use these.
-SQL_TYPE = {"string": "nvarchar", "date32": "date", "bool": "bit", "int8": "tinyint", "int16": "smallint"}
+SQL_TYPE = {"string": "nvarchar", "date32": "date", "bool": "bit", "int8": "tinyint", "int16": "smallint",
+            "rank": "decimal"}
+# Precision and scale where the type name alone does not fix the values. decimal(6,1) holds a
+# domain rank exactly and renders it with one decimal place, as the CSV does. The structure
+# check compares both, so the digest can hash the stored value as it is, never a rounding of it.
+SQL_NUMERIC = {"rank": (6, 1)}
+SQL_DECLARED = {kind: f"{SQL_TYPE[kind]}({p},{s})" for kind, (p, s) in SQL_NUMERIC.items()}
 # UTF-8 bytes, so HASHBYTES sees exactly what Python hashed. Verified on SQL Server 2022.
 COLLATION = "Latin1_General_100_BIN2_UTF8"
 
@@ -42,6 +48,8 @@ def _render(name: str, kind: str) -> str:
         return f"ISNULL(CONVERT(varchar(1), CONVERT(tinyint, [{name}])), NCHAR(0))"
     if kind in ("int8", "int16"):
         return f"ISNULL(CONVERT(varchar(11), [{name}]), NCHAR(0))"
+    if kind == "rank":
+        return f"ISNULL(CONVERT(varchar(12), [{name}]), NCHAR(0))"
     return f"ISNULL([{name}], NCHAR(0))"
 
 
@@ -50,8 +58,10 @@ def _table_sql(table: str, product: dict, schema: dict, contract: dict) -> str:
     kinds = {f["name"]: f["type"] for f in schema["fields"]}
     nullable = {f["name"]: bool(f["nullable"]) for f in schema["fields"]}
     name = product["table"]
+    def numeric(kind: str) -> str:
+        return "{}, {}".format(*SQL_NUMERIC[kind]) if kind in SQL_NUMERIC else "NULL, NULL"
     declared = ",\n".join(
-        f"    (N'{c}', {i}, N'{SQL_TYPE[kinds[c]]}', {1 if nullable[c] else 0})"
+        f"    (N'{c}', {i}, N'{SQL_TYPE[kinds[c]]}', {numeric(kinds[c])}, {1 if nullable[c] else 0})"
         for i, c in enumerate(columns, 1))
     key = ", ".join(f"[{k}]" for k in schema["key"])
     rendered = [_render(c, kinds[c]) for c in columns]
@@ -72,8 +82,9 @@ ELSE
 BEGIN
     -- 1. Structure. A digest cannot establish any of this: a missing column, a wrong type, a
     -- column that should not accept NULL, or a changed order would all be invisible to it.
-    DECLARE @declared_{table} TABLE (name sysname, ordinal int, type_name sysname, is_nullable bit);
-    INSERT INTO @declared_{table} (name, ordinal, type_name, is_nullable) VALUES
+    DECLARE @declared_{table} TABLE (name sysname, ordinal int, type_name sysname,
+                                     numeric_precision int, numeric_scale int, is_nullable bit);
+    INSERT INTO @declared_{table} (name, ordinal, type_name, numeric_precision, numeric_scale, is_nullable) VALUES
 {declared};
 
     INSERT INTO #result
@@ -84,6 +95,8 @@ BEGIN
         LEFT JOIN INFORMATION_SCHEMA.COLUMNS c
                ON c.TABLE_NAME = PARSENAME(N'{name}', 1) AND c.COLUMN_NAME = d.name
               AND c.ORDINAL_POSITION = d.ordinal AND c.DATA_TYPE = d.type_name
+              AND (d.numeric_precision IS NULL
+                   OR (c.NUMERIC_PRECISION = d.numeric_precision AND c.NUMERIC_SCALE = d.numeric_scale))
               AND c.IS_NULLABLE = CASE d.is_nullable WHEN 1 THEN 'YES' ELSE 'NO' END
         WHERE c.COLUMN_NAME IS NULL
         UNION ALL
@@ -149,7 +162,7 @@ def _import_sql(table: str, product: dict, schema: dict, contract: dict) -> str:
     staging = ",\n    ".join(
         f"[{c}] varchar({STAGING_WIDTH}) COLLATE {COLLATION} NULL" for c in columns)
     typed = ",\n    ".join(
-        f"[{c}] " + ({"string": f"nvarchar({TEXT_WIDTH})"}.get(kinds[c], SQL_TYPE[kinds[c]]))
+        f"[{c}] " + ({"string": f"nvarchar({TEXT_WIDTH})", **SQL_DECLARED}.get(kinds[c], SQL_TYPE[kinds[c]]))
         + ("" if nullable[c] else " NOT NULL") for c in columns)
     key = ", ".join(f"[{k}]" for k in schema["key"])
 
@@ -163,6 +176,13 @@ def _import_sql(table: str, product: dict, schema: dict, contract: dict) -> str:
             restore.append(f"CONVERT(date, NULLIF([{c}], ''), 23)")
         elif kind == "bool":
             restore.append(f"CASE [{c}] WHEN '1' THEN CONVERT(bit, 1) WHEN '0' THEN CONVERT(bit, 0) END")
+        elif kind == "rank":
+            # Exact: decimal, never float and never an integer. CONVERT would round 5955.54 to
+            # 5955.5 without a word, so only text that survives the round trip unchanged is
+            # converted; anything else becomes NULL, which a NOT NULL rank refuses outright.
+            decimal = SQL_DECLARED[kind]
+            restore.append(f"CASE WHEN CONVERT(varchar(12), CONVERT({decimal}, NULLIF([{c}], ''))) = [{c}] "
+                           f"THEN CONVERT({decimal}, [{c}]) END")
         elif kind in ("int8", "int16"):
             # NULLIF for the same reason as a date: an empty string converts to 0, which is a
             # value the file never held. Only a nullable integer can be empty at all.

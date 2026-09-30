@@ -159,7 +159,7 @@ candidates AS (
 representative AS (
     SELECT * FROM candidates WHERE candidate_number = 1
 ),
-matched AS (
+resolved AS (
     -- STEP 6. LARGE USERS. PHS v3.5 Appendix A, p.30: a large-user postcode has no boundary;
     -- where NRS could link it to a small-user postcode, that postcode supplies the geography;
     -- a PO box (NO LINKP) or an unlinked large user (NO LINK) gets none. The linked small-user
@@ -167,6 +167,11 @@ matched AS (
     -- last day (project policy), by its exact key
     -- including any A/B/C suffix. A small user supplies its own geography. Never the large
     -- user's own zone, another product, or a chain through a second large user.
+    -- The key of the record that supplies the geography is worked out here, and the record
+    -- found in step 6a, so that every join is on plain equality: an engine can then match by
+    -- hashing instead of comparing every pair of rows. A missing address date is compared
+    -- through a stand-in date, as a null never equals a null, and a flag, so that a real date
+    -- equal to the stand-in never meets a missing one.
     SELECT c.*,
            r.pc_norm AS matched_pc_norm, r.introduced_on AS matched_introduced_on,
            r.is_current AS matched_is_current, r.spd_user_type AS matched_user_type,
@@ -262,6 +267,25 @@ matched AS (
            r.urbanrural2022_6fold,
            r.urbanrural2022_8fold,
            r.urbanrural2022_status,
+           r.deleted_on AS matched_deleted_on,
+           CASE
+               WHEN r.candidate_count > 1 THEN NULL
+               WHEN SUBSTRING(r.pc_norm, LEN(r.pc_base) + 1, 10) NOT IN ('', 'A') THEN NULL
+               WHEN r.spd_user_type = 'small_user' THEN r.pc_norm
+               ELSE UPPER(REPLACE(r.LinkedSmallUserPostcode, ' ', ''))
+           END AS geography_key
+    FROM chosen c
+    LEFT JOIN representative r ON r.requested_key = c.postcode_key AND r.requested_date = c.address_date
+    LEFT JOIN key_lives k ON k.requested_key = c.postcode_key
+                        AND COALESCE(k.requested_date, CAST('0001-01-01' AS date))
+                          = COALESCE(c.address_date, CAST('0001-01-01' AS date))
+                        AND CASE WHEN k.requested_date IS NULL THEN 1 ELSE 0 END
+                          = CASE WHEN c.address_date IS NULL THEN 1 ELSE 0 END
+),
+geography_matches AS (
+    -- STEP 6a. THE GEOGRAPHY RECORD, once per postcode and date. A request without a date
+    -- has no record here, so the join back on the date needs no stand-in.
+    SELECT q.postcode_key AS requested_key, q.address_date AS requested_date,
            g.pc_norm AS source_pc_norm,
            g.introduced_on AS source_introduced_on,
            g.is_current AS source_is_current,
@@ -358,24 +382,198 @@ matched AS (
            g.simd2020v2_least15pc,
            g.simd2020v2_uw_scotland_quintile,
            g.simd2020v2_uw_scotland_decile,
-           g.simd2020v2_uw_scotland_vigintile
-    FROM chosen c
-    LEFT JOIN representative r ON r.requested_key = c.postcode_key AND r.requested_date = c.address_date
-    LEFT JOIN key_lives k ON k.requested_key = c.postcode_key
-                        AND (k.requested_date = c.address_date
-                             OR (k.requested_date IS NULL AND c.address_date IS NULL))
-    LEFT JOIN postcode_simd_history g
-      ON g.spd_user_type = 'small_user'
-     AND g.pc_norm = CASE
-             WHEN r.candidate_count > 1 THEN NULL
-             WHEN SUBSTRING(r.pc_norm, LEN(r.pc_base) + 1, 10) NOT IN ('', 'A') THEN NULL
-             WHEN r.spd_user_type = 'small_user' THEN r.pc_norm
-             ELSE UPPER(REPLACE(r.LinkedSmallUserPostcode, ' ', ''))
-         END
-     AND ((r.from_previous_life = 0 AND g.introduced_on <= c.address_date
-           AND (g.deleted_on IS NULL OR g.deleted_on > c.address_date))
-       OR (r.from_previous_life = 1 AND g.introduced_on < r.deleted_on
-           AND (g.deleted_on IS NULL OR g.deleted_on >= r.deleted_on)))
+           g.simd2020v2_uw_scotland_vigintile,
+           g.simd2004_income_domain_rank,
+           g.simd2004_employment_domain_rank,
+           g.simd2004_health_domain_rank,
+           g.simd2004_education_domain_rank,
+           g.simd2004_access_domain_rank,
+           g.simd2004_housing_domain_rank,
+           g.simd2006_income_domain_rank,
+           g.simd2006_employment_domain_rank,
+           g.simd2006_health_domain_rank,
+           g.simd2006_education_domain_rank,
+           g.simd2006_access_domain_rank,
+           g.simd2006_crime_domain_rank,
+           g.simd2006_housing_domain_rank,
+           g.simd2009v2_income_domain_rank,
+           g.simd2009v2_employment_domain_rank,
+           g.simd2009v2_health_domain_rank,
+           g.simd2009v2_education_domain_rank,
+           g.simd2009v2_access_domain_rank,
+           g.simd2009v2_crime_domain_rank,
+           g.simd2009v2_housing_domain_rank,
+           g.simd2012_income_domain_rank,
+           g.simd2012_employment_domain_rank,
+           g.simd2012_health_domain_rank,
+           g.simd2012_education_domain_rank,
+           g.simd2012_access_domain_rank,
+           g.simd2012_crime_domain_rank,
+           g.simd2012_housing_domain_rank,
+           g.simd2016_income_domain_rank,
+           g.simd2016_employment_domain_rank,
+           g.simd2016_health_domain_rank,
+           g.simd2016_education_domain_rank,
+           g.simd2016_access_domain_rank,
+           g.simd2016_crime_domain_rank,
+           g.simd2016_housing_domain_rank,
+           g.simd2020v2_income_domain_rank,
+           g.simd2020v2_employment_domain_rank,
+           g.simd2020v2_health_domain_rank,
+           g.simd2020v2_education_domain_rank,
+           g.simd2020v2_access_domain_rank,
+           g.simd2020v2_crime_domain_rank,
+           g.simd2020v2_housing_domain_rank
+    FROM (SELECT DISTINCT postcode_key, address_date, geography_key, from_previous_life, matched_deleted_on
+          FROM resolved) q
+    JOIN postcode_simd_history g ON g.pc_norm = q.geography_key
+    WHERE g.spd_user_type = 'small_user'
+      AND ((q.from_previous_life = 0 AND g.introduced_on <= q.address_date
+            AND (g.deleted_on IS NULL OR g.deleted_on > q.address_date))
+        OR (q.from_previous_life = 1 AND g.introduced_on < q.matched_deleted_on
+            AND (g.deleted_on IS NULL OR g.deleted_on >= q.matched_deleted_on)))
+),
+matched AS (
+    SELECT q.*, g.source_pc_norm,
+           g.source_introduced_on,
+           g.source_is_current,
+           g.source_dz2001,
+           g.source_dz2011,
+           g.source_iz2001,
+           g.source_iz2011,
+           g.phs_dz2001_hb,
+           g.phs_dz2001_hscp,
+           g.phs_dz2001_ca,
+           g.phs_dz2011_hb,
+           g.phs_dz2011_hscp,
+           g.phs_dz2011_ca,
+           g.simd2004_rank,
+           g.simd2004_pw_scotland_quintile,
+           g.simd2004_pw_scotland_decile,
+           g.simd2004_pw_hb_quintile,
+           g.simd2004_pw_hb_decile,
+           g.simd2004_pw_hscp_quintile,
+           g.simd2004_pw_hscp_decile,
+           g.simd2004_pw_ca_quintile,
+           g.simd2004_pw_ca_decile,
+           g.simd2004_most15pc,
+           g.simd2004_least15pc,
+           g.simd2004_uw_scotland_quintile,
+           g.simd2004_uw_scotland_decile,
+           g.simd2004_uw_scotland_vigintile,
+           g.simd2006_rank,
+           g.simd2006_pw_scotland_quintile,
+           g.simd2006_pw_scotland_decile,
+           g.simd2006_pw_hb_quintile,
+           g.simd2006_pw_hb_decile,
+           g.simd2006_pw_hscp_quintile,
+           g.simd2006_pw_hscp_decile,
+           g.simd2006_pw_ca_quintile,
+           g.simd2006_pw_ca_decile,
+           g.simd2006_most15pc,
+           g.simd2006_least15pc,
+           g.simd2006_uw_scotland_quintile,
+           g.simd2006_uw_scotland_decile,
+           g.simd2006_uw_scotland_vigintile,
+           g.simd2009v2_rank,
+           g.simd2009v2_pw_scotland_quintile,
+           g.simd2009v2_pw_scotland_decile,
+           g.simd2009v2_pw_hb_quintile,
+           g.simd2009v2_pw_hb_decile,
+           g.simd2009v2_pw_hscp_quintile,
+           g.simd2009v2_pw_hscp_decile,
+           g.simd2009v2_pw_ca_quintile,
+           g.simd2009v2_pw_ca_decile,
+           g.simd2009v2_most15pc,
+           g.simd2009v2_least15pc,
+           g.simd2009v2_uw_scotland_quintile,
+           g.simd2009v2_uw_scotland_decile,
+           g.simd2009v2_uw_scotland_vigintile,
+           g.simd2012_rank,
+           g.simd2012_pw_scotland_quintile,
+           g.simd2012_pw_scotland_decile,
+           g.simd2012_pw_hb_quintile,
+           g.simd2012_pw_hb_decile,
+           g.simd2012_pw_hscp_quintile,
+           g.simd2012_pw_hscp_decile,
+           g.simd2012_pw_ca_quintile,
+           g.simd2012_pw_ca_decile,
+           g.simd2012_most15pc,
+           g.simd2012_least15pc,
+           g.simd2012_uw_scotland_quintile,
+           g.simd2012_uw_scotland_decile,
+           g.simd2012_uw_scotland_vigintile,
+           g.simd2016_rank,
+           g.simd2016_pw_scotland_quintile,
+           g.simd2016_pw_scotland_decile,
+           g.simd2016_pw_hb_quintile,
+           g.simd2016_pw_hb_decile,
+           g.simd2016_pw_hscp_quintile,
+           g.simd2016_pw_hscp_decile,
+           g.simd2016_pw_ca_quintile,
+           g.simd2016_pw_ca_decile,
+           g.simd2016_most15pc,
+           g.simd2016_least15pc,
+           g.simd2016_uw_scotland_quintile,
+           g.simd2016_uw_scotland_decile,
+           g.simd2016_uw_scotland_vigintile,
+           g.simd2020v2_rank,
+           g.simd2020v2_pw_scotland_quintile,
+           g.simd2020v2_pw_scotland_decile,
+           g.simd2020v2_pw_hb_quintile,
+           g.simd2020v2_pw_hb_decile,
+           g.simd2020v2_pw_hscp_quintile,
+           g.simd2020v2_pw_hscp_decile,
+           g.simd2020v2_pw_ca_quintile,
+           g.simd2020v2_pw_ca_decile,
+           g.simd2020v2_most15pc,
+           g.simd2020v2_least15pc,
+           g.simd2020v2_uw_scotland_quintile,
+           g.simd2020v2_uw_scotland_decile,
+           g.simd2020v2_uw_scotland_vigintile,
+           g.simd2004_income_domain_rank,
+           g.simd2004_employment_domain_rank,
+           g.simd2004_health_domain_rank,
+           g.simd2004_education_domain_rank,
+           g.simd2004_access_domain_rank,
+           g.simd2004_housing_domain_rank,
+           g.simd2006_income_domain_rank,
+           g.simd2006_employment_domain_rank,
+           g.simd2006_health_domain_rank,
+           g.simd2006_education_domain_rank,
+           g.simd2006_access_domain_rank,
+           g.simd2006_crime_domain_rank,
+           g.simd2006_housing_domain_rank,
+           g.simd2009v2_income_domain_rank,
+           g.simd2009v2_employment_domain_rank,
+           g.simd2009v2_health_domain_rank,
+           g.simd2009v2_education_domain_rank,
+           g.simd2009v2_access_domain_rank,
+           g.simd2009v2_crime_domain_rank,
+           g.simd2009v2_housing_domain_rank,
+           g.simd2012_income_domain_rank,
+           g.simd2012_employment_domain_rank,
+           g.simd2012_health_domain_rank,
+           g.simd2012_education_domain_rank,
+           g.simd2012_access_domain_rank,
+           g.simd2012_crime_domain_rank,
+           g.simd2012_housing_domain_rank,
+           g.simd2016_income_domain_rank,
+           g.simd2016_employment_domain_rank,
+           g.simd2016_health_domain_rank,
+           g.simd2016_education_domain_rank,
+           g.simd2016_access_domain_rank,
+           g.simd2016_crime_domain_rank,
+           g.simd2016_housing_domain_rank,
+           g.simd2020v2_income_domain_rank,
+           g.simd2020v2_employment_domain_rank,
+           g.simd2020v2_health_domain_rank,
+           g.simd2020v2_education_domain_rank,
+           g.simd2020v2_access_domain_rank,
+           g.simd2020v2_crime_domain_rank,
+           g.simd2020v2_housing_domain_rank
+    FROM resolved q
+    LEFT JOIN geography_matches g ON g.requested_key = q.postcode_key AND g.requested_date = q.address_date
 ),
 selected AS (
     -- STEP 7. VALUES. Copy the stored values of the chosen edition from the record that
@@ -387,7 +585,10 @@ selected AS (
     -- stored measures is copied: PHS population-weighted bands and flags (pw), Scottish
     -- Government unweighted bands (uw); never mix the two in one analysis (sections 3.1.2,
     -- 3.3). Band 1 is most deprived in every edition; ingestion already reversed the 2004 and
-    -- 2006 PHS bands, so nothing is reversed here.
+    -- 2006 PHS bands, so nothing is reversed here. The seven domain ranks (gov_*_domain_rank)
+    -- are the Scottish Government's unweighted ranks, copied exactly as published: they may end
+    -- in .5, and no band exists for them. 2004 published no crime domain, so its crime rank is
+    -- null by design, and a 2004 result is still matched.
     SELECT m.*,
            CASE m.data_zone_vintage
                WHEN 2001     THEN m.source_dz2001
@@ -521,6 +722,61 @@ selected AS (
                WHEN '2016'   THEN m.simd2016_uw_scotland_vigintile
                WHEN '2020v2' THEN m.simd2020v2_uw_scotland_vigintile
            END AS gov_uw_scotland_vigintile,
+           CASE m.simd_edition
+               WHEN '2004'   THEN m.simd2004_income_domain_rank
+               WHEN '2006'   THEN m.simd2006_income_domain_rank
+               WHEN '2009v2' THEN m.simd2009v2_income_domain_rank
+               WHEN '2012'   THEN m.simd2012_income_domain_rank
+               WHEN '2016'   THEN m.simd2016_income_domain_rank
+               WHEN '2020v2' THEN m.simd2020v2_income_domain_rank
+           END AS gov_income_domain_rank,
+           CASE m.simd_edition
+               WHEN '2004'   THEN m.simd2004_employment_domain_rank
+               WHEN '2006'   THEN m.simd2006_employment_domain_rank
+               WHEN '2009v2' THEN m.simd2009v2_employment_domain_rank
+               WHEN '2012'   THEN m.simd2012_employment_domain_rank
+               WHEN '2016'   THEN m.simd2016_employment_domain_rank
+               WHEN '2020v2' THEN m.simd2020v2_employment_domain_rank
+           END AS gov_employment_domain_rank,
+           CASE m.simd_edition
+               WHEN '2004'   THEN m.simd2004_health_domain_rank
+               WHEN '2006'   THEN m.simd2006_health_domain_rank
+               WHEN '2009v2' THEN m.simd2009v2_health_domain_rank
+               WHEN '2012'   THEN m.simd2012_health_domain_rank
+               WHEN '2016'   THEN m.simd2016_health_domain_rank
+               WHEN '2020v2' THEN m.simd2020v2_health_domain_rank
+           END AS gov_health_domain_rank,
+           CASE m.simd_edition
+               WHEN '2004'   THEN m.simd2004_education_domain_rank
+               WHEN '2006'   THEN m.simd2006_education_domain_rank
+               WHEN '2009v2' THEN m.simd2009v2_education_domain_rank
+               WHEN '2012'   THEN m.simd2012_education_domain_rank
+               WHEN '2016'   THEN m.simd2016_education_domain_rank
+               WHEN '2020v2' THEN m.simd2020v2_education_domain_rank
+           END AS gov_education_domain_rank,
+           CASE m.simd_edition
+               WHEN '2004'   THEN m.simd2004_access_domain_rank
+               WHEN '2006'   THEN m.simd2006_access_domain_rank
+               WHEN '2009v2' THEN m.simd2009v2_access_domain_rank
+               WHEN '2012'   THEN m.simd2012_access_domain_rank
+               WHEN '2016'   THEN m.simd2016_access_domain_rank
+               WHEN '2020v2' THEN m.simd2020v2_access_domain_rank
+           END AS gov_access_domain_rank,
+           CASE m.simd_edition
+               WHEN '2006'   THEN m.simd2006_crime_domain_rank
+               WHEN '2009v2' THEN m.simd2009v2_crime_domain_rank
+               WHEN '2012'   THEN m.simd2012_crime_domain_rank
+               WHEN '2016'   THEN m.simd2016_crime_domain_rank
+               WHEN '2020v2' THEN m.simd2020v2_crime_domain_rank
+           END AS gov_crime_domain_rank,
+           CASE m.simd_edition
+               WHEN '2004'   THEN m.simd2004_housing_domain_rank
+               WHEN '2006'   THEN m.simd2006_housing_domain_rank
+               WHEN '2009v2' THEN m.simd2009v2_housing_domain_rank
+               WHEN '2012'   THEN m.simd2012_housing_domain_rank
+               WHEN '2016'   THEN m.simd2016_housing_domain_rank
+               WHEN '2020v2' THEN m.simd2020v2_housing_domain_rank
+           END AS gov_housing_domain_rank,
            CASE m.rurality_version
                WHEN '2003-2004' THEN m.urbanrural2003_2004_6fold
                WHEN '2005-2006' THEN m.urbanrural2005_2006_6fold
@@ -591,7 +847,7 @@ SELECT
        CASE
            WHEN s.edition_status <> 'ok' THEN s.edition_status
            WHEN s.postcode_status NOT IN ('matched', 'a_part', 'linked_small_user', 'previous_life') THEN s.postcode_status
-           WHEN s.simd_rank IS NULL OR s.phs_pw_scotland_quintile IS NULL OR s.phs_pw_scotland_decile IS NULL OR s.phs_pw_hb_quintile IS NULL OR s.phs_pw_hb_decile IS NULL OR s.phs_pw_hscp_quintile IS NULL OR s.phs_pw_hscp_decile IS NULL OR s.phs_pw_ca_quintile IS NULL OR s.phs_pw_ca_decile IS NULL OR s.phs_pw_most15pc IS NULL OR s.phs_pw_least15pc IS NULL OR s.gov_uw_scotland_quintile IS NULL OR s.gov_uw_scotland_decile IS NULL OR s.gov_uw_scotland_vigintile IS NULL OR s.data_zone_code IS NULL OR s.phs_hb_code IS NULL OR s.phs_hscp_code IS NULL OR s.phs_ca_code IS NULL THEN 'missing_simd'
+           WHEN s.simd_rank IS NULL OR s.phs_pw_scotland_quintile IS NULL OR s.phs_pw_scotland_decile IS NULL OR s.phs_pw_hb_quintile IS NULL OR s.phs_pw_hb_decile IS NULL OR s.phs_pw_hscp_quintile IS NULL OR s.phs_pw_hscp_decile IS NULL OR s.phs_pw_ca_quintile IS NULL OR s.phs_pw_ca_decile IS NULL OR s.phs_pw_most15pc IS NULL OR s.phs_pw_least15pc IS NULL OR s.gov_uw_scotland_quintile IS NULL OR s.gov_uw_scotland_decile IS NULL OR s.gov_uw_scotland_vigintile IS NULL OR s.gov_income_domain_rank IS NULL OR s.gov_employment_domain_rank IS NULL OR s.gov_health_domain_rank IS NULL OR s.gov_education_domain_rank IS NULL OR s.gov_access_domain_rank IS NULL OR (s.gov_crime_domain_rank IS NULL AND s.simd_edition <> '2004') OR s.gov_housing_domain_rank IS NULL OR s.data_zone_code IS NULL OR s.phs_hb_code IS NULL OR s.phs_hscp_code IS NULL OR s.phs_ca_code IS NULL THEN 'missing_simd'
            ELSE 'matched'
        END AS simd_status,
        'spd' AS index_source, s.index_release, 'postcode_grid_reference' AS allocation,
@@ -615,6 +871,13 @@ SELECT
        s.gov_uw_scotland_quintile,
        s.gov_uw_scotland_decile,
        s.gov_uw_scotland_vigintile,
+       s.gov_income_domain_rank,
+       s.gov_employment_domain_rank,
+       s.gov_health_domain_rank,
+       s.gov_education_domain_rank,
+       s.gov_access_domain_rank,
+       s.gov_crime_domain_rank,
+       s.gov_housing_domain_rank,
        s.band_direction,
        -- Rurality: the matched record's own Urban Rural Classification, in the version step 3b
        -- chose. rurality_status says whether the two codes can be used and, when they are

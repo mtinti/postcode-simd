@@ -37,6 +37,11 @@ MEASURES = [
     ("gov_uw_scotland_decile", "uw_scotland_decile"),
     ("gov_uw_scotland_vigintile", "uw_scotland_vigintile"),
 ]
+# The Scottish Government domain ranks, stated independently: every edition published seven,
+# except 2004, which had no crime domain. Values below end in .5 so a truncation is visible.
+DOMAIN_MEASURES = [(f"gov_{d}_domain_rank", f"{d}_domain_rank")
+                   for d in ("income", "employment", "health", "education", "access", "crime", "housing")]
+PUBLISHED = {ed: [s for _, s in DOMAIN_MEASURES if not (ed == "2004" and s == "crime_domain_rank")] for ed in EDITIONS}
 VINTAGE = {e: 2011 if e in ("2016", "2020v2") else 2001 for e in EDITIONS}
 VARIANTS = ("link_by_era", "link_latest")
 # Independently stated: the coordinate columns the export contract withholds from both the CSV
@@ -57,7 +62,7 @@ CONTRACT = ["id", "postcode", "address_date", "analysis_year", "postcode_key", "
             "matched_pc_norm", "matched_introduced_on", "matched_is_current", "matched_user_type",
             "requested_link_postcode", "simd_source_pc_norm", "simd_source_introduced_on", "simd_source_is_current",
             "data_zone_code", "intermediate_zone_code", "phs_hb_code", "phs_hscp_code", "phs_ca_code",
-            *[out for out, _ in MEASURES], "band_direction"]
+            *[out for out, _ in MEASURES], *[out for out, _ in DOMAIN_MEASURES], "band_direction"]
 OK = ("matched", "a_part", "linked_small_user")
 # The classification versions, stated here independently of the generator and the registry.
 RURAL = ("2003-2004", "2005-2006", "2007-2008", "2009-2010", "2011-2012", "2013-2014", "2016", "2020", "2022")
@@ -75,8 +80,11 @@ def rural_eightfold(seed: int, version: str) -> int:
 
 def stored_values(seed: int) -> dict:
     """Every edition and measure gets its own value, so a wrong branch is visible."""
-    return {f"simd{ed}_{suffix}": seed * 1000 + n * 20 + k + 1
-            for n, ed in enumerate(EDITIONS) for k, (_, suffix) in enumerate(MEASURES)}
+    values = {f"simd{ed}_{suffix}": seed * 1000 + n * 20 + k + 1
+              for n, ed in enumerate(EDITIONS) for k, (_, suffix) in enumerate(MEASURES)}
+    values.update({f"simd{ed}_{suffix}": seed * 1000 + n * 20 + 500 + k + 0.5
+                   for n, ed in enumerate(EDITIONS) for k, suffix in enumerate(PUBLISHED[ed])})
+    return values
 
 
 def record(name, pc="AB11AA", *, base=None, intro="2010-01-01", live=True, user="small_user",
@@ -138,6 +146,11 @@ def run(con, name, variant, cohort, text=None) -> pd.DataFrame:
 def expect_edition(out, row, edition):
     for output, suffix in MEASURES:
         assert out[output] == row[f"simd{edition}_{suffix}"], output
+    for output, suffix in DOMAIN_MEASURES:                 # exactly, halves included, or null if unpublished
+        if suffix in PUBLISHED[edition]:
+            assert out[output] == row[f"simd{edition}_{suffix}"], output
+        else:
+            assert pd.isna(out[output]), output
     v = VINTAGE[edition]
     assert out.simd_edition == edition and out.data_zone_vintage == v
     assert out.data_zone_code == row[f"DataZone{v}Code"]
@@ -160,8 +173,10 @@ def test_committed_file_matches_generator(name, variant):
 def test_independent_expectations_cover_every_stored_measure(name):
     fields = yaml.safe_load((ROOT / "simd_ingest" / PRODUCTS[name]["schema"]).read_text())["fields"]
     expected = {f"simd{edition}_{suffix}" for edition in EDITIONS for _, suffix in MEASURES}
+    expected |= {f"simd{edition}_{suffix}" for edition in EDITIONS for suffix in PUBLISHED[edition]}
     assert {f["name"] for f in fields if f["name"].startswith("simd")} == expected
-    assert len(MEASURES) == 14 and len(expected) == 84
+    assert len(MEASURES) == 14 and len(expected) == 84 + 41
+    assert "simd2004_crime_domain_rank" not in {f["name"] for f in fields}
 
 
 @pytest.mark.parametrize("name", PRODUCTS)
@@ -213,9 +228,9 @@ def test_common_output_core_and_product_specific_context(con, name, variant):
     if name == "spd":                                     # rurality sits between the core and the context
         context[:0] = ["rurality_version", "rurality_policy", "rurality_6fold", "rurality_8fold", "rurality_status"]
     assert list(out.columns[len(CONTRACT):]) == context
-    assert len(CONTRACT) == 41
+    assert len(CONTRACT) == 48
     # The SPD set returns five rurality columns after the shared core; the SSPL set has none.
-    assert len(out.columns) == (111 if variant == "link_as_of" else 108 if name == "spd" else 89)
+    assert len(out.columns) == (118 if variant == "link_as_of" else 115 if name == "spd" else 96)
     assert not set(EXCLUDED[name]) & set(out.columns)
 
 
@@ -672,6 +687,21 @@ def test_as_of_real_recycled_and_deleted_postcodes(real):
         WHERE r.simd_status = 'matched' AND ({differences})""").fetchone()[0] == 0
 
 
+def test_as_of_a_missing_date_never_meets_a_real_date_equal_to_the_stand_in(real):
+    """The null-safe date match compares a missing date through a stand-in, 0001-01-01, and a
+    flag. Without the flag a request on that real date and one with no date would each match
+    both summaries, and every such input row would come back twice."""
+    cohort = pd.DataFrame({"id": [1, 2, 3], "postcode": ["FK17 8DS"] * 3,
+                           "address_date": pd.to_datetime([None, "0001-01-01", "1990-06-01"]),
+                           "analysis_year": [2020] * 3})
+    real.register("stand_in_cases", cohort)
+    sql = (SQL / "spd" / "link_as_of.sql").read_text().replace(
+        DEMO["link_as_of"], "    SELECT id, postcode, address_date, analysis_year FROM stand_in_cases")
+    out = real.execute(sql).df().sort_values("id")
+    assert out.id.tolist() == [1, 2, 3]
+    assert out.postcode_status.tolist() == ["missing_address_date", "postcode_not_yet_introduced", "matched"]
+
+
 def test_the_walkthrough_gives_the_same_answers_as_the_generated_dated_query(real):
     """docs/sql/spd/walkthrough_as_of.sql is written by hand so that a reviewer can read the
     logic. It returns fewer columns, but the ones it returns must agree case for case."""
@@ -795,3 +825,20 @@ def test_rurality_is_withheld_when_no_single_record_stands_for_the_postcode(con)
 def test_the_sspl_set_returns_no_rurality_columns():
     for variant in FILES["sspl"]:
         assert "rurality" not in render("sspl", variant)
+
+
+# --- Domain ranks: availability by edition ------------------------------------------------------
+
+@pytest.mark.parametrize("name", PRODUCTS)
+@pytest.mark.parametrize("year,edition", [(2000, "2004"), (2005, "2006"), (2020, "2020v2")])
+def test_a_domain_an_edition_did_not_publish_is_null_and_the_result_still_matched(con, name, year, edition):
+    """2004 published no crime domain. A 2004 result keeps every value it has, its crime rank is
+    null, and it is matched, never missing_simd. Later editions carry all seven, halves intact."""
+    row = record(name, seed=4)
+    assert f"simd2004_crime_domain_rank" not in row
+    setup(con, name, [row])
+    out = run(con, name, "link_by_era", inputs(year=year)).iloc[0]
+    assert (out.simd_edition, out.simd_status) == (edition, "matched")
+    expect_edition(out, row, edition)
+    assert pd.isna(out.gov_crime_domain_rank) == (edition == "2004")
+    assert out.gov_income_domain_rank % 1 == 0.5

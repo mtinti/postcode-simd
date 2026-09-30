@@ -16,8 +16,10 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def dbf_bytes(rows):
-    """Minimal dBase III fixture, with one character and six numeric fields."""
-    fields = [(name, "C" if name == "datazone" else "N", 12 if name == "datazone" else 6)
+    """Minimal dBase III fixture: one character field, numeric fields, and one decimal place
+    for any numeric field that holds a half, as the published domain ranks do."""
+    halves = {name for name in rows[0] if any(isinstance(r[name], float) and r[name] % 1 for r in rows)}
+    fields = [(name, "C" if name == "datazone" else "N", 12 if name == "datazone" else 8 if name in halves else 6)
               for name in rows[0]]
     header = bytearray(32)
     header[:4] = bytes([3, 126, 9, 12])
@@ -26,12 +28,13 @@ def dbf_bytes(rows):
         field = bytearray(32)
         field[:len(name)] = name.encode()
         field[11], field[16] = ord(kind), width
+        field[17] = 1 if name in halves else 0
         header.extend(field)
     header.extend(b"\r")
     for row in rows:
         header.extend(b" ")
         for name, kind, width in fields:
-            text = str(row[name])
+            text = f"{row[name]:.1f}" if name in halves else str(row[name])
             header.extend((text.ljust(width) if kind == "C" else text.rjust(width)).encode())
     return bytes(header) + b"\x1a"
 
@@ -76,8 +79,13 @@ def project(tmp: Path, release="test-1", extra_edition=False) -> Path:
     for ed in raw["govscot_editions"]:
         ed.update(rows=2, file=f"gov_{ed['key']}.dbf")
         ed["columns"] = {k: k for k in ("datazone", "rank", "quintile", "decile", "vigintile", "population")}
+        # Domain ranks as the real files have them: whatever the edition declares (2004 has no
+        # crime), income tied and averaged to 1.5 in both zones, the rest whole ranks.
+        domains = list((ed.get("domains") or {}).keys())
+        ed["domains"] = {d: f"dom{d[:5]}" for d in domains}
         rows = [dict(datazone=f"D{ed['dz_vintage']}{letter}", rank=i, quintile=1 if i == 1 else 5,
-                     decile=1 if i == 1 else 10, vigintile=1 if i == 1 else 20, population=100)
+                     decile=1 if i == 1 else 10, vigintile=1 if i == 1 else 20, population=100,
+                     **{f"dom{d[:5]}": (1.5 if d == "income" else float(i)) for d in domains})
                 for i, letter in enumerate("AB", 1)]
         (sources / ed["file"]).write_bytes(dbf_bytes(rows))
         pin(ed["file"], "Scottish Government")

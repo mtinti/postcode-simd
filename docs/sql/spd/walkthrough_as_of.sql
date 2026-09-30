@@ -1,8 +1,8 @@
 -- A short, readable version of link_as_of.sql, for reviewing the logic before trusting it.
 --
 -- Same steps, same rules, but it returns only the rank, both publishers' within-Scotland
--- quintile and decile, and the urban-rural classification, so the whole thing fits on a screen
--- or two. link_as_of.sql is the complete query: it returns all fourteen measures, the bands
+-- quintile and decile, the seven domain ranks and the urban-rural classification, so the whole
+-- thing stays readable. link_as_of.sql is the complete query: it returns all 21 measures, the bands
 -- within health board, partnership and council area, and every original postcode field, and it
 -- is generated from the output schema so it cannot drift from the table. Use this one to check
 -- that the logic is what you want, and that one to produce values.
@@ -173,7 +173,15 @@ ranked AS (
     FROM lives l
 ),
 matched AS (
-    SELECT * FROM ranked WHERE preference = 1
+    -- The record that will supply the geography (step 6), decided here so that step 6 can find
+    -- it by plain equality. An ambiguous postcode and a B or C part supply none.
+    SELECT r.*,
+           CASE WHEN r.candidates > 1 AND r.part = '' THEN NULL
+                WHEN r.part NOT IN ('', 'A')           THEN NULL
+                WHEN r.spd_user_type = 'small_user'    THEN r.pc_norm
+                ELSE UPPER(REPLACE(r.LinkedSmallUserPostcode, ' ', '')) END AS source_key
+    FROM ranked r
+    WHERE r.preference = 1
 ),
 source AS (
     -- STEP 6. A large-user postcode is a single address with no boundary of its own, so it has
@@ -200,19 +208,26 @@ source AS (
            g.simd2016_uw_scotland_quintile, g.simd2020v2_uw_scotland_quintile,
            g.simd2004_uw_scotland_decile, g.simd2006_uw_scotland_decile,
            g.simd2009v2_uw_scotland_decile, g.simd2012_uw_scotland_decile,
-           g.simd2016_uw_scotland_decile, g.simd2020v2_uw_scotland_decile
+           g.simd2016_uw_scotland_decile, g.simd2020v2_uw_scotland_decile,
+           -- The Scottish Government domain ranks each edition published; 2004 had no crime domain.
+           g.simd2004_income_domain_rank, g.simd2006_income_domain_rank, g.simd2009v2_income_domain_rank, g.simd2012_income_domain_rank, g.simd2016_income_domain_rank, g.simd2020v2_income_domain_rank,
+           g.simd2004_employment_domain_rank, g.simd2006_employment_domain_rank, g.simd2009v2_employment_domain_rank, g.simd2012_employment_domain_rank, g.simd2016_employment_domain_rank, g.simd2020v2_employment_domain_rank,
+           g.simd2004_health_domain_rank, g.simd2006_health_domain_rank, g.simd2009v2_health_domain_rank, g.simd2012_health_domain_rank, g.simd2016_health_domain_rank, g.simd2020v2_health_domain_rank,
+           g.simd2004_education_domain_rank, g.simd2006_education_domain_rank, g.simd2009v2_education_domain_rank, g.simd2012_education_domain_rank, g.simd2016_education_domain_rank, g.simd2020v2_education_domain_rank,
+           g.simd2004_access_domain_rank, g.simd2006_access_domain_rank, g.simd2009v2_access_domain_rank, g.simd2012_access_domain_rank, g.simd2016_access_domain_rank, g.simd2020v2_access_domain_rank,
+           g.simd2006_crime_domain_rank, g.simd2009v2_crime_domain_rank, g.simd2012_crime_domain_rank, g.simd2016_crime_domain_rank, g.simd2020v2_crime_domain_rank,
+           g.simd2004_housing_domain_rank, g.simd2006_housing_domain_rank, g.simd2009v2_housing_domain_rank, g.simd2012_housing_domain_rank, g.simd2016_housing_domain_rank, g.simd2020v2_housing_domain_rank
+    -- An inner join: a row with no source is kept by the final LEFT JOIN on id. Joining on the
+    -- key alone, with the dates as a filter, lets the engine match by hashing rather than by
+    -- comparing every pair of rows, which on a large cohort is minutes against seconds.
     FROM matched m
-    LEFT JOIN postcode_simd_history g
-      ON g.spd_user_type = 'small_user'
-     AND g.pc_norm = CASE WHEN m.candidates > 1 AND m.part = '' THEN NULL
-                          WHEN m.part NOT IN ('', 'A')           THEN NULL
-                          WHEN m.spd_user_type = 'small_user'    THEN m.pc_norm
-                          ELSE UPPER(REPLACE(m.LinkedSmallUserPostcode, ' ', '')) END
-     -- ... valid on the address date, or for a previous life on that life's last day.
-     AND ((m.from_previous_life = 0 AND g.introduced_on <= m.address_date
-           AND (g.deleted_on IS NULL OR g.deleted_on > m.address_date))
-       OR (m.from_previous_life = 1 AND g.introduced_on < m.deleted_on
-           AND (g.deleted_on IS NULL OR g.deleted_on >= m.deleted_on)))
+    JOIN postcode_simd_history g ON g.pc_norm = m.source_key
+    WHERE g.spd_user_type = 'small_user'
+      -- ... valid on the address date, or for a previous life on that life's last day.
+      AND ((m.from_previous_life = 0 AND g.introduced_on <= m.address_date
+            AND (g.deleted_on IS NULL OR g.deleted_on > m.address_date))
+        OR (m.from_previous_life = 1 AND g.introduced_on < m.deleted_on
+            AND (g.deleted_on IS NULL OR g.deleted_on >= m.deleted_on)))
 )
 -- STEP 7 and 8. Report. The values come from the record that supplied the geography, read
 -- through the data zone of the edition's own vintage: 2001 zones for SIMD 2004 to 2012, 2011
@@ -296,6 +311,50 @@ SELECT c.id, c.postcode, c.address_date, c.analysis_year, c.edition AS simd_edit
                       WHEN '2012'   THEN s.simd2012_uw_scotland_decile
                       WHEN '2016'   THEN s.simd2016_uw_scotland_decile
                       WHEN '2020v2' THEN s.simd2020v2_uw_scotland_decile END AS gov_uw_scotland_decile,
+       -- Domain ranks: the Scottish Government's unweighted ranks, copied exactly as published, so
+       -- they may end in .5, and no band exists for them. An edition that did not publish a domain
+       -- has no branch for it: 2004 crime is null by design, not missing.
+       CASE c.edition WHEN '2004'   THEN s.simd2004_income_domain_rank
+                      WHEN '2006'   THEN s.simd2006_income_domain_rank
+                      WHEN '2009v2' THEN s.simd2009v2_income_domain_rank
+                      WHEN '2012'   THEN s.simd2012_income_domain_rank
+                      WHEN '2016'   THEN s.simd2016_income_domain_rank
+                      WHEN '2020v2' THEN s.simd2020v2_income_domain_rank END AS gov_income_domain_rank,
+       CASE c.edition WHEN '2004'   THEN s.simd2004_employment_domain_rank
+                      WHEN '2006'   THEN s.simd2006_employment_domain_rank
+                      WHEN '2009v2' THEN s.simd2009v2_employment_domain_rank
+                      WHEN '2012'   THEN s.simd2012_employment_domain_rank
+                      WHEN '2016'   THEN s.simd2016_employment_domain_rank
+                      WHEN '2020v2' THEN s.simd2020v2_employment_domain_rank END AS gov_employment_domain_rank,
+       CASE c.edition WHEN '2004'   THEN s.simd2004_health_domain_rank
+                      WHEN '2006'   THEN s.simd2006_health_domain_rank
+                      WHEN '2009v2' THEN s.simd2009v2_health_domain_rank
+                      WHEN '2012'   THEN s.simd2012_health_domain_rank
+                      WHEN '2016'   THEN s.simd2016_health_domain_rank
+                      WHEN '2020v2' THEN s.simd2020v2_health_domain_rank END AS gov_health_domain_rank,
+       CASE c.edition WHEN '2004'   THEN s.simd2004_education_domain_rank
+                      WHEN '2006'   THEN s.simd2006_education_domain_rank
+                      WHEN '2009v2' THEN s.simd2009v2_education_domain_rank
+                      WHEN '2012'   THEN s.simd2012_education_domain_rank
+                      WHEN '2016'   THEN s.simd2016_education_domain_rank
+                      WHEN '2020v2' THEN s.simd2020v2_education_domain_rank END AS gov_education_domain_rank,
+       CASE c.edition WHEN '2004'   THEN s.simd2004_access_domain_rank
+                      WHEN '2006'   THEN s.simd2006_access_domain_rank
+                      WHEN '2009v2' THEN s.simd2009v2_access_domain_rank
+                      WHEN '2012'   THEN s.simd2012_access_domain_rank
+                      WHEN '2016'   THEN s.simd2016_access_domain_rank
+                      WHEN '2020v2' THEN s.simd2020v2_access_domain_rank END AS gov_access_domain_rank,
+       CASE c.edition WHEN '2006'   THEN s.simd2006_crime_domain_rank
+                      WHEN '2009v2' THEN s.simd2009v2_crime_domain_rank
+                      WHEN '2012'   THEN s.simd2012_crime_domain_rank
+                      WHEN '2016'   THEN s.simd2016_crime_domain_rank
+                      WHEN '2020v2' THEN s.simd2020v2_crime_domain_rank END AS gov_crime_domain_rank,
+       CASE c.edition WHEN '2004'   THEN s.simd2004_housing_domain_rank
+                      WHEN '2006'   THEN s.simd2006_housing_domain_rank
+                      WHEN '2009v2' THEN s.simd2009v2_housing_domain_rank
+                      WHEN '2012'   THEN s.simd2012_housing_domain_rank
+                      WHEN '2016'   THEN s.simd2016_housing_domain_rank
+                      WHEN '2020v2' THEN s.simd2020v2_housing_domain_rank END AS gov_housing_domain_rank,
        c.rurality_version,
        CASE WHEN m.candidates > 1 AND m.part = '' THEN NULL WHEN m.part NOT IN ('', 'A') THEN NULL ELSE
            CASE c.rurality_version WHEN '2003-2004' THEN m.urbanrural2003_2004_6fold

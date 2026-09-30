@@ -6,8 +6,8 @@ edition is a separate, less frequent change to the source registry and output sc
 
 | Table | Postcode source | One row per | Key | Answers |
 | --- | --- | --- | --- | --- |
-| `postcode_simd.parquet`, the **main table** | Scottish Statistics Postcode Lookup (SSPL) 2026/2 | whole postcode, latest life, both user types: 230,103 rows × 146 columns | `pc_norm` | SIMD on the latest postcode; either one edition or edition by event year |
-| `postcode_simd_history.parquet`, the **history table** | Scottish Postcode Directory (SPD) 2026/2 | postcode life, both user types: 247,773 rows × 189 columns | `pc_norm`, `introduced_on` | date-valid postcode records, split parts, or explicitly chosen SPD latest linkage |
+| `postcode_simd.parquet`, the **main table** | Scottish Statistics Postcode Lookup (SSPL) 2026/2 | whole postcode, latest life, both user types: 230,103 rows × 187 columns | `pc_norm` | SIMD on the latest postcode; either one edition or edition by event year |
+| `postcode_simd_history.parquet`, the **history table** | Scottish Postcode Directory (SPD) 2026/2 | postcode life, both user types: 247,773 rows × 230 columns | `pc_norm`, `introduced_on` | date-valid postcode records, split parts, or explicitly chosen SPD latest linkage |
 
 Six SIMD editions (2004–2020v2) are attached to both. The two NRS products allocate data
 zones differently: the SSPL takes the zone containing the centroid of the postcode's 2022
@@ -65,6 +65,11 @@ automatically.
   the 2022 codes NRS publishes on every current life. A code is null, and the status says why, for
   a point outside every polygon, a point on an edge between two classes, and a post-office box.
   Read with pandas, a nullable code column arrives as a float; cast it to `Int8`.
+- Both tables carry the Scottish Government's SIMD domain ranks for every edition,
+  `simd<edition>_<domain>_domain_rank`: income, employment, health, education, access, crime and
+  housing, copied exactly as published. They are unweighted ranks, not PHS population-weighted
+  bands, and they are not whole numbers: many end in .5, so read them as decimals. 2004 published
+  no crime domain, so there is no 2004 crime column. No domain band is published or derived.
   Release is metadata/an attribute of each table, not part of its key.
 - `results/postcode_simd.csv.gz` and `results/postcode_simd_history.csv.gz`: the same rows as a
   gzipped CSV, the form in which a table is shared. They omit the grid reference and coordinate
@@ -115,10 +120,11 @@ postcode product and neither the default: `docs/sql/spd/` reads the history tabl
 `docs/sql/sspl/` reads the main table. Each set has `link_by_era.sql`, which chooses the SIMD
 edition from the year of the health data by PHS Table 4, and `link_latest.sql`, which uses
 one edition throughout. Every query is standalone, written as numbered steps that name the
-guidance or project choice. All five queries share 41 core columns: statuses, product provenance,
-both record keys, the edition's data and intermediate zones and PHS geography codes, and all
-14 stored measures. Product-specific own-record context follows (89 total columns for SSPL,
-108 for SPD era/latest, 111 for SPD as-of); select shared columns by name when combining results.
+guidance or project choice. All five queries share 48 core columns: statuses, product provenance,
+both record keys, the edition's data and intermediate zones and PHS geography codes, all
+14 stored measures and the seven Scottish Government domain ranks. Product-specific own-record
+context follows (96 total columns for SSPL, 115 for SPD era/latest, 118 for SPD as-of); select
+shared columns by name when combining results.
 The SPD set selects the latest life and the A part itself;
 the SSPL set does not, because NRS did. Both attach a large user's SIMD through its linked
 small-user postcode and give PO boxes none. Applying that rule to SSPL is a project

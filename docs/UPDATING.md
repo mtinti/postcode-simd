@@ -63,7 +63,8 @@ never just to clear a failing regression.
    documentation in `sources.yaml`; retain the existing editions.
 2. Add a PHS declaration (unique key, CSV path/prefix, geography header order, data-zone
    vintage, published zone count and explicit band direction) and a matching Government
-   declaration (same key/vintage/count, DBF path and column map).
+   declaration (same key/vintage/count, DBF path, column map and a `domains` map naming each
+   domain rank the edition published; omit a domain it did not publish, as 2004 omits crime).
 3. Confirm both postcode products supply `DataZone<vintage>Code`. Every record must match
    in the new edition; the pipeline does not manufacture codes or silently allow nulls.
    If a future publication does not cover the archived records, that needs a reviewed

@@ -16,12 +16,13 @@ header cannot leave them stale.
 
 from __future__ import annotations
 
+import functools
 import sys
 from pathlib import Path
 
 import yaml
 
-from .core.sources import load_registry
+from .core.sources import DOMAINS, declared_domains, load_registry
 from .core.text_output import load_contract
 from .lookup import GUIDANCE_TABLE_4
 
@@ -39,6 +40,11 @@ MEASURES = [
     ("gov_uw_scotland_quintile", "uw_scotland_quintile"), ("gov_uw_scotland_decile", "uw_scotland_decile"),
     ("gov_uw_scotland_vigintile", "uw_scotland_vigintile"),
 ]
+# The Scottish Government domain ranks, after the measures above. An edition publishes only the
+# domains its registry entry declares; 2004 has no crime domain. Where an edition does not publish
+# a domain, the measure has no branch for it, so no query names a column that does not exist and
+# the value is null, which is "not published", never "missing".
+DOMAIN_MEASURES = [(f"gov_{d}_domain_rank", f"{d}_domain_rank") for d in DOMAINS]
 GEOGRAPHY = ["hb", "hscp", "ca"]
 SHARED_BEGIN = "-- BEGIN shared: from here to END shared the text is identical in link_by_era.sql and link_latest.sql of this set."
 SHARED_END = "-- END shared"
@@ -67,6 +73,25 @@ def _editions(registry) -> list:
 
 def _vintages(editions) -> list:
     return sorted({v for _, v in editions})
+
+
+@functools.lru_cache(maxsize=None)
+def _published() -> dict:
+    """Domain-rank suffix -> the editions that published it, from the registry."""
+    out = {}
+    for ed in load_registry(PACKAGE / "sources.yaml").govscot_editions:
+        for d in declared_domains(ed):
+            out.setdefault(f"{d}_domain_rank", []).append(ed["key"])
+    return {k: tuple(v) for k, v in out.items()}
+
+
+def _stored(editions: list) -> list:
+    """Every stored measure column the queries carry: all measures of every edition, and each
+    domain rank only for the editions that published it."""
+    cols = [f"simd{ed}_{suffix}" for ed, _ in editions for _, suffix in MEASURES]
+    cols += [f"simd{ed}_{suffix}" for ed, _ in editions for _, suffix in DOMAIN_MEASURES
+             if ed in _published().get(suffix, ())]
+    return cols
 
 
 def _case(expr: str, branches: list, alias: str, quote=True) -> str:
@@ -235,7 +260,7 @@ def _source_columns(editions: list) -> str:
     cols += [f"DataZone{v}Code AS source_dz{v}" for v in _vintages(editions)]
     cols += [f"IntermediateZone{v}Code AS source_iz{v}" for v in _vintages(editions)]
     cols += [f"phs_dz{v}_{g}" for v in _vintages(editions) for g in GEOGRAPHY]
-    cols += [f"simd{ed}_{suffix}" for ed, _ in editions for _, suffix in MEASURES]
+    cols += _stored(editions)
     return ",\n           ".join(cols)
 
 
@@ -376,13 +401,17 @@ matched AS (
 """
 
 
-def _g_columns(editions: list) -> str:
-    """The geography record's columns, aliased, for a join that cannot use g.* safely."""
-    cols = ["g.pc_norm AS source_pc_norm", "g.introduced_on AS source_introduced_on", "g.is_current AS source_is_current"]
-    cols += [f"g.DataZone{v}Code AS source_dz{v}" for v in _vintages(editions)]
-    cols += [f"g.IntermediateZone{v}Code AS source_iz{v}" for v in _vintages(editions)]
-    cols += [f"g.phs_dz{v}_{g}" for v in _vintages(editions) for g in GEOGRAPHY]
-    cols += [f"g.simd{ed}_{suffix}" for ed, _ in editions for _, suffix in MEASURES]
+def _g_columns(editions: list, alias: str = "g", passthrough: bool = False) -> str:
+    """The geography record's columns, aliased, for a join that cannot use g.* safely. With
+    passthrough, the same columns read back by their aliased names from step 6a."""
+    renamed = [("pc_norm", "source_pc_norm"), ("introduced_on", "source_introduced_on"), ("is_current", "source_is_current")]
+    renamed += [(f"DataZone{v}Code", f"source_dz{v}") for v in _vintages(editions)]
+    renamed += [(f"IntermediateZone{v}Code", f"source_iz{v}") for v in _vintages(editions)]
+    kept = [f"phs_dz{v}_{g}" for v in _vintages(editions) for g in GEOGRAPHY] + _stored(editions)
+    if passthrough:
+        cols = [f"{alias}.{new}" for _, new in renamed] + [f"{alias}.{c}" for c in kept]
+    else:
+        cols = [f"{alias}.{old} AS {new}" for old, new in renamed] + [f"{alias}.{c}" for c in kept]
     return ",\n           ".join(cols)
 
 
@@ -464,7 +493,7 @@ candidates AS (
 representative AS (
     SELECT * FROM candidates WHERE candidate_number = 1
 ),
-matched AS (
+resolved AS (
     -- STEP 6. LARGE USERS. PHS v3.5 Appendix A, p.30: a large-user postcode has no boundary;
     -- where NRS could link it to a small-user postcode, that postcode supplies the geography;
     -- a PO box (NO LINKP) or an unlinked large user (NO LINK) gets none. The linked small-user
@@ -472,6 +501,11 @@ matched AS (
     -- last day (project policy), by its exact key
     -- including any A/B/C suffix. A small user supplies its own geography. Never the large
     -- user's own zone, another product, or a chain through a second large user.
+    -- The key of the record that supplies the geography is worked out here, and the record
+    -- found in step 6a, so that every join is on plain equality: an engine can then match by
+    -- hashing instead of comparing every pair of rows. A missing address date is compared
+    -- through a stand-in date, as a null never equals a null, and a flag, so that a real date
+    -- equal to the stand-in never meets a missing one.
     SELECT c.*,
            r.pc_norm AS matched_pc_norm, r.introduced_on AS matched_introduced_on,
            r.is_current AS matched_is_current, r.spd_user_type AS matched_user_type,
@@ -481,24 +515,39 @@ matched AS (
            k.first_introduced_on, k.previous_life_deleted_on, k.next_life_introduced_on,
            {_raw_context(raw)},
            {_rurality_carried(windows)},
-           {_g_columns(editions)}
+           r.deleted_on AS matched_deleted_on,
+           CASE
+               WHEN r.candidate_count > 1 THEN NULL
+               WHEN {_part('r')} NOT IN ('', 'A') THEN NULL
+               WHEN r.spd_user_type = 'small_user' THEN r.pc_norm
+               ELSE UPPER(REPLACE(r.LinkedSmallUserPostcode, ' ', ''))
+           END AS geography_key
     FROM chosen c
     LEFT JOIN representative r ON r.requested_key = c.postcode_key AND r.requested_date = c.address_date
     LEFT JOIN key_lives k ON k.requested_key = c.postcode_key
-                        AND (k.requested_date = c.address_date
-                             OR (k.requested_date IS NULL AND c.address_date IS NULL))
-    LEFT JOIN postcode_simd_history g
-      ON g.spd_user_type = 'small_user'
-     AND g.pc_norm = CASE
-             WHEN r.candidate_count > 1 THEN NULL
-             WHEN {_part('r')} NOT IN ('', 'A') THEN NULL
-             WHEN r.spd_user_type = 'small_user' THEN r.pc_norm
-             ELSE UPPER(REPLACE(r.LinkedSmallUserPostcode, ' ', ''))
-         END
-     AND ((r.from_previous_life = 0 AND g.introduced_on <= c.address_date
-           AND (g.deleted_on IS NULL OR g.deleted_on > c.address_date))
-       OR (r.from_previous_life = 1 AND g.introduced_on < r.deleted_on
-           AND (g.deleted_on IS NULL OR g.deleted_on >= r.deleted_on)))
+                        AND COALESCE(k.requested_date, CAST('0001-01-01' AS date))
+                          = COALESCE(c.address_date, CAST('0001-01-01' AS date))
+                        AND CASE WHEN k.requested_date IS NULL THEN 1 ELSE 0 END
+                          = CASE WHEN c.address_date IS NULL THEN 1 ELSE 0 END
+),
+geography_matches AS (
+    -- STEP 6a. THE GEOGRAPHY RECORD, once per postcode and date. A request without a date
+    -- has no record here, so the join back on the date needs no stand-in.
+    SELECT q.postcode_key AS requested_key, q.address_date AS requested_date,
+           {_g_columns(editions)}
+    FROM (SELECT DISTINCT postcode_key, address_date, geography_key, from_previous_life, matched_deleted_on
+          FROM resolved) q
+    JOIN postcode_simd_history g ON g.pc_norm = q.geography_key
+    WHERE g.spd_user_type = 'small_user'
+      AND ((q.from_previous_life = 0 AND g.introduced_on <= q.address_date
+            AND (g.deleted_on IS NULL OR g.deleted_on > q.address_date))
+        OR (q.from_previous_life = 1 AND g.introduced_on < q.matched_deleted_on
+            AND (g.deleted_on IS NULL OR g.deleted_on >= q.matched_deleted_on)))
+),
+matched AS (
+    SELECT q.*, {_g_columns(editions, alias='g', passthrough=True)}
+    FROM resolved q
+    LEFT JOIN geography_matches g ON g.requested_key = q.postcode_key AND g.requested_date = q.address_date
 ),
 """
 
@@ -556,6 +605,9 @@ def _values_and_report(name: str, p: dict, editions: list, raw: list, variant: s
         selects.append(_case("m.data_zone_vintage", [(v, f"m.phs_dz{v}_{g}") for v in vintages], f"phs_{g}_code", quote=False))
     for out, suffix in MEASURES:
         selects.append(_case("m.simd_edition", [(ed, f"m.simd{ed}_{suffix}") for ed, _ in editions], out))
+    for out, suffix in DOMAIN_MEASURES:
+        selects.append(_case("m.simd_edition", [(ed, f"m.simd{ed}_{suffix}") for ed, _ in editions
+                                                if ed in _published().get(suffix, ())], out))
     if windows:
         for part, alias in (("6fold", "rurality_6fold_stored"), ("8fold", "rurality_8fold_stored"), ("status", "rurality_stored_status")):
             selects.append(_case("m.rurality_version", [(k, f"m.{_rurality_stem(k)}_{part}") for _, _, k in windows], alias))
@@ -580,7 +632,13 @@ def _values_and_report(name: str, p: dict, editions: list, raw: list, variant: s
            WHEN s.rurality_stored_status IS NOT NULL THEN s.rurality_stored_status
            ELSE 'matched'
        END AS rurality_status,"""
-    nulls = " OR ".join([f"s.{out} IS NULL" for out, _ in MEASURES] + ["s.data_zone_code IS NULL"]
+    # A domain rank counts as missing only for an edition that published it. The editions that
+    # did not are excluded by plain comparisons: an IN list here costs the engines a join each.
+    def domain_null(out, suffix):
+        unpublished = [f"s.simd_edition <> '{ed}'" for ed, _ in editions if ed not in _published().get(suffix, ())]
+        return f"({' AND '.join([f's.{out} IS NULL'] + unpublished)})" if unpublished else f"s.{out} IS NULL"
+    domain_nulls = [domain_null(out, suffix) for out, suffix in DOMAIN_MEASURES]
+    nulls = " OR ".join([f"s.{out} IS NULL" for out, _ in MEASURES] + domain_nulls + ["s.data_zone_code IS NULL"]
                         + [f"s.phs_{g}_code IS NULL" for g in GEOGRAPHY])
     if name == "spd" and variant == "asof":
         postcode_status = """           CASE
@@ -636,7 +694,7 @@ def _values_and_report(name: str, p: dict, editions: list, raw: list, variant: s
         extra_context = ""
     usable = ", ".join(f"'{x}'" for x in ("matched", "a_part", "linked_small_user") + (("previous_life",) if variant == "asof" else ()))
     context = ",\n       ".join("s.matched_postcode" if c == "Postcode" else f"s.{c}" for c in raw)
-    out_measures = ",\n       ".join(f"s.{out}" for out, _ in MEASURES)
+    out_measures = ",\n       ".join(f"s.{out}" for out, _ in MEASURES + DOMAIN_MEASURES)
     return f"""selected AS (
     -- STEP 7. VALUES. Copy the stored values of the chosen edition from the record that
     -- supplies the geography, through the data zone of that edition's vintage (PHS Table 4:
@@ -647,7 +705,10 @@ def _values_and_report(name: str, p: dict, editions: list, raw: list, variant: s
     -- stored measures is copied: PHS population-weighted bands and flags (pw), Scottish
     -- Government unweighted bands (uw); never mix the two in one analysis (sections 3.1.2,
     -- 3.3). Band 1 is most deprived in every edition; ingestion already reversed the 2004 and
-    -- 2006 PHS bands, so nothing is reversed here.
+    -- 2006 PHS bands, so nothing is reversed here. The seven domain ranks (gov_*_domain_rank)
+    -- are the Scottish Government's unweighted ranks, copied exactly as published: they may end
+    -- in .5, and no band exists for them. 2004 published no crime domain, so its crime rank is
+    -- null by design, and a 2004 result is still matched.
     SELECT m.*,
 {measures},
            '1 = most deprived' AS band_direction
