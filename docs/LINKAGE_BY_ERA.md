@@ -187,10 +187,10 @@ allocates from output-area centroids, so it has no per-life point to place.
 
 ## The output: common core, different context
 
-The first 48 columns, from `id` through `band_direction`, are identical in name and order
+The first 70 columns, from `id` through `band_direction`, are identical in name and order
 across all five queries. What follows differs by product: the SPD set adds five rurality columns
 (`rurality_version`, `rurality_policy`, `rurality_6fold`, `rurality_8fold`, `rurality_status`)
-and then own-record context. 96 total columns for SSPL, 115 for SPD era/latest and 118 for SPD
+and then own-record context. 118 total columns for SSPL, 137 for SPD era/latest and 140 for SPD
 as-of. Select common columns explicitly by
 name when combining results; the full outputs are not interchangeable via `SELECT *` or
 positional `UNION ALL`.
@@ -203,7 +203,8 @@ positional `UNION ALL`.
 | Keys | `matched_pc_norm`, `matched_introduced_on`, `matched_is_current`, `matched_user_type`, `requested_link_postcode`, `simd_source_pc_norm`, `simd_source_introduced_on`, `simd_source_is_current` |
 | Geography used | `data_zone_code`, `intermediate_zone_code`, `phs_hb_code`, `phs_hscp_code`, `phs_ca_code` |
 | Measures | `simd_rank`, `phs_pw_scotland_quintile`, `phs_pw_scotland_decile`, `phs_pw_hb_quintile`, `phs_pw_hb_decile`, `phs_pw_hscp_quintile`, `phs_pw_hscp_decile`, `phs_pw_ca_quintile`, `phs_pw_ca_decile`, `phs_pw_most15pc`, `phs_pw_least15pc`, `gov_uw_scotland_quintile`, `gov_uw_scotland_decile`, `gov_uw_scotland_vigintile` |
-| Domain ranks | `gov_income_domain_rank`, `gov_employment_domain_rank`, `gov_health_domain_rank`, `gov_education_domain_rank`, `gov_access_domain_rank`, `gov_crime_domain_rank`, `gov_housing_domain_rank`: the Scottish Government's unweighted ranks for the chosen edition, copied exactly as published, so they may end in .5; most but not all tied zones share the average of their positions. No band exists for them. `gov_crime_domain_rank` is null for SIMD 2004, which published no crime domain, and such a result is still `matched`. Then `band_direction` |
+| Domain ranks | `gov_income_domain_rank`, `gov_employment_domain_rank`, `gov_health_domain_rank`, `gov_education_domain_rank`, `gov_access_domain_rank`, `gov_crime_domain_rank`, `gov_housing_domain_rank`: the Scottish Government's unweighted ranks for the chosen edition, copied exactly as published, so they may end in .5; most but not all tied zones share the average of their positions. `gov_crime_domain_rank` is null for SIMD 2004, which published no crime domain, and such a result is still `matched` |
+| Domain bands | `gov_<domain>_domain_quintile`, `_decile`, `_vigintile` for the seven domains: the Government's published unweighted bands of each rank, copied from statistics.gov.scot, never derived, so a few tied zones sit in adjacent bands exactly as published; a different basis from the PHS population-weighted decile. Null for 2004 crime. Then `gov_housing_domain_rank_source_status`: `rank_sources_disagree` for the 2020v2 zones where two Government publications give different housing ranks, null otherwise and for every other edition; it describes the rank, not the band, and never makes a result `missing_simd`. Then `band_direction` |
 | Own-record context | the matched record's NRS fields as ingested, names unchanged except `Postcode`, returned as `matched_postcode`; the SPD set adds `matched_pc_base`, and `link_as_of.sql` the three nearest-life dates. The grid reference and coordinate columns are not returned, as `simd_ingest/export_contract.yaml` withholds them from every export; the Parquet keeps them |
 
 `postcode_status` values: `matched`, `a_part`, `linked_small_user`, `linked_small_user_not_found`,

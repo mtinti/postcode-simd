@@ -33,7 +33,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from .core.sources import DOMAINS, declared_domains, load_registry
+from .core.sources import DOMAIN_BANDS, DOMAINS, banded_domains, declared_domains, load_registry, status_domains
 from .core.spd import normalise_postcode, part_of
 
 # PHS deprivation guidance for analysts v3.5, table 4: years of health data -> edition.
@@ -89,6 +89,9 @@ def column(edition: str, measure: str) -> str:
     return f"simd{edition}_{measure}"
 
 
+_DOMAIN_MEASURE = re.compile(r"(?P<domain>[a-z]+)_domain_(?P<kind>rank|quintile|decile|vigintile)")
+
+
 def _value_dtype(measure: str) -> str:
     """A domain rank may end in .5 and is never passed through an integer."""
     return "Float64" if measure.endswith("_domain_rank") else "Int64"
@@ -96,26 +99,56 @@ def _value_dtype(measure: str) -> str:
 
 @functools.lru_cache(maxsize=None)
 def _published_domains() -> dict:
-    """Edition -> the domains its Scottish Government file published, from the registry."""
+    """Edition -> {"rank": domains with a published rank, "band": domains with published bands,
+    "status": domains with a source-status field}, from the registry."""
     registry = load_registry(Path(__file__).resolve().parent / "sources.yaml")
-    return {ed["key"]: frozenset(declared_domains(ed)) for ed in registry.govscot_editions}
+    return {ed["key"]: {"rank": frozenset(declared_domains(ed)), "band": frozenset(banded_domains(ed)),
+                        "status": frozenset(status_domains(ed))} for ed in registry.govscot_editions}
+
+
+def _domain_of(measure: str) -> tuple:
+    """(domain, kind) for a domain measure, (None, None) otherwise; an unknown domain is refused."""
+    m = _DOMAIN_MEASURE.fullmatch(measure)
+    if not m:
+        return None, None
+    if m["domain"] not in DOMAINS:
+        raise ValueError(f"unknown SIMD domain {m['domain']!r} in {measure!r}; the domains are {', '.join(DOMAINS)}")
+    return m["domain"], m["kind"]
+
+
+def _status_column(edition: str, measure: str) -> str | None:
+    """The source-status field that goes with a domain measure of this edition, if it has one:
+    2020v2 housing, where two Government publications disagree on some ranks."""
+    domain, _ = _domain_of(measure)
+    published = _published_domains().get(edition)
+    if domain and published and domain in published["status"]:
+        return f"simd{edition}_{domain}_domain_rank_source_status"
+    return None
+
+
+def _has_status(measure: str) -> bool:
+    """Whether any edition carries a source status for this measure's domain: then every result
+    for it carries a source_status, null where none applies."""
+    domain, _ = _domain_of(measure)
+    return bool(domain) and any(domain in p["status"] for p in _published_domains().values())
 
 
 def _with_measure(table: pd.DataFrame, edition: str, measure: str) -> tuple:
-    """The table, and whether the measure is published for this edition. A domain rank the
+    """The table, and whether the measure is published for this edition. A domain measure the
     registry says an edition did not publish, such as crime in 2004, is answered as not
     published: an empty column, so the record is still found and its value is null, never an
     error. Anything else must be in the table: an unknown domain or a published column that is
     missing is refused, never reported as unpublished."""
     col = column(edition, measure)
-    if measure.endswith("_domain_rank"):
-        domain = measure[:-len("_domain_rank")]
-        if domain not in DOMAINS:
-            raise ValueError(f"unknown SIMD domain {domain!r} in {measure!r}; the domains are {', '.join(DOMAINS)}")
-        if edition in _published_domains() and domain not in _published_domains()[edition]:
-            return table.assign(**{col: pd.Series(float("nan"), index=table.index, dtype="float64")}), False
-    if col not in table.columns:
-        raise ValueError(f"{col} is not in the table")
+    domain, kind = _domain_of(measure)
+    published = _published_domains().get(edition)
+    if domain and published and domain not in published["rank" if kind == "rank" else "band"]:
+        empty = pd.Series(float("nan"), index=table.index, dtype="float64" if kind == "rank" else "Int64")
+        return table.assign(**{col: empty}), False
+    status = _status_column(edition, measure)
+    for needed in (col, status):
+        if needed and needed not in table.columns:
+            raise ValueError(f"{needed} is not in the table")
     return table, True
 
 
@@ -131,6 +164,10 @@ def _measure_label(col: str) -> str:
     if domain:
         return (f"SIMD {domain['ed']} {domain['domain']} domain rank, Scottish Government unweighted, 1 = most deprived, "
                 "copied exactly as published (may end in .5)")
+    band = re.fullmatch(r"simd(?P<ed>[0-9v]+)_(?P<domain>[a-z]+)_domain_(?P<band>quintile|decile|vigintile)", col)
+    if band:
+        return (f"SIMD {band['ed']} {band['domain']} domain {band['band']}, Scottish Government unweighted, 1 = most deprived, "
+                "copied as published on statistics.gov.scot, never derived")
     m = re.fullmatch(r"simd(?P<ed>[0-9v]+)_(?:(?P<w>pw|uw)_(?P<scope>[a-z]+)_(?P<measure>[a-z]+)|(?P<other>rank|most15pc|least15pc))", col)
     if not m:
         raise ValueError(f"not a SIMD column: {col}")
@@ -179,6 +216,10 @@ class Result:
     value: object
     label: str
     candidates: pd.DataFrame
+    # For a measure whose domain carries a source status (housing): rank_sources_disagree where
+    # the answering record's zone is one where two Government publications disagree on the
+    # rank, else null; always null where the value is null. None for every other measure.
+    source_status: object = None
 
     def __str__(self) -> str:
         when = f"on {self.on.date()}" if self.on is not None else "currently"
@@ -190,17 +231,20 @@ def _check_split(split: str) -> None:
         raise ValueError(f"split must be one of {SPLIT_RULES}, not {split!r}")
 
 
-def _resolve(valid: pd.DataFrame, col: str, split: str) -> tuple:
+def _resolve(valid: pd.DataFrame, cols: list, split: str) -> tuple:
+    """(status, values) for the columns taken together from one record. Parts reach consensus
+    only if they agree on every column, the source status included: agreeing on a band but not
+    on whether the sources disagree about its rank is a conflict."""
     if len(valid) == 1:
-        return UNIQUE, valid[col].iloc[0]
+        return UNIQUE, tuple(valid[cols].iloc[0])
     if split == "a_part":
         a = valid[part_of(valid) == "A"]
         if len(a) == 1:
-            return A_PART, a[col].iloc[0]
-    values = valid[col].unique()
-    if len(values) == 1:
-        return SPLIT_CONSENSUS, values[0]
-    return SPLIT_CONFLICT, None
+            return A_PART, tuple(a[cols].iloc[0])
+    distinct = valid[cols].astype("string").fillna("\x00").drop_duplicates()
+    if len(distinct) == 1:
+        return SPLIT_CONSENSUS, tuple(valid[cols].iloc[0])
+    return SPLIT_CONFLICT, tuple(None for _ in cols)
 
 
 def lookup(table: pd.DataFrame, postcode: str, edition: str, measure: str = "pw_scotland_quintile", on=None,
@@ -212,6 +256,8 @@ def lookup(table: pd.DataFrame, postcode: str, edition: str, measure: str = "pw_
     table = _prepare(table, on is not None, split)
     col = column(edition, measure)
     table, published = _with_measure(table, edition, measure)
+    status_col = _status_column(edition, measure) if published else None
+    cols = [col] + ([status_col] if status_col else [])
     key = normalise_postcode(pd.Series([postcode])).iloc[0]
     when = None if on is None else pd.Timestamp(on)
     # An ordinary postcode matches every record whose base it is: the unsplit record of any
@@ -238,10 +284,12 @@ def lookup(table: pd.DataFrame, postcode: str, edition: str, measure: str = "pw_
     kept = valid[~_excluded(valid, include_po_boxes, include_large_users)]
     if kept.empty:
         return Result(postcode, key, edition, measure, when, NOT_FOUND, None, label(col, split, published), valid)
-    status, value = _resolve(kept, col, split)
+    status, values = _resolve(kept, cols, split)
     if previous and status in _RESOLVED:
         status = PREVIOUS_LIFE
-    return Result(postcode, key, edition, measure, when, status, value, label(col, split, published), kept)
+    source_status = (None if pd.isna(values[1]) else values[1]) if status_col else None
+    return Result(postcode, key, edition, measure, when, status, values[0], label(col, split, published), kept,
+                  source_status)
 
 
 def attach(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, date_col: str | None,
@@ -257,8 +305,15 @@ def attach(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, date_co
     table = _prepare(table, date_col is not None, split)
     col = column(edition, measure)
     table, published = _with_measure(table, edition, measure)
-    out = _attach_column(events, table, postcode_col, date_col, [col], prefix, split, include_po_boxes, include_large_users)
+    status_col = _status_column(edition, measure) if published else None
+    # The status is resolved with the value, as one tuple from one record.
+    out = _attach_column(events, table, postcode_col, date_col, [col] + ([status_col] if status_col else []),
+                         prefix, split, include_po_boxes, include_large_users)
     out[f"{prefix}_value"] = pd.array(out[f"{prefix}_value"], dtype=_value_dtype(measure))
+    if status_col:
+        out = out.rename(columns={f"{prefix}__{status_col}": f"{prefix}_source_status"})
+    elif _has_status(measure):
+        out[f"{prefix}_source_status"] = pd.Series(pd.NA, index=out.index, dtype="object")
     out.attrs[f"{prefix}_label"] = label(col, split, published)
     return out
 
@@ -401,8 +456,10 @@ def attach_by_era(events: pd.DataFrame, table: pd.DataFrame, postcode_col: str, 
         part[f"{prefix}_label"] = part.attrs.get(f"{prefix}_label", label(column(ed, measure), split))
         return part
 
-    out = _by_group(events, edition, resolve, prefix,
-                    {"status": NO_EDITION, "value": pd.NA, "pc_norm": None, "edition": None, "label": None})
+    defaults = {"status": NO_EDITION, "value": pd.NA, "pc_norm": None, "edition": None, "label": None}
+    if _has_status(measure):
+        defaults["source_status"] = None
+    out = _by_group(events, edition, resolve, prefix, defaults)
     out.loc[dates.isna().to_numpy(), f"{prefix}_status"] = MISSING_DATE
     out[f"{prefix}_value"] = pd.array(out[f"{prefix}_value"], dtype=_value_dtype(measure))
     return out

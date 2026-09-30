@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "simd-ingest"
-version = "4.0.0"
+version = "5.0.0"
 description = "Postcode-SIMD tables from the Scottish Statistics Postcode Lookup and Scottish Postcode Directory, built from hash-pinned sources with recorded lineage."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -34,4 +34,4 @@ simd-ingest = "simd_ingest.cli:main"
 include = ["simd_ingest*"]
 
 [tool.setuptools.package-data]
-simd_ingest = ["*.yaml"]
+simd_ingest = ["*.yaml", "*.csv"]

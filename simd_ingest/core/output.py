@@ -161,7 +161,8 @@ def readback(path: Path, schema: dict, index: pd.DataFrame, simd: pd.DataFrame, 
     expected = attach(saved, simd, gov, registry)
     bad = {}
     for column in expected.columns:
-        kind = "string" if column.startswith("phs_dz") else "Float64" if column.endswith("_domain_rank") else "Int64"
+        kind = ("string" if column.startswith("phs_dz") or column.endswith("_source_status")
+                else "Float64" if column.endswith("_domain_rank") else "Int64")
         same = same_values(saved[column].astype(kind), expected[column].astype(kind))
         if not same.all():
             bad[column] = int((~same).sum())

@@ -12,7 +12,7 @@ import pandas as pd
 
 from .checks import Report
 from .phs import BANDS, FLAGS
-from .sources import Registry, declared_domains
+from .sources import RANK_SOURCES_DISAGREE, Registry, declared_domains, domain_band_fields
 
 PHS_FIELDS = ["rank", *BANDS.values(), *FLAGS.values()]
 GOV_FIELDS = ["uw_scotland_quintile", "uw_scotland_decile", "uw_scotland_vigintile"]
@@ -21,13 +21,19 @@ WIDTH = {"decile": 10, "quintile": 5, "vigintile": 20}
 
 
 def gov_fields(ed: dict) -> list:
-    """The government fields one edition supplies: the three bands, then the domain ranks that
-    edition published. 2004 has no crime domain, so it has no crime field."""
-    return GOV_FIELDS + [f"{d}_domain_rank" for d in declared_domains(ed)]
+    """The government fields one edition supplies: the three bands, the domain ranks that
+    edition published, their published bands, then any source-status field. 2004 has no crime
+    domain, so it has no crime field."""
+    return GOV_FIELDS + [f"{d}_domain_rank" for d in declared_domains(ed)] + domain_band_fields(ed)
 
 
 def is_domain_rank(column: str) -> bool:
     return column.endswith("_domain_rank")
+
+
+def is_source_status(column: str) -> bool:
+    """A nullable text field: null for most zones by design, so never a missing value."""
+    return column.endswith("_source_status")
 
 
 def simd_columns(edition: str) -> list:
@@ -60,9 +66,10 @@ def join_edition(table: pd.DataFrame, edition_table: pd.DataFrame, ed: dict, kin
     out = table.merge(right, left_on=dz_col, right_index=True, how="left", validate="many_to_one").reset_index(drop=True)
     label = f"{label}.{kind}.{key}"
     report.equal(f"{label}.rows_unchanged", len(out), before, detail=f"{len(out):,} rows before and after the merge on {dz_col}")
-    empty = int(out[list(right.columns)].isna().sum().sum())
+    valued = [c for c in right.columns if not is_source_status(c)]
+    empty = int(out[valued].isna().sum().sum())
     report.equal(f"{label}.every_record_matched", empty, 0,
-                 detail=f"{len(right.columns)} columns added, {empty} empty cells")
+                 detail=f"{len(valued)} columns added, {empty} empty cells")
     return out
 
 
@@ -95,7 +102,12 @@ def finish(table: pd.DataFrame, index: pd.DataFrame, registry: Registry, columns
     added = table[[c for c in columns if c.startswith("simd") or c.startswith("phs_dz")]]
     report.equal(f"{label}.rows", len(table), len(index), detail="every accepted index record, no more")
     report.equal(f"{label}.primary_key_unique", int(table.duplicated(key).sum()), 0, detail=f"key {key}")
-    simd_cols = [c for c in added.columns if c.startswith("simd")]
+    statuses = [c for c in added.columns if c.startswith("simd") and is_source_status(c)]
+    for c in statuses:
+        # Null, or the one value; which zones carry it is fixed by the gate that read the source.
+        report.equal(f"{label}.{c}.values", sorted(set(added[c].dropna()) - {RANK_SOURCES_DISAGREE}), [],
+                     detail=f"{int(added[c].notna().sum())} zones flagged, no other value")
+    simd_cols = [c for c in added.columns if c.startswith("simd") and not is_source_status(c)]
     ranks = [c for c in simd_cols if is_domain_rank(c)]
     if ranks:
         # Copied as published, so only their shape is checked here: readback compares every value.

@@ -7,6 +7,7 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
+from simd_ingest.core.govscot import PUBLISHED_DOMAINS
 from simd_ingest.core.phs import BANDS, FLAGS
 from simd_ingest.core.sources import sha256
 from simd_ingest.core.spd import DERIVED
@@ -56,6 +57,38 @@ def project(tmp: Path, release="test-1", extra_edition=False) -> Path:
             key=path.replace("/", "_"), publisher=publisher, url=f"https://example.invalid/{path}",
             format="file", sha256=digest, files=[dict(path=path, sha256=digest)]))
 
+    def bands_file(ed, rows, domains):
+        """The published domain bands as statistics.gov.scot lays them out: one long CSV, the
+        overall index and every declared domain. Whole ranks are published as in the shapefile;
+        a half is rounded up where the edition says so. The last edition's housing rank of zone
+        B is published differently where the edition declares disagreements (2020v2), and that
+        disagreement is pinned in a list beside the registry."""
+        vintage, name = ed["dz_vintage"], {v: k for k, v in PUBLISHED_DOMAINS.items()}
+        listed = bool(ed["bands"].get("rank_disagreements"))
+        long = []
+        for i, r in enumerate(rows):
+            zone, last = r["datazone"], i == len(rows) - 1
+            for domain in ["overall"] + domains:
+                rank = float(r["rank"] if domain == "overall" else r[f"dom{domain[:5]}"])
+                if rank % 1 and ed["bands"]["half_ranks"] == "rounded_up":
+                    rank += 0.5
+                if listed and domain == "housing" and last:
+                    rank -= 0.5
+                band = {"Quintile": 5, "Decile": 10, "Vigintile": 20} if last and domain != "income" else {"Quintile": 1, "Decile": 1, "Vigintile": 1}
+                for measurement, value in [("Rank", rank), *band.items()]:
+                    long.append(dict(FeatureCode=zone, FeatureName=zone, FeatureType=f"{vintage} Data Zone",
+                                     DateCode=ed["bands"]["date_code"], Measurement=measurement, Units=measurement,
+                                     Value=value, **{"SIMD Domain": name[domain]}))
+        ed["bands"]["file"] = f"sgs_{ed['key']}.csv"
+        pd.DataFrame(long).to_csv(sources / ed["bands"]["file"], index=False)
+        pin(ed["bands"]["file"], "statistics_gov_scot")
+        ed["bands"].pop("rank_disagreements", None)
+        if listed:
+            zone = rows[-1]["datazone"]
+            (tmp / f"disagree_{ed['key']}.csv").write_text(
+                f"# fixture\ndata_zone,shapefile_rank,published_rank\n{zone},{float(rows[-1]['domhousi']):.1f},{float(rows[-1]['domhousi']) - 0.5:.1f}\n")
+            ed["bands"]["rank_disagreements"] = {"housing": f"disagree_{ed['key']}.csv"}
+
     if extra_edition:
         p = copy.deepcopy(raw["phs_editions"][-1])
         p.update(key="future", prefix="SIMDFUTURE", dz_vintage=2022)
@@ -89,6 +122,9 @@ def project(tmp: Path, release="test-1", extra_edition=False) -> Path:
                 for i, letter in enumerate("AB", 1)]
         (sources / ed["file"]).write_bytes(dbf_bytes(rows))
         pin(ed["file"], "Scottish Government")
+        if ed.get("bands"):
+            bands_file(ed, rows, domains)
+
 
     headers = ["Postcode", "SplitIndicator", "DateOfIntroduction", "DateOfDeletion",
                "DataZone2001Code", "DataZone2011Code", "DataZone2022Code",

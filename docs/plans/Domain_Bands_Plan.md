@@ -2,7 +2,8 @@
 
 Drafted 30 September 2026, revised the same day after review (nullable status, the flag in
 Python results, the status scoped by table, split-part consensus,
-the status in the SQL and the walkthrough). Status: proposed, for review. Implements the decision recorded in
+the status in the SQL and the walkthrough). Status: implemented for release 5.0.0 (decision
+simd-domain-bands). Implements the decision recorded in
 [Domain_Ntiles_Test_Plan.md](Domain_Ntiles_Test_Plan.md) on 30 September 2026; the evidence is
 there and is not repeated here.
 

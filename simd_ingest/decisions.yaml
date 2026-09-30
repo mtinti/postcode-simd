@@ -722,7 +722,8 @@ decisions:
       it. The SQL output core grows from 41 to 48 columns with seven gov_<domain>_domain_rank
       measures; for an edition that did not publish a domain the measure is null and the result
       is still matched. Python answers an unpublished domain with a null value and a label, not
-      an error. Ranks only: no domain bands or n-tiles. Released as 4.0.0.
+      an error. Ranks only: no domain bands or n-tiles. Released as 4.0.0. The published domain
+      bands were added, copied, never derived, by simd-domain-bands on 30 September 2026.
     reason: >-
       The HEAL-Scot DRS asks for domain-level data and other projects will. The ranks were
       already pinned in the Government shapefile attribute tables. They are not whole numbers,
@@ -737,3 +738,40 @@ decisions:
       6,976 zones in all seven domains. The 189 existing history columns keep fingerprint
       ddb162ef89c7d52a and the 146 existing main columns 9515021d99099b43, both now pinned.
       Plan and review: docs/plans/Domain_Ranks_Plan.md.
+
+  - id: simd-domain-bands
+    date: 2026-09-30
+    status: implemented
+    decision: >-
+      Both tables carry the Scottish Government's published quintile, decile and vigintile of
+      every domain rank, for every edition, simd<edition>_<domain>_domain_<band>, copied from
+      three statistics.gov.scot datasets (2004 to 2012, 2016, 2020) and never derived, as for
+      every band (bands-are-looked-up). The ranks stay from the shapefiles. A band is admitted
+      only where its dataset's rank is the shapefile's: equal, or a half rank the 2004 to 2012
+      dataset rounds up, or one of the 628 2020v2 housing zones pinned with both ranks in
+      simd_ingest/sgs_2020_housing_rank_disagreements.csv; anything else stops the build. Those
+      628 zones carry simd2020v2_housing_domain_rank_source_status = rank_sources_disagree: the
+      two Government publications disagree on the rank; it is not a statement that the band is
+      wrong. 123 band columns and the status, appended after every existing column: schemas
+      postcode_simd_wide_v4 (354) and postcode_simd_sspl_v4 (311). The SQL core grows from 48
+      to 70 columns and never counts the status as missing; Python returns the answering
+      record's status for housing, and split parts reach consensus only if they agree on both
+      the value and the status. Unweighted and Scotland only. Released as 5.0.0.
+    reason: >-
+      The Government publishes domain bands for every edition, so a derived band would be a
+      second, competing version: no rule on the rank alone reproduces all of them, since the
+      publisher splits some ties across adjacent bands and placed the same 2016 and 2020 tie
+      differently. Copying keeps the publisher's value, and checking the ranks keeps each band
+      tied to the ranking we carry. The SIMD team has been asked which 2020 housing ranking is
+      authoritative; the feature does not wait for the answer.
+    evidence: >-
+      The vintage band rules reproduce all 18 published overall series and PHS's weighted
+      Scotland bands for all six editions, but against the 819,897 published domain bands the
+      best rank-only rule disagrees in 19. Split ties: 2006 income and employment, 2009
+      employment (S01001951 and S01006050, both 1952, deciles 3 and 4). The 2790.5 housing pair
+      S01008149 and S01012978 is decile 5 in 2016 and 4 in 2020. 2020 housing ranks differ in
+      628 zones by 0.5 to 4.5 places, S01008634 2093 against 2092.5; under the 2020 convention
+      that changes a band in two zones only. The overall index agrees in both publications for
+      every edition and zone. The datasets are byte-identical across downloads. The 230 history
+      and 187 main columns of 4.0.0 keep their fingerprints. Plans:
+      docs/plans/Domain_Ntiles_Test_Plan.md and docs/plans/Domain_Bands_Plan.md.

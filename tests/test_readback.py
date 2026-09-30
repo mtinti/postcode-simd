@@ -14,7 +14,7 @@ from simd_ingest.core import output
 from simd_ingest.core.checks import BuildStopped, Report
 from simd_ingest.core.join import attach
 from simd_ingest.core.phs import BANDS, FLAGS
-from simd_ingest.core.sources import declared_domains, load_registry, sha256
+from simd_ingest.core.sources import RANK_SOURCES_DISAGREE, declared_domains, domain_band_fields, load_registry, sha256
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -47,7 +47,11 @@ def sample(tmp_path):
                         for ed in registry.phs_editions])
     gov = pd.DataFrame([dict(edition=ed["key"], dz_code=f"DZ{ed['dz_vintage']}",
                              uw_scotland_quintile=1, uw_scotland_decile=1, uw_scotland_vigintile=1,
-                             **{f"{d}_domain_rank": 1.5 for d in declared_domains(ed)})
+                             **{f"{d}_domain_rank": 1.5 for d in declared_domains(ed)},
+                             # Published bands, and the one text field among them: set here, so
+                             # that readback must compare it as text.
+                             **{f: (RANK_SOURCES_DISAGREE if f.endswith("_source_status") else 1)
+                                for f in domain_band_fields(ed)})
                         for ed in registry.govscot_editions])
     table = pd.concat([index, attach(index, phs, gov, registry)], axis=1)[[f["name"] for f in schema["fields"]]]
     path = tmp_path / "table.parquet"
@@ -99,7 +103,10 @@ def test_null_and_supplied_value_are_not_equal(sample, row, value):
 
 
 @pytest.mark.parametrize("column,value", [("simd2004_pw_scotland_quintile", 5),
-                                         ("simd2020v2_most15pc", 1), ("phs_dz2001_hb", "WRONG")])
+                                         ("simd2020v2_most15pc", 1), ("phs_dz2001_hb", "WRONG"),
+                                         ("simd2006_crime_domain_decile", 7),
+                                         ("simd2020v2_housing_domain_rank_source_status", None),
+                                         ("simd2020v2_housing_domain_rank_source_status", "other")])
 def test_attached_values_are_compared(sample, column, value):
     change_cell(sample["path"], column, 0, value)
     assert "readback.attached_values" in {c.name for c in read(sample).blocking_failures}

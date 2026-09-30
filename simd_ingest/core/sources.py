@@ -66,6 +66,32 @@ def declared_domains(ed: dict) -> list:
     return [d for d in DOMAINS if d in (ed.get("domains") or {})]
 
 
+# The published domain bands, in output order, and their widths.
+DOMAIN_BANDS = {"quintile": 5, "decile": 10, "vigintile": 20}
+# How a published dataset stores a domain rank the shapefile holds as a half: exactly, or the half
+# rounded up to the next whole number (statistics.gov.scot, 2004 to 2012).
+HALF_RANKS = ("exact", "rounded_up")
+RANK_SOURCES_DISAGREE = "rank_sources_disagree"
+
+
+def banded_domains(ed: dict) -> list:
+    """The domains whose published bands an edition carries: every declared domain, if the
+    edition declares a bands source, else none."""
+    return declared_domains(ed) if ed.get("bands") else []
+
+
+def status_domains(ed: dict) -> list:
+    """The domains for which the band source and the shapefile disagree on some ranks, each
+    carrying a source-status field (2020v2 housing)."""
+    return [d for d in DOMAINS if d in ((ed.get("bands") or {}).get("rank_disagreements") or {})]
+
+
+def domain_band_fields(ed: dict) -> list:
+    """The band fields of one edition, then its source-status fields, without the edition prefix."""
+    return ([f"{d}_domain_{b}" for d in banded_domains(ed) for b in DOMAIN_BANDS]
+            + [f"{d}_domain_rank_source_status" for d in status_domains(ed)])
+
+
 def sha256(path: Path) -> str:
     h = hashlib.sha256()
     with Path(path).open("rb") as fh:
@@ -137,6 +163,20 @@ def load_registry(path: Path) -> Registry:
         unknown = sorted(set(ed.get("domains") or {}) - set(DOMAINS))
         if unknown:
             raise ValueError(f"{key}: unknown SIMD domain(s) {unknown}; the vocabulary is {list(DOMAINS)}")
+        bands = ed.get("bands")
+        if bands:
+            if bands["file"] not in known:
+                raise ValueError(f"{key}: the bands file {bands['file']} is not pinned as a logical file")
+            if bands.get("half_ranks") not in HALF_RANKS or not isinstance(bands.get("date_code"), int):
+                raise ValueError(f"{key}: bands need an integer date_code and half_ranks in {HALF_RANKS}")
+            for domain, listed in (bands.get("rank_disagreements") or {}).items():
+                if domain not in declared_domains(ed):
+                    raise ValueError(f"{key}: rank disagreements declared for {domain!r}, which the edition did not publish")
+                resolved = (path.parent / listed).resolve()
+                if not resolved.is_file():
+                    raise ValueError(f"{key}: rank disagreement list {listed} not found beside {path.name}")
+                # Resolved here, beside the registry, so that readers need not know where it lives.
+                bands["rank_disagreements"][domain] = str(resolved)
     if phs.keys() != gov.keys():
         raise ValueError("PHS and Government must declare the same edition keys")
     for key, ed in phs.items():

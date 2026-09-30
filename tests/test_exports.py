@@ -345,3 +345,21 @@ def test_the_check_script_states_what_it_cannot_establish():
     assert "collisions and cancelling changes are possible" in text
     assert "not a proof of identity" not in text.split("SET NOCOUNT")[1]  # the claim belongs in the header
     assert "THROW" in text and "a skipped check is not a pass" in text.lower()
+
+
+def test_no_concat_ws_call_exceeds_the_sql_server_limit():
+    """SQL Server's CONCAT_WS takes at most 254 arguments; the history table's digest has more
+    fields than that, so the script joins them in chunks. Count each call's own arguments."""
+    text = (ROOT / "docs" / "sql" / "check_loaded_digest.sql").read_text()
+    counts, start = [], 0
+    while (i := text.find("CONCAT_WS(", start)) >= 0:
+        depth, args, j = 0, 1, i + len("CONCAT_WS(")
+        while depth >= 0:
+            c = text[j]
+            depth += (c == "(") - (c == ")")
+            args += c == "," and depth == 0
+            j += 1
+        counts.append(args)
+        start = i + 1
+    assert counts and max(counts) <= 254, max(counts)
+    assert len(counts) > 2          # at least one table is wide enough to be chunked

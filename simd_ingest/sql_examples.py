@@ -22,7 +22,7 @@ from pathlib import Path
 
 import yaml
 
-from .core.sources import DOMAINS, declared_domains, load_registry
+from .core.sources import DOMAIN_BANDS, DOMAINS, declared_domains, domain_band_fields, load_registry
 from .core.text_output import load_contract
 from .lookup import GUIDANCE_TABLE_4
 
@@ -45,6 +45,9 @@ MEASURES = [
 # a domain, the measure has no branch for it, so no query names a column that does not exist and
 # the value is null, which is "not published", never "missing".
 DOMAIN_MEASURES = [(f"gov_{d}_domain_rank", f"{d}_domain_rank") for d in DOMAINS]
+# Then the Government's published bands of each domain rank, by the same rule, and last any
+# source-status field: null for most zones by design, so it is never a missing value.
+DOMAIN_BAND_MEASURES = [(f"gov_{d}_domain_{b}", f"{d}_domain_{b}") for d in DOMAINS for b in DOMAIN_BANDS]
 GEOGRAPHY = ["hb", "hscp", "ca"]
 SHARED_BEGIN = "-- BEGIN shared: from here to END shared the text is identical in link_by_era.sql and link_latest.sql of this set."
 SHARED_END = "-- END shared"
@@ -77,19 +80,31 @@ def _vintages(editions) -> list:
 
 @functools.lru_cache(maxsize=None)
 def _published() -> dict:
-    """Domain-rank suffix -> the editions that published it, from the registry."""
+    """Domain-rank, band and status suffix -> the editions that published it, from the registry."""
     out = {}
     for ed in load_registry(PACKAGE / "sources.yaml").govscot_editions:
         for d in declared_domains(ed):
             out.setdefault(f"{d}_domain_rank", []).append(ed["key"])
+        for field in domain_band_fields(ed):
+            out.setdefault(field, []).append(ed["key"])
     return {k: tuple(v) for k, v in out.items()}
+
+
+def _status_measures() -> list:
+    return [(f"gov_{d}_domain_rank_source_status", f"{d}_domain_rank_source_status") for d in DOMAINS
+            if f"{d}_domain_rank_source_status" in _published()]
+
+
+def _optional_measures() -> list:
+    """Every measure only some editions publish, in output order: ranks, bands, statuses."""
+    return DOMAIN_MEASURES + DOMAIN_BAND_MEASURES + _status_measures()
 
 
 def _stored(editions: list) -> list:
     """Every stored measure column the queries carry: all measures of every edition, and each
     domain rank only for the editions that published it."""
     cols = [f"simd{ed}_{suffix}" for ed, _ in editions for _, suffix in MEASURES]
-    cols += [f"simd{ed}_{suffix}" for ed, _ in editions for _, suffix in DOMAIN_MEASURES
+    cols += [f"simd{ed}_{suffix}" for ed, _ in editions for _, suffix in _optional_measures()
              if ed in _published().get(suffix, ())]
     return cols
 
@@ -605,7 +620,7 @@ def _values_and_report(name: str, p: dict, editions: list, raw: list, variant: s
         selects.append(_case("m.data_zone_vintage", [(v, f"m.phs_dz{v}_{g}") for v in vintages], f"phs_{g}_code", quote=False))
     for out, suffix in MEASURES:
         selects.append(_case("m.simd_edition", [(ed, f"m.simd{ed}_{suffix}") for ed, _ in editions], out))
-    for out, suffix in DOMAIN_MEASURES:
+    for out, suffix in _optional_measures():
         selects.append(_case("m.simd_edition", [(ed, f"m.simd{ed}_{suffix}") for ed, _ in editions
                                                 if ed in _published().get(suffix, ())], out))
     if windows:
@@ -637,7 +652,7 @@ def _values_and_report(name: str, p: dict, editions: list, raw: list, variant: s
     def domain_null(out, suffix):
         unpublished = [f"s.simd_edition <> '{ed}'" for ed, _ in editions if ed not in _published().get(suffix, ())]
         return f"({' AND '.join([f's.{out} IS NULL'] + unpublished)})" if unpublished else f"s.{out} IS NULL"
-    domain_nulls = [domain_null(out, suffix) for out, suffix in DOMAIN_MEASURES]
+    domain_nulls = [domain_null(out, suffix) for out, suffix in DOMAIN_MEASURES + DOMAIN_BAND_MEASURES]
     nulls = " OR ".join([f"s.{out} IS NULL" for out, _ in MEASURES] + domain_nulls + ["s.data_zone_code IS NULL"]
                         + [f"s.phs_{g}_code IS NULL" for g in GEOGRAPHY])
     if name == "spd" and variant == "asof":
@@ -694,7 +709,7 @@ def _values_and_report(name: str, p: dict, editions: list, raw: list, variant: s
         extra_context = ""
     usable = ", ".join(f"'{x}'" for x in ("matched", "a_part", "linked_small_user") + (("previous_life",) if variant == "asof" else ()))
     context = ",\n       ".join("s.matched_postcode" if c == "Postcode" else f"s.{c}" for c in raw)
-    out_measures = ",\n       ".join(f"s.{out}" for out, _ in MEASURES + DOMAIN_MEASURES)
+    out_measures = ",\n       ".join(f"s.{out}" for out, _ in MEASURES + _optional_measures())
     return f"""selected AS (
     -- STEP 7. VALUES. Copy the stored values of the chosen edition from the record that
     -- supplies the geography, through the data zone of that edition's vintage (PHS Table 4:
@@ -707,8 +722,12 @@ def _values_and_report(name: str, p: dict, editions: list, raw: list, variant: s
     -- 3.3). Band 1 is most deprived in every edition; ingestion already reversed the 2004 and
     -- 2006 PHS bands, so nothing is reversed here. The seven domain ranks (gov_*_domain_rank)
     -- are the Scottish Government's unweighted ranks, copied exactly as published: they may end
-    -- in .5, and no band exists for them. 2004 published no crime domain, so its crime rank is
-    -- null by design, and a 2004 result is still matched.
+    -- in .5. Their quintiles, deciles and vigintiles (gov_*_domain_quintile and so on) are the
+    -- Government's published bands, copied, never derived: the publisher places some tied zones
+    -- in adjacent bands. 2004 published no crime domain, so its crime rank and bands are null by
+    -- design, and a 2004 result is still matched. gov_housing_domain_rank_source_status is
+    -- rank_sources_disagree for the 2020v2 zones where two Government publications give different
+    -- housing ranks, null otherwise: transparency about the rank, not a reason to exclude a row.
     SELECT m.*,
 {measures},
            '1 = most deprived' AS band_direction

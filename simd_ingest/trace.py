@@ -20,10 +20,18 @@ import pandas as pd
 from .config import load_config
 from .core.checks import Report
 from .core.govscot import build_govscot_bands
-from .core.join import PHS_FIELDS, gov_fields
+from .core.join import PHS_FIELDS, gov_fields, is_source_status
 from .core.phs import build_phs_bands
 from .core.sources import load_registry, verify_root
 from .core.spd import normalise_postcode
+
+
+def _same(field: str, saved, source) -> bool:
+    """A number compared exactly, never through an integer; a source status compared as text,
+    where a null in both is agreement, since most zones carry none."""
+    if is_source_status(field):
+        return (pd.isna(saved) and pd.isna(source)) or (not pd.isna(saved) and not pd.isna(source) and str(saved) == str(source))
+    return not (pd.isna(saved) or pd.isna(source)) and float(saved) == float(source)
 
 
 def trace(table: pd.DataFrame, phs: pd.DataFrame, gov: pd.DataFrame, registry, postcode: str, introduced=None) -> list:
@@ -57,9 +65,11 @@ def trace(table: pd.DataFrame, phs: pd.DataFrame, gov: pd.DataFrame, registry, p
         # Every measure this edition publishes, read from the registry, domain ranks included.
         # Compared exactly: a domain rank may end in .5, so no value passes through an integer.
         gov_ed = next(e for e in registry.govscot_editions if e["key"] == key_)
+        if gov_ed.get("bands"):
+            lines.append(f"  bands row   {gov_ed['bands']['file']}  DateCode {gov_ed['bands']['date_code']}  (domain bands, as published)")
         checks = [(f, row[f"simd{key_}_{f}"], p[f]) for f in PHS_FIELDS]
         checks += [(f, row[f"simd{key_}_{f}"], g[f]) for f in gov_fields(gov_ed)]
-        bad = [(f, o, s) for f, o, s in checks if pd.isna(o) or pd.isna(s) or float(o) != float(s)]
+        bad = [(f, o, s) for f, o, s in checks if not _same(f, o, s)]
         ok &= not bad
         shown = ", ".join(f"{f}={o:g}" for f, o, _ in checks[:4]) + ", ..."
         lines.append(f"  output      {shown}")
