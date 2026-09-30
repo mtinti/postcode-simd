@@ -104,6 +104,11 @@ def read_published_bands(ed: dict, root: Path, report: Report, gov: pd.DataFrame
     raw = _published(str(Path(root) / bands["file"]))
     if not report.equal(f"{label}.columns", list(raw.columns), PUBLISHED_COLUMNS):
         return gov
+    # The whole file first: every year in it must be one the registry declares for this file.
+    report.equal(f"{label}.years", sorted(int(y) for y in raw["DateCode"].unique()),
+                 bands.get("file_date_codes", [bands["date_code"]]),
+                 detail="the file holds exactly the declared editions' years")
+    report.require()
     d = raw[raw["DateCode"] == bands["date_code"]]
     report.equal(f"{label}.feature_type", sorted(d["FeatureType"].unique()), [f"{ed['dz_vintage']} Data Zone"])
     report.equal(f"{label}.measurements", sorted(d["Measurement"].unique()), sorted(MEASUREMENTS))

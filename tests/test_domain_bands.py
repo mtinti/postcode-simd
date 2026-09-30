@@ -89,7 +89,8 @@ def test_the_published_bands_are_copied_beside_the_shapefile_ranks(tmp_path):
     ("duplicate", "t.bands.unique"),
     ("unpublished_domain", "t.bands.domains"),
     ("unknown_domain", "t.bands.domain_names_known"),
-    ("wrong_date", "t.bands.measurements"),
+    ("wrong_date", "t.bands.years"),
+    ("undeclared_year", "t.bands.years"),
     ("out_of_range", "t.bands.income.decile.range"),
     ("falls", "t.bands.income.decile.monotone"),
     ("rank_differs", "t.bands.housing.ranks_agree"),
@@ -105,6 +106,8 @@ def test_the_gate_refuses(tmp_path, case, expect):
         "unpublished_domain": lambda: published(gov, extra=[{**row, "SIMD Domain": "Crime"}]),
         "unknown_domain": lambda: published(gov, extra=[{**row, "SIMD Domain": "Wealth"}]),
         "wrong_date": lambda: published(gov, date_code=2019),
+        # Valid 2020 rows plus one row of a year no edition declared.
+        "undeclared_year": lambda: published(gov, extra=[{**row, "DateCode": 2021, "SIMD Domain": "Income"}]),
         "out_of_range": lambda: published(gov, bands={("income", "Z4", "Decile"): 11}),
         "falls": lambda: published(gov, bands={("income", "Z4", "Decile"): 3}),
         "rank_differs": lambda: published(gov, ranks={("housing", "Z2"): 2.5}),
@@ -152,6 +155,8 @@ def test_the_registry_declares_bands_for_every_edition_and_one_disagreement_list
     assert [b["date_code"] for b in bands.values()] == [2004, 2006, 2009, 2012, 2016, 2020]
     assert list(bands["2020v2"]["rank_disagreements"]) == ["housing"]
     assert all("rank_disagreements" not in b for k, b in bands.items() if k != "2020v2")
+    # The shared 2004 to 2012 file must hold exactly those four years.
+    assert bands["2006"]["file_date_codes"] == [2004, 2006, 2009, 2012] and bands["2016"]["file_date_codes"] == [2016]
 
 
 def test_the_audit_list_holds_the_628_zones():

@@ -177,6 +177,18 @@ def load_registry(path: Path) -> Registry:
                     raise ValueError(f"{key}: rank disagreement list {listed} not found beside {path.name}")
                 # Resolved here, beside the registry, so that readers need not know where it lives.
                 bands["rank_disagreements"][domain] = str(resolved)
+    # A band file may serve several editions (2004 to 2012 share one): it must hold exactly their
+    # years, so the reader can refuse a year no edition declared before selecting its own.
+    years = {}
+    for ed in gov.values():
+        if ed.get("bands"):
+            years.setdefault(ed["bands"]["file"], []).append(ed["bands"]["date_code"])
+    for ed in gov.values():
+        if ed.get("bands"):
+            codes = years[ed["bands"]["file"]]
+            if len(set(codes)) != len(codes):
+                raise ValueError(f"{ed['bands']['file']}: two editions declare the same DateCode")
+            ed["bands"]["file_date_codes"] = sorted(codes)
     if phs.keys() != gov.keys():
         raise ValueError("PHS and Government must declare the same edition keys")
     for key, ed in phs.items():
