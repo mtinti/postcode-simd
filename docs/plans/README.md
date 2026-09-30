@@ -30,3 +30,5 @@ or intermediate-table cache is required.
 | `brainstorm.md` | 24 September | Ideas only, nothing decided. Updating with minimal hand edits when a release keeps its format, and one packaged tool that attaches SIMD and rurality to a file. |
 | `Python_On_SQL_Plan.md` | 24 September | Proposed, deferred beyond 3.0.0. The Python API answers through the committed SQL in DuckDB, so Python and SQL give one answer. |
 | `Domain_Ranks_Plan.md` | 29 September | Implemented for 4.0.0. The Scottish Government SIMD domain ranks for every edition, copied as published into both tables as half-unit ranks; no 2004 crime column. |
+| `Domain_Ntiles_Test_Plan.md` | 30 September | Test run and reviewed; decision recorded: copy the published domain bands for every edition from statistics.gov.scot, ranks still from the shapefiles. See `Domain_Bands_Plan.md`. |
+| `Domain_Bands_Plan.md` | 30 September | Proposed, for review. Implements the recorded decision: copy the published domain quintiles, deciles and vigintiles from three statistics.gov.scot CSVs, ranks still from the shapefiles, gated rank against rank; 2020v2 housing copied with a source-disagreement status; release 5.0.0. |
