@@ -26,6 +26,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest==9.1.1", "duckdb==1.5.5"]
+# The column provenance site and its description extractor; never needed by the build or the image.
+docs = ["mkdocs==1.6.1", "mkdocs-material==9.7.7", "python-docx==1.2.0"]
 
 [project.scripts]
 simd-ingest = "simd_ingest.cli:main"

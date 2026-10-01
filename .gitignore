@@ -16,3 +16,6 @@ __pycache__/
 
 # Site-specific plumbing and filled-in scripts: never committed.
 local/
+
+# The generated provenance site (python -m simd_ingest.provenance_site; mkdocs build)
+build/
