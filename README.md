@@ -6,8 +6,8 @@ edition is a separate, less frequent change to the source registry and output sc
 
 | Table | Postcode source | One row per | Key | Answers |
 | --- | --- | --- | --- | --- |
-| `postcode_simd.parquet`, the **main table** | Scottish Statistics Postcode Lookup (SSPL) 2026/2 | whole postcode, latest life, both user types: 230,103 rows × 187 columns | `pc_norm` | SIMD on the latest postcode; either one edition or edition by event year |
-| `postcode_simd_history.parquet`, the **history table** | Scottish Postcode Directory (SPD) 2026/2 | postcode life, both user types: 247,773 rows × 230 columns | `pc_norm`, `introduced_on` | date-valid postcode records, split parts, or explicitly chosen SPD latest linkage |
+| `postcode_simd.parquet`, the **main table** | Scottish Statistics Postcode Lookup (SSPL) 2026/2 | whole postcode, latest life, both user types: 230,103 rows × 399 columns | `pc_norm` | SIMD on the latest postcode; either one edition or edition by event year |
+| `postcode_simd_history.parquet`, the **history table** | Scottish Postcode Directory (SPD) 2026/2 | postcode life, both user types: 247,773 rows × 442 columns | `pc_norm`, `introduced_on` | date-valid postcode records, split parts, or explicitly chosen SPD latest linkage |
 
 Six SIMD editions (2004–2020v2) are attached to both. The two NRS products allocate data
 zones differently: the SSPL takes the zone containing the centroid of the postcode's 2022
@@ -69,7 +69,22 @@ automatically.
   `simd<edition>_<domain>_domain_rank`: income, employment, health, education, access, crime and
   housing, copied exactly as published. They are unweighted ranks, not PHS population-weighted
   bands, and they are not whole numbers: many end in .5, so read them as decimals. 2004 published
-  no crime domain, so there is no 2004 crime column. No domain band is published or derived.
+  no crime domain, so there is no 2004 crime column.
+- Both tables also carry each domain's quintile, decile and vigintile,
+  `simd<edition>_<domain>_domain_<band>`, as the Scottish Government published them on
+  statistics.gov.scot: copied, never derived, so a few tied zones sit in adjacent bands exactly as
+  published. The ranks still come from the shapefiles; every build checks that the published
+  ranks are the same ranking before any band is used. For 2020v2 housing, two Government
+  publications give 628 zones slightly different ranks; those zones carry
+  `simd2020v2_housing_domain_rank_source_status = rank_sources_disagree`, which describes the
+  rank, not the band, and is no reason to exclude them.
+- Both tables also carry a **computed** population-weighted Scotland quintile and decile of each
+  domain rank, `simd<edition>_<domain>_domain_pw_scotland_<band>`. Nobody publishes these: they are
+  cut from every data zone of the edition by a population-midpoint rule that each build checks
+  reproduces PHS's published overall Scotland bands exactly; equal ranks share a band. They sit
+  beside the Government's published, unweighted domain bands, a different basis: report which you
+  used. `simd<edition>_population` is the data-zone population they were weighted by, repeated on
+  every postcode in the zone, so never sum it or weight by it across rows.
   Release is metadata/an attribute of each table, not part of its key.
 - `results/postcode_simd.csv.gz` and `results/postcode_simd_history.csv.gz`: the same rows as a
   gzipped CSV, the form in which a table is shared. They omit the grid reference and coordinate
@@ -120,10 +135,12 @@ postcode product and neither the default: `docs/sql/spd/` reads the history tabl
 `docs/sql/sspl/` reads the main table. Each set has `link_by_era.sql`, which chooses the SIMD
 edition from the year of the health data by PHS Table 4, and `link_latest.sql`, which uses
 one edition throughout. Every query is standalone, written as numbered steps that name the
-guidance or project choice. All five queries share 48 core columns: statuses, product provenance,
+guidance or project choice. All five queries share 84 core columns: statuses, product provenance,
 both record keys, the edition's data and intermediate zones and PHS geography codes, all
-14 stored measures and the seven Scottish Government domain ranks. Product-specific own-record
-context follows (96 total columns for SSPL, 115 for SPD era/latest, 118 for SPD as-of); select
+14 stored measures, the seven Scottish Government domain ranks with their published quintiles,
+deciles and vigintiles, the 2020v2 housing source status, and the computed population-weighted
+quintile and decile of each domain. Product-specific own-record
+context follows (132 total columns for SSPL, 151 for SPD era/latest, 154 for SPD as-of); select
 shared columns by name when combining results.
 The SPD set selects the latest life and the A part itself;
 the SSPL set does not, because NRS did. Both attach a large user's SIMD through its linked

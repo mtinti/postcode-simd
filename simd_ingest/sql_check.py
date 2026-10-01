@@ -36,6 +36,8 @@ SQL_TYPE = {"string": "nvarchar", "date32": "date", "bool": "bit", "int8": "tiny
 SQL_NUMERIC = {"rank": (6, 1)}
 SQL_DECLARED = {kind: f"{SQL_TYPE[kind]}({p},{s})" for kind, (p, s) in SQL_NUMERIC.items()}
 # UTF-8 bytes, so HASHBYTES sees exactly what Python hashed. Verified on SQL Server 2022.
+# Fields per CONCAT_WS call, under SQL Server's limit of 254 arguments (the separator is one).
+CONCAT_CHUNK = 200
 COLLATION = "Latin1_General_100_BIN2_UTF8"
 
 
@@ -65,9 +67,17 @@ def _table_sql(table: str, product: dict, schema: dict, contract: dict) -> str:
         for i, c in enumerate(columns, 1))
     key = ", ".join(f"[{k}]" for k in schema["key"])
     rendered = [_render(c, kinds[c]) for c in columns]
-    # The first argument fixes the result type: without max, CONCAT_WS returns nvarchar(4000).
-    rendered[0] = f"CONVERT(nvarchar(max), {rendered[0]})"
-    expression = ",\n           ".join(rendered)
+    # CONCAT_WS takes at most 254 arguments, so a wide table is joined in chunks, each joined with
+    # the same separator: every field is wrapped and never NULL, so the text is the same as one
+    # call. The first argument of each call fixes its type: without max it is nvarchar(4000).
+    chunks = [rendered[i:i + CONCAT_CHUNK] for i in range(0, len(rendered), CONCAT_CHUNK)]
+    for chunk in chunks:
+        chunk[0] = f"CONVERT(nvarchar(max), {chunk[0]})"
+    if len(chunks) == 1:
+        expression = ",\n           ".join(chunks[0])
+    else:
+        expression = ",\n           ".join("CONCAT_WS(NCHAR(31),\n           " + ",\n           ".join(chunk) + ")"
+                                           for chunk in chunks)
     text_columns = [c for c in columns if kinds[c] == "string"]
     reserved = "\n       OR ".join(
         f"DATALENGTH(REPLACE(REPLACE([{c}] COLLATE {COLLATION}, NCHAR(0), N''), NCHAR(31), N'')) "

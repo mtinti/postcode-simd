@@ -41,7 +41,22 @@ MEASURES = [
 # except 2004, which had no crime domain. Values below end in .5 so a truncation is visible.
 DOMAIN_MEASURES = [(f"gov_{d}_domain_rank", f"{d}_domain_rank")
                    for d in ("income", "employment", "health", "education", "access", "crime", "housing")]
-PUBLISHED = {ed: [s for _, s in DOMAIN_MEASURES if not (ed == "2004" and s == "crime_domain_rank")] for ed in EDITIONS}
+# Their published quintile, decile and vigintile, domain by domain, and last the one source-status
+# field: 2020v2 housing, where two Government publications disagree on some ranks.
+BAND_MEASURES = [(f"gov_{d}_domain_{b}", f"{d}_domain_{b}")
+                 for d in ("income", "employment", "health", "education", "access", "crime", "housing")
+                 for b in ("quintile", "decile", "vigintile")]
+STATUS_MEASURES = [("gov_housing_domain_rank_source_status", "housing_domain_rank_source_status")]
+# Then the computed population-weighted quintile and decile of each domain rank.
+COMPUTED_MEASURES = [(f"computed_pw_{d}_domain_{b}", f"{d}_domain_pw_scotland_{b}")
+                     for d in ("income", "employment", "health", "education", "access", "crime", "housing")
+                     for b in ("quintile", "decile")]
+OPTIONAL = DOMAIN_MEASURES + BAND_MEASURES + STATUS_MEASURES + COMPUTED_MEASURES
+PUBLISHED = {ed: [s for _, s in DOMAIN_MEASURES + BAND_MEASURES if not (ed == "2004" and s.startswith("crime_"))]
+                 + ([s for _, s in STATUS_MEASURES] if ed == "2020v2" else [])
+                 + [s for _, s in COMPUTED_MEASURES if not (ed == "2004" and s.startswith("crime_"))] for ed in EDITIONS}
+# The population each edition's computed bands were weighted by: stored, not a query measure.
+POPULATION = [f"simd{ed}_population" for ed in EDITIONS]
 VINTAGE = {e: 2011 if e in ("2016", "2020v2") else 2001 for e in EDITIONS}
 VARIANTS = ("link_by_era", "link_latest")
 # Independently stated: the coordinate columns the export contract withholds from both the CSV
@@ -62,7 +77,7 @@ CONTRACT = ["id", "postcode", "address_date", "analysis_year", "postcode_key", "
             "matched_pc_norm", "matched_introduced_on", "matched_is_current", "matched_user_type",
             "requested_link_postcode", "simd_source_pc_norm", "simd_source_introduced_on", "simd_source_is_current",
             "data_zone_code", "intermediate_zone_code", "phs_hb_code", "phs_hscp_code", "phs_ca_code",
-            *[out for out, _ in MEASURES], *[out for out, _ in DOMAIN_MEASURES], "band_direction"]
+            *[out for out, _ in MEASURES], *[out for out, _ in OPTIONAL], "band_direction"]
 OK = ("matched", "a_part", "linked_small_user")
 # The classification versions, stated here independently of the generator and the registry.
 RURAL = ("2003-2004", "2005-2006", "2007-2008", "2009-2010", "2011-2012", "2013-2014", "2016", "2020", "2022")
@@ -82,8 +97,11 @@ def stored_values(seed: int) -> dict:
     """Every edition and measure gets its own value, so a wrong branch is visible."""
     values = {f"simd{ed}_{suffix}": seed * 1000 + n * 20 + k + 1
               for n, ed in enumerate(EDITIONS) for k, (_, suffix) in enumerate(MEASURES)}
-    values.update({f"simd{ed}_{suffix}": seed * 1000 + n * 20 + 500 + k + 0.5
-                   for n, ed in enumerate(EDITIONS) for k, suffix in enumerate(PUBLISHED[ed])})
+    for n, ed in enumerate(EDITIONS):
+        for k, suffix in enumerate(PUBLISHED[ed]):
+            # A rank ends in .5 so a truncation is visible; a band is whole; the status is text.
+            values[f"simd{ed}_{suffix}"] = ("rank_sources_disagree" if suffix.endswith("_source_status")
+                                            else seed * 1000 + n * 20 + 500 + k + (0.5 if suffix.endswith("_rank") else 0))
     return values
 
 
@@ -146,7 +164,7 @@ def run(con, name, variant, cohort, text=None) -> pd.DataFrame:
 def expect_edition(out, row, edition):
     for output, suffix in MEASURES:
         assert out[output] == row[f"simd{edition}_{suffix}"], output
-    for output, suffix in DOMAIN_MEASURES:                 # exactly, halves included, or null if unpublished
+    for output, suffix in OPTIONAL:                        # exactly, halves included, or null if unpublished
         if suffix in PUBLISHED[edition]:
             assert out[output] == row[f"simd{edition}_{suffix}"], output
         else:
@@ -174,8 +192,8 @@ def test_independent_expectations_cover_every_stored_measure(name):
     fields = yaml.safe_load((ROOT / "simd_ingest" / PRODUCTS[name]["schema"]).read_text())["fields"]
     expected = {f"simd{edition}_{suffix}" for edition in EDITIONS for _, suffix in MEASURES}
     expected |= {f"simd{edition}_{suffix}" for edition in EDITIONS for suffix in PUBLISHED[edition]}
-    assert {f["name"] for f in fields if f["name"].startswith("simd")} == expected
-    assert len(MEASURES) == 14 and len(expected) == 84 + 41
+    assert {f["name"] for f in fields if f["name"].startswith("simd")} == expected | set(POPULATION)
+    assert len(MEASURES) == 14 and len(expected) == 84 + 41 + 123 + 1 + 82
     assert "simd2004_crime_domain_rank" not in {f["name"] for f in fields}
 
 
@@ -228,9 +246,9 @@ def test_common_output_core_and_product_specific_context(con, name, variant):
     if name == "spd":                                     # rurality sits between the core and the context
         context[:0] = ["rurality_version", "rurality_policy", "rurality_6fold", "rurality_8fold", "rurality_status"]
     assert list(out.columns[len(CONTRACT):]) == context
-    assert len(CONTRACT) == 48
+    assert len(CONTRACT) == 84
     # The SPD set returns five rurality columns after the shared core; the SSPL set has none.
-    assert len(out.columns) == (118 if variant == "link_as_of" else 115 if name == "spd" else 96)
+    assert len(out.columns) == (154 if variant == "link_as_of" else 151 if name == "spd" else 132)
     assert not set(EXCLUDED[name]) & set(out.columns)
 
 
@@ -842,3 +860,19 @@ def test_a_domain_an_edition_did_not_publish_is_null_and_the_result_still_matche
     expect_edition(out, row, edition)
     assert pd.isna(out.gov_crime_domain_rank) == (edition == "2004")
     assert out.gov_income_domain_rank % 1 == 0.5
+
+
+@pytest.mark.parametrize("name", PRODUCTS)
+@pytest.mark.parametrize("status", [None, "rank_sources_disagree"])
+def test_the_housing_source_status_is_never_a_missing_value(con, name, status):
+    """Most 2020v2 zones carry no source status: a null there is the normal case and must never
+    make a result missing_simd. Set or null, it is copied as stored, and only for 2020v2."""
+    row = record(name, seed=5)
+    row["simd2020v2_housing_domain_rank_source_status"] = status
+    setup(con, name, [row])
+    for year, edition in ((2020, "2020v2"), (2016, "2016")):
+        out = run(con, name, "link_by_era", inputs(year=year)).iloc[0]
+        assert (out.simd_edition, out.simd_status) == (edition, "matched")
+        expected = status if edition == "2020v2" else None
+        assert (pd.isna(out.gov_housing_domain_rank_source_status) and expected is None) or out.gov_housing_domain_rank_source_status == expected
+        assert out.gov_housing_domain_decile == row[f"simd{edition}_housing_domain_decile"]

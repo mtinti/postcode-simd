@@ -44,7 +44,7 @@ def test_postcode_refresh_replaces_snapshot_and_reports_changes(tmp_path):
     assert len(saved) == 6 and "AB101AC" not in saved.index
     assert saved.loc["AB101AA", "simd2020v2_rank"] == 2
     assert saved.loc["AB101AFA", "pc_base"] == "AB101AF"
-    assert saved.loc["AB101AFB", "simd2004_pw_scotland_quintile"] == 5
+    assert saved.loc["AB101AFB", "simd2004_pw_scotland_quintile"] == 3     # zone B: 190 of 200 people
     assert not saved.loc["AB101AB", "is_current"]
     # The main table: whole postcodes, one life each, the lookup's own zones and release.
     changes = second["observations"]["snapshot_changes"]["main"]
@@ -90,13 +90,19 @@ def test_new_simd_edition_and_new_vintage_need_no_pipeline_code_change(tmp_path)
     after = [pd.read_parquet(tmp_path / f) for f in files]
     for old, new in zip(before, after):
         pd.testing.assert_frame_equal(old, new[old.columns])
-        # 14 measures, 3 geography codes, and the 7 domain ranks the new edition declares.
-        assert len(new.columns) == len(old.columns) + 17 + 7
+        # 14 measures, 3 geography codes, the 7 domain ranks the new edition declares, their 21
+        # published bands, its housing source status, 14 computed weighted bands and its
+        # population: registry and schema additions only.
+        assert len(new.columns) == len(old.columns) + 17 + 7 + 21 + 1 + 14 + 1
         assert new["phs_dz2022_hb"].tolist() == ["HB"] * 4
     assert after[0]["simdfuture_rank"].tolist() == [1, 2, 1, 2]
-    assert after[0]["simdfuture_pw_scotland_quintile"].tolist() == [1, 5, 1, 5]
+    assert after[0]["simdfuture_pw_scotland_quintile"].tolist() == [1, 3, 1, 3]
+    assert after[0]["simdfuture_income_domain_pw_scotland_decile"].tolist() == [5] * 4   # a tie, one block: midpoint 100 of 200, ceil(5.0)
     assert after[1]["simdfuture_rank"].tolist() == [1, 2, 2, 2]
     assert after[0]["simdfuture_income_domain_rank"].tolist() == [1.5] * 4       # a published half, kept
+    # Published bands copied, and the status only on the zone whose published rank differs.
+    assert after[0]["simdfuture_housing_domain_decile"].tolist() == [1, 10, 1, 10]
+    assert after[0]["simdfuture_housing_domain_rank_source_status"].fillna("").tolist() == ["", "rank_sources_disagree"] * 2
     assert main(["audit", "--config", str(cfg)]) == 0
 
 
@@ -220,6 +226,9 @@ def test_registry_rejects_an_incomplete_or_inconsistent_rurality_version(tmp_pat
     real = yaml.safe_load((ROOT / "simd_ingest" / "sources.yaml").read_text())
     path = tmp_path / "sources.yaml"
     path.write_text(yaml.safe_dump(real))
+    # The 2020v2 housing disagreement list lives beside the registry.
+    (tmp_path / "sgs_2020_housing_rank_disagreements.csv").write_bytes(
+        (ROOT / "simd_ingest" / "sgs_2020_housing_rank_disagreements.csv").read_bytes())
     load_registry(path)                                   # the real registry is accepted as it stands
     versions = real["rurality_versions"]
     if fault == "member_not_pinned":
@@ -264,13 +273,16 @@ def test_real_pinned_data_build_matches_contract_and_known_fingerprint(tmp_path)
         if known is not None:
             assert result["tables"][name]["logical_fingerprint"] == known[fingerprint]
     # Columns are only ever appended. Each earlier schema's columns must be exactly what they were,
-    # which the whole-table fingerprint can no longer show: 162 of wide_v1 and 189 of wide_v2 for
-    # history, 146 of sspl_v2 for the main table.
+    # which the whole-table fingerprint can no longer show: 162 of wide_v1, 189 of wide_v2, 230 of
+    # wide_v3 and 354 of wide_v4 for history; 146 of sspl_v2, 187 of sspl_v3 and 311 of sspl_v4 for main.
     import pyarrow.parquet as pq
     from simd_ingest.core.output import logical_fingerprint
     for name, file, prefixes in (("history", "postcode_simd_history.parquet",
-                                  ((162, "wide_v1_columns_fingerprint"), (189, "wide_v2_columns_fingerprint"))),
-                                 ("main", "postcode_simd.parquet", ((146, "main_v2_columns_fingerprint"),))):
+                                  ((162, "wide_v1_columns_fingerprint"), (189, "wide_v2_columns_fingerprint"),
+                                   (230, "wide_v3_columns_fingerprint"), (354, "wide_v4_columns_fingerprint"))),
+                                 ("main", "postcode_simd.parquet", ((146, "main_v2_columns_fingerprint"),
+                                                                    (187, "main_v3_columns_fingerprint"),
+                                                                    (311, "main_v4_columns_fingerprint")))):
         known = known_snapshot(result, name)
         if known is None:
             continue

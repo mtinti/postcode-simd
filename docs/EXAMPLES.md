@@ -235,19 +235,36 @@ you pass `include_po_boxes=True`, and then come back with no code and status `po
 main table has no versions and is refused. On small-user postcodes the dated SQL query returns
 the same version and class; a test compares the two on the built table.
 
-## Domain ranks
+## Domain ranks and bands
 
-The Scottish Government's domain ranks are measures like any other:
+The Scottish Government's domain ranks, and their published bands, are measures like any other:
 
 ```python
 r = lookup.lookup(t, "AB11 5FA", edition="2020v2", measure="income_domain_rank", on="2020-06-01")
 out = lookup.attach_by_era(cohort, t, "postcode", "event_date", measure="crime_domain_rank")
+out = lookup.attach_by_era(cohort, t, "postcode", "event_date", measure="housing_domain_decile")
 ```
 
 They are the Government's unweighted ranks, 1 most deprived, copied exactly as published, so they
-are not whole numbers: the value comes back as a decimal and may end in .5. No band exists for them.
-A domain an edition did not publish, crime in SIMD 2004, is not an error: the record is still
-found, the value is null, and the label says the measure was not published for that edition.
+are not whole numbers: the value comes back as a decimal and may end in .5. Their quintiles,
+deciles and vigintiles (`income_domain_decile` and so on) are the Government's published bands,
+unweighted, copied, never derived; the publisher places a few tied zones in adjacent bands, and
+the value is what it published. They are a different basis from the PHS population-weighted
+decile of the overall index. A domain an edition did not publish, crime in SIMD 2004, is not an
+error: the record is still found, the value is null, and the label says the measure was not
+published for that edition.
+
+A housing measure also returns the answering record's `source_status` (`Result.source_status`,
+or the `simd_source_status` column): `rank_sources_disagree` for the 2020v2 zones where two
+Government publications give different housing ranks, null otherwise. It describes the rank, not
+the band, and is no reason to exclude the row. With `split="report"`, split parts reach
+`split_consensus` only if they agree on the value and on the status.
+
+Computed population-weighted domain bands are measures too, `income_domain_pw_scotland_decile` and
+so on: nobody publishes them, and the label says so ("computed population-weighted band, using a
+midpoint rule validated against PHS's published overall bands; equal ranks grouped together").
+To recompute anything yourself from `simd<edition>_population`, first reduce to one row per data
+zone over every zone of the edition, never over your cohort's rows.
 
 ## What to state in your analysis
 

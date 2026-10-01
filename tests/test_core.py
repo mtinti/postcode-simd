@@ -80,8 +80,8 @@ class KeyAndDateRules(unittest.TestCase):
 class SourceSafety(unittest.TestCase):
     def test_registry_loads_and_wrong_bytes_fail_verification(self):
         reg = load_registry(ROOT / "simd_ingest" / "sources.yaml")
-        self.assertEqual(len(reg.objects), 23)
-        self.assertEqual(len(reg.files), 56)
+        self.assertEqual(len(reg.objects), 26)       # 23, then the three statistics.gov.scot band datasets
+        self.assertEqual(len(reg.files), 59)
         # Nine classification versions, each a whole shapefile: four pinned members apiece.
         self.assertEqual([v["key"] for v in reg.rurality_versions],
                          ["2003-2004", "2005-2006", "2007-2008", "2009-2010", "2011-2012",

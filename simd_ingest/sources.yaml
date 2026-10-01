@@ -1,6 +1,6 @@
 # Pinned sources for the postcode-SIMD build. Version 2, 10 September 2026.
 #
-# Twenty-three remote objects supply fifty-six logical files. A remote object is what is
+# Twenty-six remote objects supply fifty-nine logical files. A remote object is what is
 # downloaded; a logical file is what a builder reads. For a plain file they are the
 # same bytes. For an archive, the declared members are extracted and each member's
 # own hash is the pin. A pin is never updated by the pipeline: changed bytes stop it.
@@ -8,6 +8,9 @@
 # Retired on 10 September 2026, with hashes kept in decisions.yaml as evidence: the two
 # statistics.gov.scot extracts, the rank-to-band workbook and the 2020v2 ranks workbook.
 # Every value they supplied is in the maps.gov.scot tables and was verified identical.
+# The two statistics.gov.scot extracts returned on 30 September 2026, re-downloaded from
+# statistics.gov.scot with the 2020 dataset, as the only publication of the domain bands
+# (docs/plans/Domain_Bands_Plan.md). The shapefiles remain the source of every rank.
 version: 2
 spd_release: '2026_2'
 sspl_release: '2026_2'
@@ -16,6 +19,7 @@ licences:
   phs: "Open Government Licence v3.0, stated in the PHS open data package metadata"
   nrs: "NRS terms; confirm before redistributing copies of the index"
   maps_gov_scot: "Open Government Licence, stated in each shapefile's .shp.xml"
+  statistics_gov_scot: "Open Government Licence v3.0, stated on each dataset page; publisher the Scottish Government, contact simd@gov.scot"
 
 remote_objects:
   - key: phs_2004
@@ -222,6 +226,30 @@ remote_objects:
 
 # PHS population-weighted SIMD, one CSV per edition, keyed by data zone.
 # invert_bands: the 2004 and 2006 files publish bands with 1 = least deprived.
+  # The Scottish Government's published domain bands, the only publication of them
+  # (docs/plans/Domain_Bands_Plan.md). One long CSV per dataset; byte-identical across downloads.
+  - key: sgs_simd_2004_2012
+    publisher: statistics_gov_scot
+    url: https://statistics.gov.scot/downloads/cube-table?uri=http%3A%2F%2Fstatistics.gov.scot%2Fdata%2Fscottish-index-of-multiple-deprivation-historical-i
+    format: file
+    sha256: d9745d9d7763fbe961322ae24bc0542bd00b18fcc3fd1044b23cb27503f4318f
+    files:
+      - {path: statistics.gov.scot/simd_historical_2004_2012.csv, sha256: d9745d9d7763fbe961322ae24bc0542bd00b18fcc3fd1044b23cb27503f4318f}
+  - key: sgs_simd_2016
+    publisher: statistics_gov_scot
+    url: https://statistics.gov.scot/downloads/cube-table?uri=http%3A%2F%2Fstatistics.gov.scot%2Fdata%2Fscottish-index-of-multiple-deprivation-historical-ii
+    format: file
+    sha256: 3be67d034964cbbbba379291ac2014bd347ac28d6134341a5ef3c05d5203341a
+    files:
+      - {path: statistics.gov.scot/simd_historical_2016.csv, sha256: 3be67d034964cbbbba379291ac2014bd347ac28d6134341a5ef3c05d5203341a}
+  - key: sgs_simd_2020
+    publisher: statistics_gov_scot
+    url: https://statistics.gov.scot/downloads/cube-table?uri=http%3A%2F%2Fstatistics.gov.scot%2Fdata%2Fscottish-index-of-multiple-deprivation
+    format: file
+    sha256: 25fea7ddaf54659ac24c6d9e9c6af73d3da18ef2a8477c30b61a7c937f3dabbf
+    files:
+      - {path: statistics.gov.scot/simd_2020.csv, sha256: 25fea7ddaf54659ac24c6d9e9c6af73d3da18ef2a8477c30b61a7c937f3dabbf}
+
 phs_editions:
   - key: '2004'
     file: PHS/simd2004_02042020.csv
@@ -276,22 +304,29 @@ phs_editions:
 govscot_editions:
   - {key: '2004',   file: data.gov.uk/SG_SIMD_2004/SG_SIMD_2004.dbf, dz_vintage: 2001, rows: 6505,
      columns: {datazone: datazone, rank: rank,   quintile: quintile,   decile: decile,   vigintile: vigintile,  population: totpop2001},
-     domains: {income: incrank, employment: emprank, health: hlthrank, education: edurank, access: gaccrank, housing: houserank}}
+     domains: {income: incrank, employment: emprank, health: hlthrank, education: edurank, access: gaccrank, housing: houserank},
+     bands: {file: statistics.gov.scot/simd_historical_2004_2012.csv, date_code: 2004, half_ranks: rounded_up}}
   - {key: '2006',   file: data.gov.uk/SG_SIMD_2006/SG_SIMD_2006.dbf, dz_vintage: 2001, rows: 6505,
      columns: {datazone: datazone, rank: rank,   quintile: quintile,   decile: decile,   vigintile: vigintile,  population: sape2004},
-     domains: {income: incrank, employment: emprank, health: hlthrank, education: edurank, access: gaccrank, crime: crimerank, housing: houserank}}
+     domains: {income: incrank, employment: emprank, health: hlthrank, education: edurank, access: gaccrank, crime: crimerank, housing: houserank},
+     bands: {file: statistics.gov.scot/simd_historical_2004_2012.csv, date_code: 2006, half_ranks: rounded_up}}
   - {key: '2009v2', file: data.gov.uk/SG_SIMD_2009/SG_SIMD_2009.dbf, dz_vintage: 2001, rows: 6505,
      columns: {datazone: datazone, rank: rank,   quintile: quintile,   decile: decile,   vigintile: vigintile,  population: sape2007},
-     domains: {income: incrank, employment: emprank, health: hlthrank, education: edurank, access: gaccrank, crime: crimerank, housing: houserank}}
+     domains: {income: incrank, employment: emprank, health: hlthrank, education: edurank, access: gaccrank, crime: crimerank, housing: houserank},
+     bands: {file: statistics.gov.scot/simd_historical_2004_2012.csv, date_code: 2009, half_ranks: rounded_up}}
   - {key: '2012',   file: data.gov.uk/SG_SIMD_2012/SG_SIMD_2012.dbf, dz_vintage: 2001, rows: 6505,
      columns: {datazone: datazone, rank: rank,   quintile: quintile,   decile: decile,   vigintile: vigintile,  population: sape2010},
-     domains: {income: incrank, employment: emprank, health: hlthrank, education: edurank, access: gaccrank, crime: crimerank, housing: houserank}}
+     domains: {income: incrank, employment: emprank, health: hlthrank, education: edurank, access: gaccrank, crime: crimerank, housing: houserank},
+     bands: {file: statistics.gov.scot/simd_historical_2004_2012.csv, date_code: 2012, half_ranks: rounded_up}}
   - {key: '2016',   file: data.gov.uk/SG_SIMD_2016/SG_SIMD_2016.dbf, dz_vintage: 2011, rows: 6976,
      columns: {datazone: datazone, rank: rank,   quintile: quintile,   decile: decile,   vigintile: vigintile,  population: sape2014},
-     domains: {income: incrank, employment: emprank, health: hlthrank, education: edurank, access: gaccrank, crime: crimerank, housing: houserank}}
+     domains: {income: incrank, employment: emprank, health: hlthrank, education: edurank, access: gaccrank, crime: crimerank, housing: houserank},
+     bands: {file: statistics.gov.scot/simd_historical_2016.csv, date_code: 2016, half_ranks: exact}}
   - {key: '2020v2', file: data.gov.uk/SG_SIMD_2020/SG_SIMD_2020.dbf, dz_vintage: 2011, rows: 6976,
      columns: {datazone: datazone, rank: rankv2, quintile: quintilev2, decile: decilev2, vigintile: vigintilv2, population: sape2017},
-     domains: {income: incrankv2, employment: emprank, health: hlthrank, education: edurank, access: gaccrank, crime: crimerank, housing: houserank}}
+     domains: {income: incrankv2, employment: emprank, health: hlthrank, education: edurank, access: gaccrank, crime: crimerank, housing: houserank},
+     bands: {file: statistics.gov.scot/simd_2020.csv, date_code: 2020, half_ranks: exact,
+            rank_disagreements: {housing: sgs_2020_housing_rank_disagreements.csv}}}
 
 # Urban Rural Classification versions, placed by point-in-polygon on each postcode life's own
 # grid reference (docs/plans/Rurality_By_Version_Plan.md). Every version is eight multipolygons

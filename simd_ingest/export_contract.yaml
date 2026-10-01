@@ -35,6 +35,8 @@ tables:
     exclude: [GridReferenceEasting, GridReferenceNorthing]
     # Every text empty is a source blank, for both user types: the lookup is a single file.
     structural_nulls: {}
+    # Except the one text column that is never blank: a value or null (see history below).
+    empty_is_null: [simd2020v2_housing_domain_rank_source_status]
   history:
     file: postcode_simd_history.csv.gz
     exclude: [GridReferenceEasting, GridReferenceNorthing, Latitude, Longitude]
@@ -52,7 +54,8 @@ tables:
     # would restore each empty as a blank, as it rightly does for a directory column.
     empty_is_null: [urbanrural2003_2004_status, urbanrural2005_2006_status, urbanrural2007_2008_status,
                     urbanrural2009_2010_status, urbanrural2011_2012_status, urbanrural2013_2014_status,
-                    urbanrural2016_status, urbanrural2020_status, urbanrural2022_status]
+                    urbanrural2016_status, urbanrural2020_status, urbanrural2022_status,
+                    simd2020v2_housing_domain_rank_source_status]
 
 # The row digest that a database load is checked against. Computed from the accepted table,
 # never from a re-read of the CSV, so an import mistake cannot appear on both sides.
