@@ -70,7 +70,9 @@ never just to clear a failing regression.
    the dataset rounds a half rank up). The build then requires every published rank to be the
    shapefile's; a genuine disagreement must be listed zone by zone, with both ranks, in a
    `rank_disagreements` file beside the registry, as for 2020v2 housing, and gives those zones
-   a source-status column. Add the bands and any status to both schemas.
+   a source-status column. Add the bands and any status to both schemas. The computed
+   population-weighted domain bands and the population need only schema columns: the build
+   computes them and checks the rule against the edition's PHS bands.
 3. Confirm both postcode products supply `DataZone<vintage>Code`. Every record must match
    in the new edition; the pipeline does not manufacture codes or silently allow nulls.
    If a future publication does not cover the archived records, that needs a reviewed

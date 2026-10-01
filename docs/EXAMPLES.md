@@ -260,6 +260,12 @@ Government publications give different housing ranks, null otherwise. It describ
 the band, and is no reason to exclude the row. With `split="report"`, split parts reach
 `split_consensus` only if they agree on the value and on the status.
 
+Computed population-weighted domain bands are measures too, `income_domain_pw_scotland_decile` and
+so on: nobody publishes them, and the label says so ("computed population-weighted band, using a
+midpoint rule validated against PHS's published overall bands; equal ranks grouped together").
+To recompute anything yourself from `simd<edition>_population`, first reduce to one row per data
+zone over every zone of the edition, never over your cohort's rows.
+
 ## What to state in your analysis
 
 The guidance's checklist, and where each item comes from here:

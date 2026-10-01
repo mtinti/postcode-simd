@@ -5,7 +5,7 @@ decisions:
   - id: bands-are-looked-up
     date: 2026-09-10
     status: implemented
-    decision: Every band in the output is copied from a published file. No band is calculated from a rank.
+    decision: Every band in the output is copied from a published file. No band is calculated from a rank. One exception, computed-weighted-domain-bands (1 October 2026), labelled computed everywhere.
     reason: The publisher's value is the auditable value. Earlier formula-based validation was later removed by trust-the-sources.
     evidence: SIMD_Plan_Gap_Closure.md section 2; halfup rule for 2001 zones and ceil rule for 2011 zones each reproduce the published bands with zero mismatches.
 
@@ -775,3 +775,36 @@ decisions:
       every edition and zone. The datasets are byte-identical across downloads. The 230 history
       and 187 main columns of 4.0.0 keep their fingerprints. Plans:
       docs/plans/Domain_Ntiles_Test_Plan.md and docs/plans/Domain_Bands_Plan.md.
+
+  - id: computed-weighted-domain-bands
+    date: 2026-10-01
+    status: implemented
+    decision: >-
+      Both tables carry a computed population-weighted Scotland quintile and decile of every
+      domain rank, simd<edition>_<domain>_domain_pw_scotland_<band>, 82 columns, and each
+      edition's data-zone population, simd<edition>_population, 6 columns: schemas
+      postcode_simd_wide_v5 (442) and postcode_simd_sspl_v5 (399). The one exception to
+      bands-are-looked-up: nobody publishes these. They are cut per data zone in the Government
+      reader, every zone of the edition once with that edition's shapefile population, never
+      from a postcode table: zones ordered by rank, equal ranks one block, band = max(1, min(k,
+      ceil(midpoint * k / total))). Before any is used, the same rule must reproduce PHS's
+      published overall Scotland quintile and decile exactly in every edition, or the build
+      stops. Labelled "computed population-weighted band, using a midpoint rule validated against
+      PHS's published overall bands; equal ranks grouped together; not published by PHS or the
+      Government". SQL measures computed_pw_<domain>_domain_<band>; the walkthrough carries the
+      decile beside the published one. Scotland only; no sub-geography bands, flags or
+      vigintiles. Released as 6.0.0.
+    reason: >-
+      Analysts ask for population-weighted domain bands, and official guidance recommends the
+      income domain alone, or SIMD without health, for health outcomes; the Scottish Government's
+      income-employment index and Bradford et al. (Health & Place, 2023) cut population-based
+      bands of domain measures. Checking the rule against PHS on every build is what makes a
+      computed band defensible. PHS is to be asked whether it has a view; the attribution stays
+      "computed" unless it does.
+    evidence: >-
+      The rule reproduces PHS's published Scotland quintile and decile on every zone of all six
+      editions; within health boards, HSCPs and councils it does not, mostly in the island areas,
+      so none are produced. Every computed band holds its fifth or tenth of the population to
+      within 0.036 percentage points. Cutting from the main table's zones instead would drop four
+      2011 zones (801 people in 2017) and change five 2020v2 income deciles. The 354 history and
+      311 main columns of 5.0.0 keep their fingerprints. Plan: docs/plans/Weighted_Domain_Bands_Plan.md.

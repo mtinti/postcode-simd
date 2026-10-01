@@ -47,9 +47,16 @@ BAND_MEASURES = [(f"gov_{d}_domain_{b}", f"{d}_domain_{b}")
                  for d in ("income", "employment", "health", "education", "access", "crime", "housing")
                  for b in ("quintile", "decile", "vigintile")]
 STATUS_MEASURES = [("gov_housing_domain_rank_source_status", "housing_domain_rank_source_status")]
-OPTIONAL = DOMAIN_MEASURES + BAND_MEASURES + STATUS_MEASURES
+# Then the computed population-weighted quintile and decile of each domain rank.
+COMPUTED_MEASURES = [(f"computed_pw_{d}_domain_{b}", f"{d}_domain_pw_scotland_{b}")
+                     for d in ("income", "employment", "health", "education", "access", "crime", "housing")
+                     for b in ("quintile", "decile")]
+OPTIONAL = DOMAIN_MEASURES + BAND_MEASURES + STATUS_MEASURES + COMPUTED_MEASURES
 PUBLISHED = {ed: [s for _, s in DOMAIN_MEASURES + BAND_MEASURES if not (ed == "2004" and s.startswith("crime_"))]
-                 + ([s for _, s in STATUS_MEASURES] if ed == "2020v2" else []) for ed in EDITIONS}
+                 + ([s for _, s in STATUS_MEASURES] if ed == "2020v2" else [])
+                 + [s for _, s in COMPUTED_MEASURES if not (ed == "2004" and s.startswith("crime_"))] for ed in EDITIONS}
+# The population each edition's computed bands were weighted by: stored, not a query measure.
+POPULATION = [f"simd{ed}_population" for ed in EDITIONS]
 VINTAGE = {e: 2011 if e in ("2016", "2020v2") else 2001 for e in EDITIONS}
 VARIANTS = ("link_by_era", "link_latest")
 # Independently stated: the coordinate columns the export contract withholds from both the CSV
@@ -185,8 +192,8 @@ def test_independent_expectations_cover_every_stored_measure(name):
     fields = yaml.safe_load((ROOT / "simd_ingest" / PRODUCTS[name]["schema"]).read_text())["fields"]
     expected = {f"simd{edition}_{suffix}" for edition in EDITIONS for _, suffix in MEASURES}
     expected |= {f"simd{edition}_{suffix}" for edition in EDITIONS for suffix in PUBLISHED[edition]}
-    assert {f["name"] for f in fields if f["name"].startswith("simd")} == expected
-    assert len(MEASURES) == 14 and len(expected) == 84 + 41 + 123 + 1
+    assert {f["name"] for f in fields if f["name"].startswith("simd")} == expected | set(POPULATION)
+    assert len(MEASURES) == 14 and len(expected) == 84 + 41 + 123 + 1 + 82
     assert "simd2004_crime_domain_rank" not in {f["name"] for f in fields}
 
 
@@ -239,9 +246,9 @@ def test_common_output_core_and_product_specific_context(con, name, variant):
     if name == "spd":                                     # rurality sits between the core and the context
         context[:0] = ["rurality_version", "rurality_policy", "rurality_6fold", "rurality_8fold", "rurality_status"]
     assert list(out.columns[len(CONTRACT):]) == context
-    assert len(CONTRACT) == 70
+    assert len(CONTRACT) == 84
     # The SPD set returns five rurality columns after the shared core; the SSPL set has none.
-    assert len(out.columns) == (140 if variant == "link_as_of" else 137 if name == "spd" else 118)
+    assert len(out.columns) == (154 if variant == "link_as_of" else 151 if name == "spd" else 132)
     assert not set(EXCLUDED[name]) & set(out.columns)
 
 

@@ -33,6 +33,7 @@ from .core.phs import canonicalise_phs, read_phs_source
 from .core.sources import load_registry, sha256, verify_root
 from .core.spd import build_postcode_index
 from .core.sspl import build_latest_index
+from .core.weighted import gate_against_phs, observe_shares
 
 # Table name -> which output schema describes it and which index it starts from. The history
 # table is built first so that its unchanged fingerprint is confirmed before the main table.
@@ -68,6 +69,11 @@ def prepare(cfg: dict, mode: str, report: Report, *, audit=False):
     report.require()
     for key in phs:
         cross_check(phs[key], gov[key], report)
+    # The computed weighted domain bands are trusted only if the same rule reproduces PHS's
+    # published overall Scotland bands, from the overall rank and the same population, exactly.
+    for ed in registry.govscot_editions:
+        gate_against_phs(phs[ed["key"]], gov[ed["key"]], ed["key"], report)
+        observe_shares(gov[ed["key"]], ed, report)
     # Geography is stored once per vintage, so agreement must be checked.
     first = {}
     for ed in registry.phs_editions:

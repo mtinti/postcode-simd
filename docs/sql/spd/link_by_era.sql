@@ -239,6 +239,18 @@ geography_source AS (
            simd2004_housing_domain_quintile,
            simd2004_housing_domain_decile,
            simd2004_housing_domain_vigintile,
+           simd2004_income_domain_pw_scotland_quintile,
+           simd2004_income_domain_pw_scotland_decile,
+           simd2004_employment_domain_pw_scotland_quintile,
+           simd2004_employment_domain_pw_scotland_decile,
+           simd2004_health_domain_pw_scotland_quintile,
+           simd2004_health_domain_pw_scotland_decile,
+           simd2004_education_domain_pw_scotland_quintile,
+           simd2004_education_domain_pw_scotland_decile,
+           simd2004_access_domain_pw_scotland_quintile,
+           simd2004_access_domain_pw_scotland_decile,
+           simd2004_housing_domain_pw_scotland_quintile,
+           simd2004_housing_domain_pw_scotland_decile,
            simd2006_income_domain_rank,
            simd2006_employment_domain_rank,
            simd2006_health_domain_rank,
@@ -267,6 +279,20 @@ geography_source AS (
            simd2006_housing_domain_quintile,
            simd2006_housing_domain_decile,
            simd2006_housing_domain_vigintile,
+           simd2006_income_domain_pw_scotland_quintile,
+           simd2006_income_domain_pw_scotland_decile,
+           simd2006_employment_domain_pw_scotland_quintile,
+           simd2006_employment_domain_pw_scotland_decile,
+           simd2006_health_domain_pw_scotland_quintile,
+           simd2006_health_domain_pw_scotland_decile,
+           simd2006_education_domain_pw_scotland_quintile,
+           simd2006_education_domain_pw_scotland_decile,
+           simd2006_access_domain_pw_scotland_quintile,
+           simd2006_access_domain_pw_scotland_decile,
+           simd2006_crime_domain_pw_scotland_quintile,
+           simd2006_crime_domain_pw_scotland_decile,
+           simd2006_housing_domain_pw_scotland_quintile,
+           simd2006_housing_domain_pw_scotland_decile,
            simd2009v2_income_domain_rank,
            simd2009v2_employment_domain_rank,
            simd2009v2_health_domain_rank,
@@ -295,6 +321,20 @@ geography_source AS (
            simd2009v2_housing_domain_quintile,
            simd2009v2_housing_domain_decile,
            simd2009v2_housing_domain_vigintile,
+           simd2009v2_income_domain_pw_scotland_quintile,
+           simd2009v2_income_domain_pw_scotland_decile,
+           simd2009v2_employment_domain_pw_scotland_quintile,
+           simd2009v2_employment_domain_pw_scotland_decile,
+           simd2009v2_health_domain_pw_scotland_quintile,
+           simd2009v2_health_domain_pw_scotland_decile,
+           simd2009v2_education_domain_pw_scotland_quintile,
+           simd2009v2_education_domain_pw_scotland_decile,
+           simd2009v2_access_domain_pw_scotland_quintile,
+           simd2009v2_access_domain_pw_scotland_decile,
+           simd2009v2_crime_domain_pw_scotland_quintile,
+           simd2009v2_crime_domain_pw_scotland_decile,
+           simd2009v2_housing_domain_pw_scotland_quintile,
+           simd2009v2_housing_domain_pw_scotland_decile,
            simd2012_income_domain_rank,
            simd2012_employment_domain_rank,
            simd2012_health_domain_rank,
@@ -323,6 +363,20 @@ geography_source AS (
            simd2012_housing_domain_quintile,
            simd2012_housing_domain_decile,
            simd2012_housing_domain_vigintile,
+           simd2012_income_domain_pw_scotland_quintile,
+           simd2012_income_domain_pw_scotland_decile,
+           simd2012_employment_domain_pw_scotland_quintile,
+           simd2012_employment_domain_pw_scotland_decile,
+           simd2012_health_domain_pw_scotland_quintile,
+           simd2012_health_domain_pw_scotland_decile,
+           simd2012_education_domain_pw_scotland_quintile,
+           simd2012_education_domain_pw_scotland_decile,
+           simd2012_access_domain_pw_scotland_quintile,
+           simd2012_access_domain_pw_scotland_decile,
+           simd2012_crime_domain_pw_scotland_quintile,
+           simd2012_crime_domain_pw_scotland_decile,
+           simd2012_housing_domain_pw_scotland_quintile,
+           simd2012_housing_domain_pw_scotland_decile,
            simd2016_income_domain_rank,
            simd2016_employment_domain_rank,
            simd2016_health_domain_rank,
@@ -351,6 +405,20 @@ geography_source AS (
            simd2016_housing_domain_quintile,
            simd2016_housing_domain_decile,
            simd2016_housing_domain_vigintile,
+           simd2016_income_domain_pw_scotland_quintile,
+           simd2016_income_domain_pw_scotland_decile,
+           simd2016_employment_domain_pw_scotland_quintile,
+           simd2016_employment_domain_pw_scotland_decile,
+           simd2016_health_domain_pw_scotland_quintile,
+           simd2016_health_domain_pw_scotland_decile,
+           simd2016_education_domain_pw_scotland_quintile,
+           simd2016_education_domain_pw_scotland_decile,
+           simd2016_access_domain_pw_scotland_quintile,
+           simd2016_access_domain_pw_scotland_decile,
+           simd2016_crime_domain_pw_scotland_quintile,
+           simd2016_crime_domain_pw_scotland_decile,
+           simd2016_housing_domain_pw_scotland_quintile,
+           simd2016_housing_domain_pw_scotland_decile,
            simd2020v2_income_domain_rank,
            simd2020v2_employment_domain_rank,
            simd2020v2_health_domain_rank,
@@ -379,7 +447,21 @@ geography_source AS (
            simd2020v2_housing_domain_quintile,
            simd2020v2_housing_domain_decile,
            simd2020v2_housing_domain_vigintile,
-           simd2020v2_housing_domain_rank_source_status
+           simd2020v2_housing_domain_rank_source_status,
+           simd2020v2_income_domain_pw_scotland_quintile,
+           simd2020v2_income_domain_pw_scotland_decile,
+           simd2020v2_employment_domain_pw_scotland_quintile,
+           simd2020v2_employment_domain_pw_scotland_decile,
+           simd2020v2_health_domain_pw_scotland_quintile,
+           simd2020v2_health_domain_pw_scotland_decile,
+           simd2020v2_education_domain_pw_scotland_quintile,
+           simd2020v2_education_domain_pw_scotland_decile,
+           simd2020v2_access_domain_pw_scotland_quintile,
+           simd2020v2_access_domain_pw_scotland_decile,
+           simd2020v2_crime_domain_pw_scotland_quintile,
+           simd2020v2_crime_domain_pw_scotland_decile,
+           simd2020v2_housing_domain_pw_scotland_quintile,
+           simd2020v2_housing_domain_pw_scotland_decile
     FROM latest
     WHERE spd_user_type = 'small_user'
 ),
@@ -511,6 +593,9 @@ selected AS (
     -- design, and a 2004 result is still matched. gov_housing_domain_rank_source_status is
     -- rank_sources_disagree for the 2020v2 zones where two Government publications give different
     -- housing ranks, null otherwise: transparency about the rank, not a reason to exclude a row.
+    -- computed_pw_*_domain_quintile and _decile are COMPUTED, not published: population-weighted
+    -- Scotland bands of each domain rank, by a midpoint rule validated against PHS's published
+    -- overall bands, equal ranks grouped together. Never mix them with the gov_ bands.
     SELECT m.*,
            CASE m.data_zone_vintage
                WHEN 2001     THEN m.source_dz2001
@@ -867,6 +952,116 @@ selected AS (
            CASE m.simd_edition
                WHEN '2020v2' THEN m.simd2020v2_housing_domain_rank_source_status
            END AS gov_housing_domain_rank_source_status,
+           CASE m.simd_edition
+               WHEN '2004'   THEN m.simd2004_income_domain_pw_scotland_quintile
+               WHEN '2006'   THEN m.simd2006_income_domain_pw_scotland_quintile
+               WHEN '2009v2' THEN m.simd2009v2_income_domain_pw_scotland_quintile
+               WHEN '2012'   THEN m.simd2012_income_domain_pw_scotland_quintile
+               WHEN '2016'   THEN m.simd2016_income_domain_pw_scotland_quintile
+               WHEN '2020v2' THEN m.simd2020v2_income_domain_pw_scotland_quintile
+           END AS computed_pw_income_domain_quintile,
+           CASE m.simd_edition
+               WHEN '2004'   THEN m.simd2004_income_domain_pw_scotland_decile
+               WHEN '2006'   THEN m.simd2006_income_domain_pw_scotland_decile
+               WHEN '2009v2' THEN m.simd2009v2_income_domain_pw_scotland_decile
+               WHEN '2012'   THEN m.simd2012_income_domain_pw_scotland_decile
+               WHEN '2016'   THEN m.simd2016_income_domain_pw_scotland_decile
+               WHEN '2020v2' THEN m.simd2020v2_income_domain_pw_scotland_decile
+           END AS computed_pw_income_domain_decile,
+           CASE m.simd_edition
+               WHEN '2004'   THEN m.simd2004_employment_domain_pw_scotland_quintile
+               WHEN '2006'   THEN m.simd2006_employment_domain_pw_scotland_quintile
+               WHEN '2009v2' THEN m.simd2009v2_employment_domain_pw_scotland_quintile
+               WHEN '2012'   THEN m.simd2012_employment_domain_pw_scotland_quintile
+               WHEN '2016'   THEN m.simd2016_employment_domain_pw_scotland_quintile
+               WHEN '2020v2' THEN m.simd2020v2_employment_domain_pw_scotland_quintile
+           END AS computed_pw_employment_domain_quintile,
+           CASE m.simd_edition
+               WHEN '2004'   THEN m.simd2004_employment_domain_pw_scotland_decile
+               WHEN '2006'   THEN m.simd2006_employment_domain_pw_scotland_decile
+               WHEN '2009v2' THEN m.simd2009v2_employment_domain_pw_scotland_decile
+               WHEN '2012'   THEN m.simd2012_employment_domain_pw_scotland_decile
+               WHEN '2016'   THEN m.simd2016_employment_domain_pw_scotland_decile
+               WHEN '2020v2' THEN m.simd2020v2_employment_domain_pw_scotland_decile
+           END AS computed_pw_employment_domain_decile,
+           CASE m.simd_edition
+               WHEN '2004'   THEN m.simd2004_health_domain_pw_scotland_quintile
+               WHEN '2006'   THEN m.simd2006_health_domain_pw_scotland_quintile
+               WHEN '2009v2' THEN m.simd2009v2_health_domain_pw_scotland_quintile
+               WHEN '2012'   THEN m.simd2012_health_domain_pw_scotland_quintile
+               WHEN '2016'   THEN m.simd2016_health_domain_pw_scotland_quintile
+               WHEN '2020v2' THEN m.simd2020v2_health_domain_pw_scotland_quintile
+           END AS computed_pw_health_domain_quintile,
+           CASE m.simd_edition
+               WHEN '2004'   THEN m.simd2004_health_domain_pw_scotland_decile
+               WHEN '2006'   THEN m.simd2006_health_domain_pw_scotland_decile
+               WHEN '2009v2' THEN m.simd2009v2_health_domain_pw_scotland_decile
+               WHEN '2012'   THEN m.simd2012_health_domain_pw_scotland_decile
+               WHEN '2016'   THEN m.simd2016_health_domain_pw_scotland_decile
+               WHEN '2020v2' THEN m.simd2020v2_health_domain_pw_scotland_decile
+           END AS computed_pw_health_domain_decile,
+           CASE m.simd_edition
+               WHEN '2004'   THEN m.simd2004_education_domain_pw_scotland_quintile
+               WHEN '2006'   THEN m.simd2006_education_domain_pw_scotland_quintile
+               WHEN '2009v2' THEN m.simd2009v2_education_domain_pw_scotland_quintile
+               WHEN '2012'   THEN m.simd2012_education_domain_pw_scotland_quintile
+               WHEN '2016'   THEN m.simd2016_education_domain_pw_scotland_quintile
+               WHEN '2020v2' THEN m.simd2020v2_education_domain_pw_scotland_quintile
+           END AS computed_pw_education_domain_quintile,
+           CASE m.simd_edition
+               WHEN '2004'   THEN m.simd2004_education_domain_pw_scotland_decile
+               WHEN '2006'   THEN m.simd2006_education_domain_pw_scotland_decile
+               WHEN '2009v2' THEN m.simd2009v2_education_domain_pw_scotland_decile
+               WHEN '2012'   THEN m.simd2012_education_domain_pw_scotland_decile
+               WHEN '2016'   THEN m.simd2016_education_domain_pw_scotland_decile
+               WHEN '2020v2' THEN m.simd2020v2_education_domain_pw_scotland_decile
+           END AS computed_pw_education_domain_decile,
+           CASE m.simd_edition
+               WHEN '2004'   THEN m.simd2004_access_domain_pw_scotland_quintile
+               WHEN '2006'   THEN m.simd2006_access_domain_pw_scotland_quintile
+               WHEN '2009v2' THEN m.simd2009v2_access_domain_pw_scotland_quintile
+               WHEN '2012'   THEN m.simd2012_access_domain_pw_scotland_quintile
+               WHEN '2016'   THEN m.simd2016_access_domain_pw_scotland_quintile
+               WHEN '2020v2' THEN m.simd2020v2_access_domain_pw_scotland_quintile
+           END AS computed_pw_access_domain_quintile,
+           CASE m.simd_edition
+               WHEN '2004'   THEN m.simd2004_access_domain_pw_scotland_decile
+               WHEN '2006'   THEN m.simd2006_access_domain_pw_scotland_decile
+               WHEN '2009v2' THEN m.simd2009v2_access_domain_pw_scotland_decile
+               WHEN '2012'   THEN m.simd2012_access_domain_pw_scotland_decile
+               WHEN '2016'   THEN m.simd2016_access_domain_pw_scotland_decile
+               WHEN '2020v2' THEN m.simd2020v2_access_domain_pw_scotland_decile
+           END AS computed_pw_access_domain_decile,
+           CASE m.simd_edition
+               WHEN '2006'   THEN m.simd2006_crime_domain_pw_scotland_quintile
+               WHEN '2009v2' THEN m.simd2009v2_crime_domain_pw_scotland_quintile
+               WHEN '2012'   THEN m.simd2012_crime_domain_pw_scotland_quintile
+               WHEN '2016'   THEN m.simd2016_crime_domain_pw_scotland_quintile
+               WHEN '2020v2' THEN m.simd2020v2_crime_domain_pw_scotland_quintile
+           END AS computed_pw_crime_domain_quintile,
+           CASE m.simd_edition
+               WHEN '2006'   THEN m.simd2006_crime_domain_pw_scotland_decile
+               WHEN '2009v2' THEN m.simd2009v2_crime_domain_pw_scotland_decile
+               WHEN '2012'   THEN m.simd2012_crime_domain_pw_scotland_decile
+               WHEN '2016'   THEN m.simd2016_crime_domain_pw_scotland_decile
+               WHEN '2020v2' THEN m.simd2020v2_crime_domain_pw_scotland_decile
+           END AS computed_pw_crime_domain_decile,
+           CASE m.simd_edition
+               WHEN '2004'   THEN m.simd2004_housing_domain_pw_scotland_quintile
+               WHEN '2006'   THEN m.simd2006_housing_domain_pw_scotland_quintile
+               WHEN '2009v2' THEN m.simd2009v2_housing_domain_pw_scotland_quintile
+               WHEN '2012'   THEN m.simd2012_housing_domain_pw_scotland_quintile
+               WHEN '2016'   THEN m.simd2016_housing_domain_pw_scotland_quintile
+               WHEN '2020v2' THEN m.simd2020v2_housing_domain_pw_scotland_quintile
+           END AS computed_pw_housing_domain_quintile,
+           CASE m.simd_edition
+               WHEN '2004'   THEN m.simd2004_housing_domain_pw_scotland_decile
+               WHEN '2006'   THEN m.simd2006_housing_domain_pw_scotland_decile
+               WHEN '2009v2' THEN m.simd2009v2_housing_domain_pw_scotland_decile
+               WHEN '2012'   THEN m.simd2012_housing_domain_pw_scotland_decile
+               WHEN '2016'   THEN m.simd2016_housing_domain_pw_scotland_decile
+               WHEN '2020v2' THEN m.simd2020v2_housing_domain_pw_scotland_decile
+           END AS computed_pw_housing_domain_decile,
            CASE m.rurality_version
                WHEN '2003-2004' THEN m.urbanrural2003_2004_6fold
                WHEN '2005-2006' THEN m.urbanrural2005_2006_6fold
@@ -932,7 +1127,7 @@ SELECT
        CASE
            WHEN s.edition_status <> 'ok' THEN s.edition_status
            WHEN s.postcode_status NOT IN ('matched', 'a_part', 'linked_small_user') THEN s.postcode_status
-           WHEN s.simd_rank IS NULL OR s.phs_pw_scotland_quintile IS NULL OR s.phs_pw_scotland_decile IS NULL OR s.phs_pw_hb_quintile IS NULL OR s.phs_pw_hb_decile IS NULL OR s.phs_pw_hscp_quintile IS NULL OR s.phs_pw_hscp_decile IS NULL OR s.phs_pw_ca_quintile IS NULL OR s.phs_pw_ca_decile IS NULL OR s.phs_pw_most15pc IS NULL OR s.phs_pw_least15pc IS NULL OR s.gov_uw_scotland_quintile IS NULL OR s.gov_uw_scotland_decile IS NULL OR s.gov_uw_scotland_vigintile IS NULL OR s.gov_income_domain_rank IS NULL OR s.gov_employment_domain_rank IS NULL OR s.gov_health_domain_rank IS NULL OR s.gov_education_domain_rank IS NULL OR s.gov_access_domain_rank IS NULL OR (s.gov_crime_domain_rank IS NULL AND s.simd_edition <> '2004') OR s.gov_housing_domain_rank IS NULL OR s.gov_income_domain_quintile IS NULL OR s.gov_income_domain_decile IS NULL OR s.gov_income_domain_vigintile IS NULL OR s.gov_employment_domain_quintile IS NULL OR s.gov_employment_domain_decile IS NULL OR s.gov_employment_domain_vigintile IS NULL OR s.gov_health_domain_quintile IS NULL OR s.gov_health_domain_decile IS NULL OR s.gov_health_domain_vigintile IS NULL OR s.gov_education_domain_quintile IS NULL OR s.gov_education_domain_decile IS NULL OR s.gov_education_domain_vigintile IS NULL OR s.gov_access_domain_quintile IS NULL OR s.gov_access_domain_decile IS NULL OR s.gov_access_domain_vigintile IS NULL OR (s.gov_crime_domain_quintile IS NULL AND s.simd_edition <> '2004') OR (s.gov_crime_domain_decile IS NULL AND s.simd_edition <> '2004') OR (s.gov_crime_domain_vigintile IS NULL AND s.simd_edition <> '2004') OR s.gov_housing_domain_quintile IS NULL OR s.gov_housing_domain_decile IS NULL OR s.gov_housing_domain_vigintile IS NULL OR s.data_zone_code IS NULL OR s.phs_hb_code IS NULL OR s.phs_hscp_code IS NULL OR s.phs_ca_code IS NULL THEN 'missing_simd'
+           WHEN s.simd_rank IS NULL OR s.phs_pw_scotland_quintile IS NULL OR s.phs_pw_scotland_decile IS NULL OR s.phs_pw_hb_quintile IS NULL OR s.phs_pw_hb_decile IS NULL OR s.phs_pw_hscp_quintile IS NULL OR s.phs_pw_hscp_decile IS NULL OR s.phs_pw_ca_quintile IS NULL OR s.phs_pw_ca_decile IS NULL OR s.phs_pw_most15pc IS NULL OR s.phs_pw_least15pc IS NULL OR s.gov_uw_scotland_quintile IS NULL OR s.gov_uw_scotland_decile IS NULL OR s.gov_uw_scotland_vigintile IS NULL OR s.gov_income_domain_rank IS NULL OR s.gov_employment_domain_rank IS NULL OR s.gov_health_domain_rank IS NULL OR s.gov_education_domain_rank IS NULL OR s.gov_access_domain_rank IS NULL OR (s.gov_crime_domain_rank IS NULL AND s.simd_edition <> '2004') OR s.gov_housing_domain_rank IS NULL OR s.gov_income_domain_quintile IS NULL OR s.gov_income_domain_decile IS NULL OR s.gov_income_domain_vigintile IS NULL OR s.gov_employment_domain_quintile IS NULL OR s.gov_employment_domain_decile IS NULL OR s.gov_employment_domain_vigintile IS NULL OR s.gov_health_domain_quintile IS NULL OR s.gov_health_domain_decile IS NULL OR s.gov_health_domain_vigintile IS NULL OR s.gov_education_domain_quintile IS NULL OR s.gov_education_domain_decile IS NULL OR s.gov_education_domain_vigintile IS NULL OR s.gov_access_domain_quintile IS NULL OR s.gov_access_domain_decile IS NULL OR s.gov_access_domain_vigintile IS NULL OR (s.gov_crime_domain_quintile IS NULL AND s.simd_edition <> '2004') OR (s.gov_crime_domain_decile IS NULL AND s.simd_edition <> '2004') OR (s.gov_crime_domain_vigintile IS NULL AND s.simd_edition <> '2004') OR s.gov_housing_domain_quintile IS NULL OR s.gov_housing_domain_decile IS NULL OR s.gov_housing_domain_vigintile IS NULL OR s.computed_pw_income_domain_quintile IS NULL OR s.computed_pw_income_domain_decile IS NULL OR s.computed_pw_employment_domain_quintile IS NULL OR s.computed_pw_employment_domain_decile IS NULL OR s.computed_pw_health_domain_quintile IS NULL OR s.computed_pw_health_domain_decile IS NULL OR s.computed_pw_education_domain_quintile IS NULL OR s.computed_pw_education_domain_decile IS NULL OR s.computed_pw_access_domain_quintile IS NULL OR s.computed_pw_access_domain_decile IS NULL OR (s.computed_pw_crime_domain_quintile IS NULL AND s.simd_edition <> '2004') OR (s.computed_pw_crime_domain_decile IS NULL AND s.simd_edition <> '2004') OR s.computed_pw_housing_domain_quintile IS NULL OR s.computed_pw_housing_domain_decile IS NULL OR s.data_zone_code IS NULL OR s.phs_hb_code IS NULL OR s.phs_hscp_code IS NULL OR s.phs_ca_code IS NULL THEN 'missing_simd'
            ELSE 'matched'
        END AS simd_status,
        'spd' AS index_source, s.index_release, 'postcode_grid_reference' AS allocation,
@@ -985,6 +1180,20 @@ SELECT
        s.gov_housing_domain_decile,
        s.gov_housing_domain_vigintile,
        s.gov_housing_domain_rank_source_status,
+       s.computed_pw_income_domain_quintile,
+       s.computed_pw_income_domain_decile,
+       s.computed_pw_employment_domain_quintile,
+       s.computed_pw_employment_domain_decile,
+       s.computed_pw_health_domain_quintile,
+       s.computed_pw_health_domain_decile,
+       s.computed_pw_education_domain_quintile,
+       s.computed_pw_education_domain_decile,
+       s.computed_pw_access_domain_quintile,
+       s.computed_pw_access_domain_decile,
+       s.computed_pw_crime_domain_quintile,
+       s.computed_pw_crime_domain_decile,
+       s.computed_pw_housing_domain_quintile,
+       s.computed_pw_housing_domain_decile,
        s.band_direction,
        -- Rurality: the matched record's own Urban Rural Classification, in the version step 3b
        -- chose. rurality_status says whether the two codes can be used and, when they are

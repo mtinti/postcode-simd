@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "simd-ingest"
-version = "5.0.0"
+version = "6.0.0"
 description = "Postcode-SIMD tables from the Scottish Statistics Postcode Lookup and Scottish Postcode Directory, built from hash-pinned sources with recorded lineage."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -35,3 +35,8 @@ include = ["simd_ingest*"]
 
 [tool.setuptools.package-data]
 simd_ingest = ["*.yaml", "*.csv"]
+
+[tool.pytest.ini_options]
+# Only the project's own tests: other folders in the checkout (a reviewer's suite, scratch work)
+# must not be collected, or a bare `pytest` runs, and rewrites, someone else's files.
+testpaths = ["tests"]

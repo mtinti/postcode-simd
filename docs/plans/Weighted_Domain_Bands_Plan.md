@@ -1,8 +1,8 @@
 # Plan: population-weighted SIMD domain bands
 
 Drafted 30 September 2026, revised the same day after review (complete-zone tests, the leading
-zero-population case, attribution). Status: decided 1 October 2026, being implemented for
-release 6.0.0.
+zero-population case, attribution). Status: implemented for release 6.0.0
+(decision computed-weighted-domain-bands).
 
 ## Aim
 

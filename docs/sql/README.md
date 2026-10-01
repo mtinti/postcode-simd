@@ -31,10 +31,11 @@ project choice. The five files are generated from the schemas by
 `python -m simd_ingest.sql_examples`, so a new SIMD edition or a changed header regenerates
 them; a test fails if a committed file drifts from the generator.
 
-All five queries share the first **70 columns**, through `band_direction`, including the seven
+All five queries share the first **84 columns**, through `band_direction`, including the seven
 Scottish Government domain ranks, their published quintiles, deciles and vigintiles, and the 2020v2
-housing source status. They then append different own-record context: **118 columns**
-in SSPL, **137** in SPD era/latest, **140** in
+housing source status, and the computed population-weighted quintile and decile of each domain
+(`computed_pw_*`). They then append different own-record context: **132 columns**
+in SSPL, **151** in SPD era/latest, **154** in
 SPD as-of. To combine products, select the shared columns by name; do not use `SELECT *` or
 a positional union of the full results. The columns and statuses are described in
 [LINKAGE_BY_ERA.md](../LINKAGE_BY_ERA.md).

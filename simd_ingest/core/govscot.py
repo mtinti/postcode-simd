@@ -13,6 +13,7 @@ import pandas as pd
 from dbfread import DBF
 
 from .checks import Report
+from .weighted import add_weighted_domain_bands, weighted_domain_fields
 from .sources import (DOMAIN_BANDS, DOMAINS, RANK_SOURCES_DISAGREE, Registry, banded_domains, declared_domains,
                       domain_band_fields, status_domains)
 
@@ -73,7 +74,9 @@ def read_gov_edition(ed: dict, root: Path, report: Report) -> pd.DataFrame:
     if ed.get("bands"):
         report.require()
         out = read_published_bands(ed, root, report, out)
-    return out
+    # Computed, not published: the population-weighted bands of each domain rank, cut here from
+    # every zone of the edition once (core/weighted.py). The build checks the rule against PHS.
+    return add_weighted_domain_bands(out, ed)
 
 
 # The published datasets name the domains in words; the registry's vocabulary is fixed.
@@ -173,5 +176,6 @@ def build_govscot_bands(registry: Registry, root: Path, report: Report) -> pd.Da
     # The fixed columns, then every domain rank any edition published. An edition without a
     # domain has no value for it here; nothing reads it, because every reader asks the registry.
     domains = [f"{d}_domain_rank" for d in DOMAINS if any(d in declared_domains(ed) for ed in registry.govscot_editions)]
-    extra = list(dict.fromkeys(f for ed in registry.govscot_editions for f in domain_band_fields(ed)))
+    extra = list(dict.fromkeys(f for ed in registry.govscot_editions
+                               for f in domain_band_fields(ed) + weighted_domain_fields(ed) if f != "population"))
     return pd.concat(frames, ignore_index=True)[COLUMNS + domains + extra]

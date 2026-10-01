@@ -13,6 +13,7 @@ import pandas as pd
 from .checks import Report
 from .phs import BANDS, FLAGS
 from .sources import RANK_SOURCES_DISAGREE, Registry, declared_domains, domain_band_fields
+from .weighted import weighted_domain_fields
 
 PHS_FIELDS = ["rank", *BANDS.values(), *FLAGS.values()]
 GOV_FIELDS = ["uw_scotland_quintile", "uw_scotland_decile", "uw_scotland_vigintile"]
@@ -22,9 +23,11 @@ WIDTH = {"decile": 10, "quintile": 5, "vigintile": 20}
 
 def gov_fields(ed: dict) -> list:
     """The government fields one edition supplies: the three bands, the domain ranks that
-    edition published, their published bands, then any source-status field. 2004 has no crime
-    domain, so it has no crime field."""
-    return GOV_FIELDS + [f"{d}_domain_rank" for d in declared_domains(ed)] + domain_band_fields(ed)
+    edition published, their published bands, then any source-status field, then the computed
+    population-weighted bands and the population they were weighted by. 2004 has no crime domain,
+    so it has no crime field."""
+    return (GOV_FIELDS + [f"{d}_domain_rank" for d in declared_domains(ed)] + domain_band_fields(ed)
+            + weighted_domain_fields(ed))
 
 
 def is_domain_rank(column: str) -> bool:

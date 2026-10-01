@@ -89,7 +89,7 @@ def column(edition: str, measure: str) -> str:
     return f"simd{edition}_{measure}"
 
 
-_DOMAIN_MEASURE = re.compile(r"(?P<domain>[a-z]+)_domain_(?P<kind>rank|quintile|decile|vigintile)")
+_DOMAIN_MEASURE = re.compile(r"(?P<domain>[a-z]+)_domain_(?P<kind>rank|quintile|decile|vigintile|pw_scotland_quintile|pw_scotland_decile)")
 
 
 def _value_dtype(measure: str) -> str:
@@ -142,7 +142,9 @@ def _with_measure(table: pd.DataFrame, edition: str, measure: str) -> tuple:
     col = column(edition, measure)
     domain, kind = _domain_of(measure)
     published = _published_domains().get(edition)
-    if domain and published and domain not in published["rank" if kind == "rank" else "band"]:
+    # A computed weighted band exists wherever the rank does; a published band where it was published.
+    needs = "band" if kind in ("quintile", "decile", "vigintile") else "rank"
+    if domain and published and domain not in published[needs]:
         empty = pd.Series(float("nan"), index=table.index, dtype="float64" if kind == "rank" else "Int64")
         return table.assign(**{col: empty}), False
     status = _status_column(edition, measure)
@@ -164,6 +166,11 @@ def _measure_label(col: str) -> str:
     if domain:
         return (f"SIMD {domain['ed']} {domain['domain']} domain rank, Scottish Government unweighted, 1 = most deprived, "
                 "copied exactly as published (may end in .5)")
+    computed = re.fullmatch(r"simd(?P<ed>[0-9v]+)_(?P<domain>[a-z]+)_domain_pw_scotland_(?P<band>quintile|decile)", col)
+    if computed:
+        return (f"SIMD {computed['ed']} {computed['domain']} domain, Scotland {computed['band']}, 1 = most deprived: "
+                "computed population-weighted band, using a midpoint rule validated against PHS's published overall "
+                "bands; equal ranks grouped together; not published by PHS or the Government")
     band = re.fullmatch(r"simd(?P<ed>[0-9v]+)_(?P<domain>[a-z]+)_domain_(?P<band>quintile|decile|vigintile)", col)
     if band:
         return (f"SIMD {band['ed']} {band['domain']} domain {band['band']}, Scottish Government unweighted, 1 = most deprived, "

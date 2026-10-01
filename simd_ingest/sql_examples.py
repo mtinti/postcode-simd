@@ -23,6 +23,7 @@ from pathlib import Path
 import yaml
 
 from .core.sources import DOMAIN_BANDS, DOMAINS, declared_domains, domain_band_fields, load_registry
+from .core.weighted import WEIGHTED_BANDS, weighted_domain_fields
 from .core.text_output import load_contract
 from .lookup import GUIDANCE_TABLE_4
 
@@ -48,6 +49,9 @@ DOMAIN_MEASURES = [(f"gov_{d}_domain_rank", f"{d}_domain_rank") for d in DOMAINS
 # Then the Government's published bands of each domain rank, by the same rule, and last any
 # source-status field: null for most zones by design, so it is never a missing value.
 DOMAIN_BAND_MEASURES = [(f"gov_{d}_domain_{b}", f"{d}_domain_{b}") for d in DOMAINS for b in DOMAIN_BANDS]
+# Then the computed population-weighted bands of each domain rank: not published by anyone, so
+# the prefix says computed, beside phs_ and gov_ for the published measures.
+COMPUTED_MEASURES = [(f"computed_pw_{d}_domain_{b}", f"{d}_domain_pw_scotland_{b}") for d in DOMAINS for b in WEIGHTED_BANDS]
 GEOGRAPHY = ["hb", "hscp", "ca"]
 SHARED_BEGIN = "-- BEGIN shared: from here to END shared the text is identical in link_by_era.sql and link_latest.sql of this set."
 SHARED_END = "-- END shared"
@@ -85,7 +89,7 @@ def _published() -> dict:
     for ed in load_registry(PACKAGE / "sources.yaml").govscot_editions:
         for d in declared_domains(ed):
             out.setdefault(f"{d}_domain_rank", []).append(ed["key"])
-        for field in domain_band_fields(ed):
+        for field in domain_band_fields(ed) + [f for f in weighted_domain_fields(ed) if f != "population"]:
             out.setdefault(field, []).append(ed["key"])
     return {k: tuple(v) for k, v in out.items()}
 
@@ -96,8 +100,9 @@ def _status_measures() -> list:
 
 
 def _optional_measures() -> list:
-    """Every measure only some editions publish, in output order: ranks, bands, statuses."""
-    return DOMAIN_MEASURES + DOMAIN_BAND_MEASURES + _status_measures()
+    """Every measure only some editions publish, in output order: ranks, published bands,
+    statuses, computed bands."""
+    return DOMAIN_MEASURES + DOMAIN_BAND_MEASURES + _status_measures() + COMPUTED_MEASURES
 
 
 def _stored(editions: list) -> list:
@@ -652,7 +657,7 @@ def _values_and_report(name: str, p: dict, editions: list, raw: list, variant: s
     def domain_null(out, suffix):
         unpublished = [f"s.simd_edition <> '{ed}'" for ed, _ in editions if ed not in _published().get(suffix, ())]
         return f"({' AND '.join([f's.{out} IS NULL'] + unpublished)})" if unpublished else f"s.{out} IS NULL"
-    domain_nulls = [domain_null(out, suffix) for out, suffix in DOMAIN_MEASURES + DOMAIN_BAND_MEASURES]
+    domain_nulls = [domain_null(out, suffix) for out, suffix in DOMAIN_MEASURES + DOMAIN_BAND_MEASURES + COMPUTED_MEASURES]
     nulls = " OR ".join([f"s.{out} IS NULL" for out, _ in MEASURES] + domain_nulls + ["s.data_zone_code IS NULL"]
                         + [f"s.phs_{g}_code IS NULL" for g in GEOGRAPHY])
     if name == "spd" and variant == "asof":
@@ -728,6 +733,9 @@ def _values_and_report(name: str, p: dict, editions: list, raw: list, variant: s
     -- design, and a 2004 result is still matched. gov_housing_domain_rank_source_status is
     -- rank_sources_disagree for the 2020v2 zones where two Government publications give different
     -- housing ranks, null otherwise: transparency about the rank, not a reason to exclude a row.
+    -- computed_pw_*_domain_quintile and _decile are COMPUTED, not published: population-weighted
+    -- Scotland bands of each domain rank, by a midpoint rule validated against PHS's published
+    -- overall bands, equal ranks grouped together. Never mix them with the gov_ bands.
     SELECT m.*,
 {measures},
            '1 = most deprived' AS band_direction

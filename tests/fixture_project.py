@@ -104,7 +104,10 @@ def project(tmp: Path, release="test-1", extra_edition=False) -> Path:
         data[prefix + "Rank"] = [1, 2]
         for src, canon in BANDS.items():
             width = 10 if canon.endswith("decile") else 5
-            data[prefix + src] = [width, 1] if ed["invert_bands"] else [1, width]
+            # The Scotland bands are what the population-midpoint rule gives two zones of 10 and
+            # 190 people, as PHS's would be: the build checks the rule against them.
+            bands = ({"pw_scotland_quintile": [1, 3], "pw_scotland_decile": [1, 6]}.get(canon) or [1, width])
+            data[prefix + src] = [width + 1 - b for b in bands] if ed["invert_bands"] else bands
         data[prefix + "Most15pc"] = [1, 0]
         data[prefix + "Least15pc"] = [0, 1]
         pd.DataFrame(data)[ed["geography_columns"] + [prefix + s for s in ["Rank", *BANDS, *FLAGS]]].to_csv(sources / ed["file"], index=False)
@@ -117,7 +120,7 @@ def project(tmp: Path, release="test-1", extra_edition=False) -> Path:
         domains = list((ed.get("domains") or {}).keys())
         ed["domains"] = {d: f"dom{d[:5]}" for d in domains}
         rows = [dict(datazone=f"D{ed['dz_vintage']}{letter}", rank=i, quintile=1 if i == 1 else 5,
-                     decile=1 if i == 1 else 10, vigintile=1 if i == 1 else 20, population=100,
+                     decile=1 if i == 1 else 10, vigintile=1 if i == 1 else 20, population=10 if i == 1 else 190,
                      **{f"dom{d[:5]}": (1.5 if d == "income" else float(i)) for d in domains})
                 for i, letter in enumerate("AB", 1)]
         (sources / ed["file"]).write_bytes(dbf_bytes(rows))
