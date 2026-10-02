@@ -2,6 +2,8 @@
 # statistics.gov.scot dataset differs from its shapefile (SG_SIMD_2020, houserank), which
 # agrees with the SIMD 2020v2 ranks workbook. Generated 30 September 2026 from the pinned
 # files; the build requires the differing zones to be exactly these, with exactly these ranks.
+# The SIMD team confirmed on 2 October 2026 that the ranks workbook, the shapefile_rank here, is
+# the definitive version.
 data_zone,shapefile_rank,published_rank
 S01006513,6394.0,6393.0
 S01006515,6174.5,6175.0
