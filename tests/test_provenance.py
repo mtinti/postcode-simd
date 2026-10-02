@@ -238,3 +238,46 @@ def test_sources_are_mapped_per_pinned_file_and_columns_can_be_filtered(tmp_path
     assert (tmp_path / "columns" / "edition-2020v2.md").is_file() and (tmp_path / "columns" / "category-computed.md").is_file()
     decile = (tmp_path / "sources" / "statistics.gov.scot-simd_2020.csv.md").read_text()
     assert "simd2020v2_housing_domain_decile" in decile
+
+
+def test_glossary_text_is_labelled_wherever_it_appears(tmp_path):
+    """Every line quoting the SIMD 2020v2 glossary says so, and says when it is unreviewed."""
+    write(tmp_path)
+    glossary = yaml.safe_load((PACKAGE / "simd_glossary.yaml").read_text())
+    unreviewed = {e["label"] for e in glossary.values() if not e.get("reviewed")}
+    for page in (tmp_path / "columns").glob("*.md"):
+        for line in page.read_text().splitlines():
+            labels = [l for l in unreviewed if f"(`{l}`," in line or f"`{l.lower()}`: " in line]
+            if labels:
+                assert "not yet reviewed" in line, (page.name, line[:120])
+
+
+def test_rurality_attributes_come_from_the_dbf_and_geometry_from_the_shp(L, tmp_path):
+    from simd_ingest.core.sources import load_registry
+    version = next(v for v in load_registry(PACKAGE / "sources.yaml").rurality_versions if v["key"] == "2016")
+    stem = version["file"].removesuffix(".shp")
+    six = {i["path"]: i["field"] for i in L[("history", "urbanrural2016_6fold")]["inputs"]}
+    assert six[stem + ".dbf"] == version["columns"]["sixfold"]
+    assert six[version["file"]] == "polygon geometry" and stem + ".shx" in six and stem + ".prj" in six
+    status = {i["path"] for i in L[("history", "urbanrural2016_status")]["inputs"]}
+    assert stem + ".dbf" not in status and version["file"] in status
+    write(tmp_path)
+    dbf_page = (tmp_path / "sources" / f"{re.sub(r'[^A-Za-z0-9_.-]+', '-', stem + '.dbf').strip('-')}.md").read_text()
+    assert "urbanrural2016_6fold" in dbf_page and "urbanrural2016_8fold" in dbf_page
+
+
+def test_regeneration_removes_pages_no_longer_written(tmp_path):
+    write(tmp_path)
+    stale = [tmp_path / "sources" / "retired_object.md", tmp_path / "columns" / "a_dropped_column.md"]
+    for page in stale:
+        page.write_text("# gone")
+    write(tmp_path)
+    assert not any(page.exists() for page in stale)
+    assert (tmp_path / "columns" / "simd2020v2_rank.md").is_file()
+
+
+def test_the_docs_extra_declares_what_the_extractor_reads():
+    """python-docx for the NRS dictionaries, openpyxl for the glossary's .xlsx."""
+    import tomllib
+    docs = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["optional-dependencies"]["docs"]
+    assert {d.split("==")[0] for d in docs} >= {"mkdocs", "mkdocs-material", "python-docx", "openpyxl"}

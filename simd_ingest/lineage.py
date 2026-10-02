@@ -273,7 +273,15 @@ def _rurality(table: str, column: str) -> dict:
                    "condition": "with LinkedSmallUserPostcode, identifies a PO box", "join": None},
                   _pinned(files["large_user"], "LinkedSmallUserPostcode",
                           "NO LINKP marks a PO box, whose grid reference is the sorting office: its codes are cleared and its status is po_box")]
-        shape = _pinned(v["file"], v["columns"]["sixfold" if column == six else "eightfold"] if column != status else "geometry")
+        stem = v["file"].removesuffix(".shp")
+        # A shapefile is several files: the polygons and their index and projection place the
+        # point; the class codes are attributes in the .dbf, read for the polygon found.
+        geometry = [_pinned(v["file"], "polygon geometry", "the polygon containing the point"),
+                    _pinned(stem + ".shx", "geometry index", "locates each polygon in the .shp"),
+                    _pinned(stem + ".prj", "coordinate reference system", "British National Grid, the grid reference's system")]
+        attribute = ([] if column == status else
+                     [_pinned(stem + ".dbf", v["columns"]["sixfold" if column == six else "eightfold"], "the class of the polygon found")])
+        shape = geometry + attribute
         early = v["reference_year"] < 2011
         checks = [f"rurality.{v['key']}.{c}" for c in ("columns_present", "polygons", "reference_system", "folds_nest")]
         checks += ["rurality.points_present", f"readback.{table}.rurality_values"]
@@ -288,7 +296,7 @@ def _rurality(table: str, column: str) -> dict:
                     "PO box (a large user whose LinkedSmallUserPostcode is NO LINKP). "
                     + ("Compared directly with the codes NRS publishes for this version." if v["key"] == registry.rurality_published["version"]
                        else "Shares the placement algorithm and its gate; there is no direct comparison with NRS codes for this version."))
-        return _record(table, column, "rurality", point + [shape], "placed", rule,
+        return _record(table, column, "rurality", point + shape, "placed", rule,
                        "simd_ingest/core/rurality.py: classify, place, attach_rurality, is_po_box",
                        checks, decisions)
     raise KeyError(column)

@@ -154,9 +154,26 @@ def _general(r: dict) -> dict:
 
 
 def write(out: Path) -> dict:
+    """Write every page, then remove any page in `out` this run did not write, by name: a page
+    for a column, file or decision that no longer exists must not stay searchable."""
     out = Path(out)
     for sub in ("columns", "sources", "decisions"):
         (out / sub).mkdir(parents=True, exist_ok=True)
+    before = {p for p in out.rglob("*.md")}
+    counts = _write_pages(out)
+    written = {out / p for p in counts.pop("_written")}
+    for stale in sorted(before - written):
+        stale.unlink()
+    return counts
+
+
+def _write_pages(out: Path) -> dict:
+    written = []
+
+    def emit(path: Path, text: str) -> None:
+        path.write_text(text)
+        written.append(path.relative_to(out))
+
     version = _version()
     registry = load_registry(PACKAGE / "sources.yaml")
     schemas = {t: {f["name"]: f for f in yaml.safe_load((PACKAGE / f_).read_text())["fields"]} for t, f_ in TABLES.items()}
@@ -199,7 +216,8 @@ def write(out: Path) -> dict:
         if domain and indicators.get(domain.group(1)):
             lines += [f"**What the {domain.group(1)} domain measures** (indicators in the Scottish Government's SIMD 2020v2 "
                       "glossary; earlier editions' indicators differ in detail):", ""]
-            lines += [f"- {e['description']} (`{e['label']}`, {e['type'].lower()})" for e in indicators[domain.group(1)]] + [""]
+            lines += [f"- {e['description']} (`{e['label']}`, {e['type'].lower()}"
+                      f"{'' if e.get('reviewed') else '; not yet reviewed'})" for e in indicators[domain.group(1)]] + [""]
         lines += ["| Table | Type | Nullable | Category | In the CSV export | SQL Server type |", "| --- | --- | --- | --- | --- | --- |"]
         for t in in_tables:
             f = schemas[t][name]
@@ -215,7 +233,7 @@ def write(out: Path) -> dict:
             for t in in_tables:
                 lines += [f"## Provenance in the {TABLE_TITLE[t]}", ""]
                 _lineage_block(records[t], lines, glossary)
-        (out / "columns" / f"{name}.md").write_text("\n".join(lines))
+        emit(out / "columns" / f"{name}.md", "\n".join(lines))
 
     # Column index, grouped by category, in schema order.
     lines = ["# Columns", "", f"{len(names)} column names: {len(order['history'])} in the history table, "
@@ -230,18 +248,18 @@ def write(out: Path) -> dict:
     editions = [e["key"] for e in registry.govscot_editions]
     lines += ["## Filter", "", "- By SIMD edition: " + ", ".join(f"[{e}](edition-{e}.md)" for e in editions),
               "- By category: " + ", ".join(f"[{t}](category-{c}.md)" for c, t in CATEGORY.items()), ""]
-    (out / "columns" / "index.md").write_text("\n".join(lines))
+    emit(out / "columns" / "index.md", "\n".join(lines))
     for e in editions:
         members = [n for n in names if n.startswith(f"simd{e}_")]
         page = [f"# SIMD {e} columns", "", f"{len(members)} columns.", "", "| Column | Category | History | Main |", "| --- | --- | --- | --- |"]
         page += [f"| [`{n}`]({n}.md) | {CATEGORY[(schemas['history'].get(n) or schemas['main'][n])['source']]} | "
                  f"{'yes' if n in schemas['history'] else ''} | {'yes' if n in schemas['main'] else ''} |" for n in members]
-        (out / "columns" / f"edition-{e}.md").write_text("\n".join(page))
+        emit(out / "columns" / f"edition-{e}.md", "\n".join(page))
     for c, t in CATEGORY.items():
         members = [n for n in names if any(n in schemas[tb] and schemas[tb][n]["source"] == c for tb in TABLES)]
         page = [f"# {t.capitalize()}", "", f"{len(members)} columns.", "", "| Column | History | Main |", "| --- | --- | --- |"]
         page += [f"| [`{n}`]({n}.md) | {'yes' if n in schemas['history'] else ''} | {'yes' if n in schemas['main'] else ''} |" for n in members]
-        (out / "columns" / f"category-{c}.md").write_text("\n".join(page))
+        emit(out / "columns" / f"category-{c}.md", "\n".join(page))
 
     # Sources: one page per pinned file, grouped by the object it is downloaded in.
     licences = registry.licences
@@ -257,9 +275,9 @@ def write(out: Path) -> dict:
                     f"**SHA256:** `{f.sha256}`. **Role:** {f.role}.", "",
                     f"**Columns it feeds ({len(fed)}):** " + (", ".join(f"[`{n}`](../columns/{n}.md)" for n in fed)
                                                              or "none (documentation, or a shapefile member read with the others)"), ""]
-            (out / "sources" / f"{_slug(f.path)}.md").write_text("\n".join(page))
+            emit(out / "sources" / f"{_slug(f.path)}.md", "\n".join(page))
         lines.append("")
-    (out / "sources" / "index.md").write_text("\n".join(lines))
+    emit(out / "sources" / "index.md", "\n".join(lines))
 
     # Decisions.
     lines = ["# Decisions", "", "The project's decision log (`simd_ingest/decisions.yaml`): what was decided, why, and on what evidence.", "",
@@ -273,8 +291,8 @@ def write(out: Path) -> dict:
         gov = sorted(by_decision.get(did, ()))
         if gov:
             page += [f"**Columns ({len(gov)}):** " + ", ".join(f"[`{n}`](../columns/{n}.md)" for n in gov), ""]
-        (out / "decisions" / f"{did}.md").write_text("\n".join(page))
-    (out / "decisions" / "index.md").write_text("\n".join(lines))
+        emit(out / "decisions" / f"{did}.md", "\n".join(page))
+    emit(out / "decisions" / "index.md", "\n".join(lines))
 
     # Checks: the definitions, never a claim that a build passed them.
     used = sorted({c for r in L.values() for c in r["checks"]})
@@ -284,7 +302,7 @@ def write(out: Path) -> dict:
     for pattern, text in CHECKS:
         n = sum(1 for c in used if re.search(pattern, c))
         lines.append(f"| `{pattern}` | {text} | {n} |")
-    (out / "checks.md").write_text("\n".join(lines))
+    emit(out / "checks.md", "\n".join(lines))
 
     home = [
         "# Postcode-SIMD column provenance", "",
@@ -302,8 +320,9 @@ def write(out: Path) -> dict:
         f"of {len(descriptions)} not yet reviewed. From the SIMD 2020v2 glossary: "
         f"{sum(1 for e in glossary.values() if not e.get('reviewed'))} of {len(glossary)} not yet reviewed. "
         "Each page marks unreviewed text as such.", ""]
-    (out / "index.md").write_text("\n".join(home))
-    return {"columns": len(names), "sources": len(registry.files), "decisions": len(decisions), "checks": len(used)}
+    emit(out / "index.md", "\n".join(home))
+    return {"columns": len(names), "sources": len(registry.files), "decisions": len(decisions), "checks": len(used),
+            "_written": written}
 
 
 def main(argv=None) -> int:
