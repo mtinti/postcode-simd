@@ -97,7 +97,8 @@ def _derived(table: str, column: str) -> dict:
         code = "simd_ingest/core/spd.py"
         rules = {
             "pc_norm": (both("Postcode"), "normalised", "Postcode uppercased with ASCII spaces removed, keeping any NRS split suffix (A, B, C).", ["postcode-normalisation", "record-key"]),
-            "pc_base": (both("Postcode"), "normalised", "The ordinary postcode: pc_norm with a validated small-user split suffix removed.", ["split-suffix-derived-from-key"]),
+            "pc_base": (both("Postcode") + [_pinned(files["small_user"], "SplitIndicator", "Y marks a split part, whose A, B or C suffix is validated and removed; large users are never split")],
+                        "normalised", "The ordinary postcode: pc_norm with the split suffix removed where SplitIndicator is Y on a small-user record.", ["split-suffix-derived-from-key"]),
             "spd_user_type": ([_pinned(files["small_user"], "(which file the record is in)", "small_user for every record of this file"),
                                _pinned(files["large_user"], "(which file the record is in)", "large_user for every record of this file")],
                               "classified", "Which of the two SPD files the record comes from.", ["single-combined-output"]),
@@ -127,7 +128,7 @@ def _phs(table: str, column: str) -> dict:
     registry = _context()["registry"]
     for ed in registry.phs_editions:
         key, vintage = ed["key"], int(ed["dz_vintage"])
-        join = f"DataZone{vintage}Code"
+        join = f"DataZone{vintage}Code = DataZone"
         common = [f"source.hash.{ed['file']}", f"phs.{key}.source.schema", f"phs.{key}.source.key_unique",
                   f"cross.{key}.same_zones", f"join.{table}.phs.{key}.every_record_matched", f"readback.{table}.attached_values"]
         if column == f"simd{key}_rank":
@@ -153,7 +154,7 @@ def _phs(table: str, column: str) -> dict:
             if column == f"phs_dz{vintage}_{g}":
                 first = first_edition_of_vintage(registry, vintage)
                 ed = next(e for e in registry.phs_editions if e["key"] == first)
-                return _record(table, column, "phs", [_pinned(ed["file"], src, join=f"DataZone{vintage}Code")], "copied",
+                return _record(table, column, "phs", [_pinned(ed["file"], src, join=f"DataZone{vintage}Code = DataZone")], "copied",
                                f"The code PHS assigned to the {vintage} data zone, from the first PHS edition of that vintage ({first}); identical across the vintage's editions.",
                                "simd_ingest/core/join.py: join_edition",
                                [f"phs.{e['key']}.shared_geography" for e in registry.phs_editions if int(e["dz_vintage"]) == vintage and e["key"] != first]
@@ -165,7 +166,7 @@ def _phs(table: str, column: str) -> dict:
 def _govscot(table: str, column: str) -> dict:
     registry = _context()["registry"]
     for ed in registry.govscot_editions:
-        key, join = ed["key"], f"DataZone{ed['dz_vintage']}Code"
+        key, join = ed["key"], f"DataZone{ed['dz_vintage']}Code = {ed['columns']['datazone']}"
         common = [f"source.hash.{ed['file']}", f"govscot.{key}.columns_present", f"govscot.{key}.key_unique",
                   f"join.{table}.gov.{key}.every_record_matched", f"readback.{table}.attached_values"]
         for band in DOMAIN_BANDS:
@@ -196,29 +197,39 @@ def _bands(table: str, column: str) -> dict:
     registry = _context()["registry"]
     name = {v: k for k, v in PUBLISHED_DOMAINS.items()}
     for ed in registry.govscot_editions:
-        key, bands, join = ed["key"], ed.get("bands") or {}, f"DataZone{ed['dz_vintage']}Code"
+        key, bands = ed["key"], ed.get("bands") or {}
+        join = f"DataZone{ed['dz_vintage']}Code = {ed['columns']['datazone']}"
+        published_join = f"DataZone{ed['dz_vintage']}Code = FeatureCode"
         for d in banded_domains(ed):
             gate = _pinned(ed["file"], ed["domains"][d], "the rank the published rank must equal, or differ from as declared", join)
             checks = [f"source.hash.{bands['file']}", f"govscot.{key}.bands.years", f"govscot.{key}.bands.{d}.zones",
                       f"govscot.{key}.bands.{d}.ranks_agree", f"join.{table}.gov.{key}.every_record_matched",
                       f"readback.{table}.attached_values"]
+            listed = (bands.get("rank_disagreements") or {}).get(d)
             for band in DOMAIN_BANDS:
                 if column == f"simd{key}_{d}_domain_{band}":
                     src = _pinned(bands["file"], "Value",
                                   f"SIMD Domain = {name[d]}, Measurement = {band.capitalize()}, DateCode = {bands['date_code']}",
-                                  f"FeatureCode = {join}")
+                                  published_join)
                     rule = ("The Scottish Government's published band, copied, never derived; admitted only where the "
-                            "published rank is the shapefile's" + (", a half the dataset rounds up allowed" if bands["half_ranks"] == "rounded_up" else "") + ".")
-                    return _record(table, column, "govscot_bands", [src, gate], "copied (gated)", rule,
+                            "published rank is the shapefile's" + (", a half the dataset rounds up allowed" if bands["half_ranks"] == "rounded_up" else "")
+                            + (", or the zone is one of those listed, with both ranks, in the committed disagreement list: "
+                               "there the two publications give different ranks, the band is the published one, and the "
+                               "status column says so" if listed else "") + ".")
+                    inputs = [src, gate] + ([_repository(f"simd_ingest/{Path(listed).name}", "data_zone, shapefile_rank, published_rank",
+                                                         "zones whose two ranks may differ, exactly as listed", f"DataZone{ed['dz_vintage']}Code = data_zone")]
+                                            if listed else [])
+                    return _record(table, column, "govscot_bands", inputs, "copied (gated)", rule,
                                    "simd_ingest/core/govscot.py: read_published_bands",
-                                   checks + [f"govscot.{key}.bands.{d}.{band}.{c}" for c in ("whole", "range", "monotone")] + [f"join.{table}.{column}.range"],
+                                   checks + ([f"govscot.{key}.bands.{d}.rank_disagreements_as_pinned"] if listed else [])
+                                   + [f"govscot.{key}.bands.{d}.{band}.{c}" for c in ("whole", "range", "monotone")] + [f"join.{table}.{column}.range"],
                                    ["simd-domain-bands", "bands-are-looked-up"])
         for d in status_domains(ed):
             if column == f"simd{key}_{d}_domain_rank_source_status":
                 listed = Path(bands["rank_disagreements"][d])
                 return _record(table, column, "govscot_bands",
-                               [_repository(f"simd_ingest/{listed.name}", "data_zone", "the zones listed, with both ranks", join),
-                                _pinned(bands["file"], "Value", f"SIMD Domain = {name[d]}, Measurement = Rank, DateCode = {bands['date_code']}", f"FeatureCode = {join}"),
+                               [_repository(f"simd_ingest/{listed.name}", "data_zone", "the zones listed, with both ranks", f"DataZone{ed['dz_vintage']}Code = data_zone"),
+                                _pinned(bands["file"], "Value", f"SIMD Domain = {name[d]}, Measurement = Rank, DateCode = {bands['date_code']}", published_join),
                                 _pinned(ed["file"], ed["domains"][d], "the shapefile rank", join)],
                                "flagged", "rank_sources_disagree where the published rank and the shapefile rank differ, as pinned zone by zone in the committed list; null otherwise. It describes the rank, not the band.",
                                "simd_ingest/core/govscot.py: read_published_bands",
@@ -236,8 +247,8 @@ def _computed(table: str, column: str) -> dict:
                 if column == f"simd{key}_{d}_domain_pw_scotland_{band}":
                     k = WEIGHTED_BANDS[band]
                     return _record(table, column, "computed",
-                                   [_pinned(ed["file"], ed["domains"][d], "every data zone of the edition", f"DataZone{ed['dz_vintage']}Code"),
-                                    _pinned(ed["file"], ed["columns"]["population"], "every data zone of the edition", f"DataZone{ed['dz_vintage']}Code")],
+                                   [_pinned(ed["file"], ed["domains"][d], "every data zone of the edition", f"DataZone{ed['dz_vintage']}Code = {ed['columns']['datazone']}"),
+                                    _pinned(ed["file"], ed["columns"]["population"], "every data zone of the edition", f"DataZone{ed['dz_vintage']}Code = {ed['columns']['datazone']}")],
                                    "computed",
                                    f"Zones ordered by the domain rank, equal ranks one block; band = max(1, min({k}, ceil(midpoint x {k} / total))), "
                                    "where midpoint is the cumulative population through the block minus half the block's. Computed, not published.",
@@ -258,6 +269,10 @@ def _rurality(table: str, column: str) -> dict:
         if column not in (six, eight, status):
             continue
         point = [_pinned(files[r], "GridReferenceEasting, GridReferenceNorthing", "the life's own grid reference") for r in ("small_user", "large_user")]
+        point += [{"kind": "derived_column", "path": "postcode_simd_history", "field": "spd_user_type",
+                   "condition": "with LinkedSmallUserPostcode, identifies a PO box", "join": None},
+                  _pinned(files["large_user"], "LinkedSmallUserPostcode",
+                          "NO LINKP marks a PO box, whose grid reference is the sorting office: its codes are cleared and its status is po_box")]
         shape = _pinned(v["file"], v["columns"]["sixfold" if column == six else "eightfold"] if column != status else "geometry")
         early = v["reference_year"] < 2011
         checks = [f"rurality.{v['key']}.{c}" for c in ("columns_present", "polygons", "reference_system", "folds_nest")]
@@ -266,12 +281,15 @@ def _rurality(table: str, column: str) -> dict:
             checks += ["rurality.agreement.current_small_user", "rurality.agreement.current_large_user"]
         decisions = ["rurality-by-version", "nullable-integers-and-never-blank-text"] + (["rurality-early-versions-confirmed"] if early else [])
         if column == status:
-            rule = "Why the version has no code: outside_polygons, ambiguous_polygons or po_box; null when it has one."
+            rule = ("Why the version has no code: outside_polygons (the point is in no polygon), ambiguous_polygons "
+                    "(on an edge between two classes) or po_box (a large user linked NO LINKP); null when it has one.")
         else:
-            rule = ("The class of the polygon containing the life's grid reference, by point in polygon. "
+            rule = ("The class of the polygon containing the life's grid reference, by point in polygon; cleared for a "
+                    "PO box (a large user whose LinkedSmallUserPostcode is NO LINKP). "
                     + ("Compared directly with the codes NRS publishes for this version." if v["key"] == registry.rurality_published["version"]
                        else "Shares the placement algorithm and its gate; there is no direct comparison with NRS codes for this version."))
-        return _record(table, column, "rurality", point + [shape], "placed", rule, "simd_ingest/core/rurality.py: classify, place",
+        return _record(table, column, "rurality", point + [shape], "placed", rule,
+                       "simd_ingest/core/rurality.py: classify, place, attach_rurality, is_po_box",
                        checks, decisions)
     raise KeyError(column)
 

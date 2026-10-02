@@ -1,7 +1,7 @@
 # The column provenance site (docs/plans/Column_Provenance_Site_Plan.md). Generated from the
 # committed schemas, registry, decisions and lineage map: metadata only, no data, no sources.
-# Every push and pull request builds it (strict: a broken link fails); only main, or a manual run,
-# deploys it to GitHub Pages.
+# Every push and pull request runs the provenance tests, then builds it (strict: a broken link
+# fails); only main, or a manual run, deploys it to GitHub Pages, and only after both pass.
 name: pages
 on:
   push:
@@ -23,7 +23,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -e ".[docs]"
+      - run: pip install -e ".[dev,docs]"
+      # The provenance tests gate the site: every column traced, every reference real, the
+      # exceptional cases right. A site that fails them is never built, let alone deployed.
+      - run: python -m pytest tests/test_provenance.py -q -rs
       - run: python -m simd_ingest.provenance_site
       - run: mkdocs build
       - uses: actions/upload-pages-artifact@v3

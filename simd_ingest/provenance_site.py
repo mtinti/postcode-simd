@@ -109,19 +109,34 @@ def _slug(text: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "-", text).strip("-")
 
 
-def _input_row(i: dict) -> str:
+GLOSSARY_DOMAIN = {"Income": "income", "Employment": "employment", "Health": "health",
+                   "Education, Skills and Training": "education", "Geographic Access to Services": "access",
+                   "Crime": "crime", "Housing": "housing"}
+
+
+def _glossary() -> dict:
+    return yaml.safe_load((PACKAGE / "simd_glossary.yaml").read_text())
+
+
+def _input_row(i: dict, glossary: dict) -> str:
     if i["kind"] == "pinned_file":
-        ref = f"[`{i['path']}`](../sources/{_slug(i['object'])}.md) (pinned, SHA256 `{i['sha256'][:12]}…`)"
+        ref = f"[`{i['path']}`](../sources/{_slug(i['path'])}.md) (pinned, SHA256 `{i['sha256'][:12]}…`)"
     elif i["kind"] == "repository_file":
         ref = f"`{i['path']}` (committed in this repository)"
+    elif i["kind"] == "derived_column":
+        ref = f"[`{i['field']}`]({i['field']}.md), a derived column of the same row"
     else:
         ref = f"`{i['path']}`: `{i['entry']}` (registry)"
-    return f"| {ref} | `{i['field']}` | {i['condition'] or ''} | {('`' + i['join'] + '`') if i['join'] else 'the row itself'} |"
+    field = f"`{i['field']}`"
+    entry = glossary.get(str(i["field"]).lower()) if i["kind"] == "pinned_file" and i["path"].endswith("SG_SIMD_2020.dbf") else None
+    if entry:
+        field += f": {entry['description']} (SIMD 2020v2 glossary{'' if entry.get('reviewed') else ', not yet reviewed'})"
+    return f"| {ref} | {field} | {i['condition'] or ''} | {('`' + i['join'] + '`') if i['join'] else 'the row itself'} |"
 
 
-def _lineage_block(r: dict, lines: list) -> None:
+def _lineage_block(r: dict, lines: list, glossary: dict) -> None:
     lines += ["**Where it comes from**", "", "| Input | Field | Condition | Reaches the row by |", "| --- | --- | --- | --- |"]
-    lines += [_input_row(i) for i in r["inputs"]] + [""]
+    lines += [_input_row(i, glossary) for i in r["inputs"]] + [""]
     lines += [f"**Scope:** {r['scope']}.", "",
               f"**What was done to it:** *{r['transformation']['kind']}*. {r['transformation']['rule']} "
               f"(code: `{r['transformation']['code']}`)", ""]
@@ -148,10 +163,15 @@ def write(out: Path) -> dict:
     order = {t: [f for f in schemas[t]] for t in TABLES}
     contract = text_output.load_contract(PACKAGE / "export_contract.yaml")
     descriptions = yaml.safe_load((PACKAGE / "column_descriptions.yaml").read_text())
+    glossary = _glossary()
+    indicators = defaultdict(list)
+    for e in glossary.values():
+        if e["domain"] in GLOSSARY_DOMAIN and e["type"] != "Rank":
+            indicators[GLOSSARY_DOMAIN[e["domain"]]].append(e)
     decisions = {d["id"]: d for d in yaml.safe_load((PACKAGE / "decisions.yaml").read_text())["decisions"]}
     L = lineage()
     names = list(dict.fromkeys(order["history"] + order["main"]))
-    by_source, by_decision = defaultdict(set), defaultdict(set)
+    by_file, by_decision = defaultdict(set), defaultdict(set)
 
     for name in names:
         in_tables = [t for t in TABLES if name in schemas[t]]
@@ -159,7 +179,7 @@ def write(out: Path) -> dict:
         for r in records.values():
             for i in r["inputs"]:
                 if i["kind"] == "pinned_file":
-                    by_source[i["object"]].add(name)
+                    by_file[i["path"]].add(name)
             for d in r["decisions"]:
                 by_decision[d].add(name)
         lines = [f"# `{name}`", ""]
@@ -175,6 +195,11 @@ def write(out: Path) -> dict:
                     e = nrs[label]
                     lines.append(f"| {label.replace('_', ' ')} (`{Path(e['source']['file']).name}`) | {e['type']} | {e['range']} | {e['text']} |")
             lines.append("")
+        domain = re.search(r"_(income|employment|health|education|access|crime|housing)_domain_", name)
+        if domain and indicators.get(domain.group(1)):
+            lines += [f"**What the {domain.group(1)} domain measures** (indicators in the Scottish Government's SIMD 2020v2 "
+                      "glossary; earlier editions' indicators differ in detail):", ""]
+            lines += [f"- {e['description']} (`{e['label']}`, {e['type'].lower()})" for e in indicators[domain.group(1)]] + [""]
         lines += ["| Table | Type | Nullable | Category | In the CSV export | SQL Server type |", "| --- | --- | --- | --- | --- | --- |"]
         for t in in_tables:
             f = schemas[t][name]
@@ -185,11 +210,11 @@ def write(out: Path) -> dict:
         if same:
             lines += ["## Provenance (the same in both tables)", "",
                       "Each table runs its own copy of the table-level checks, named `.history.` and `.main.`.", ""]
-            _lineage_block(_general(records["history"]), lines)
+            _lineage_block(_general(records["history"]), lines, glossary)
         else:
             for t in in_tables:
                 lines += [f"## Provenance in the {TABLE_TITLE[t]}", ""]
-                _lineage_block(records[t], lines)
+                _lineage_block(records[t], lines, glossary)
         (out / "columns" / f"{name}.md").write_text("\n".join(lines))
 
     # Column index, grouped by category, in schema order.
@@ -202,20 +227,38 @@ def write(out: Path) -> dict:
         lines += [f"## {title.capitalize()}", "", "| Column | History | Main |", "| --- | --- | --- |"]
         lines += [f"| [`{n}`]({n}.md) | {'yes' if n in schemas['history'] else ''} | {'yes' if n in schemas['main'] else ''} |" for n in members]
         lines.append("")
+    editions = [e["key"] for e in registry.govscot_editions]
+    lines += ["## Filter", "", "- By SIMD edition: " + ", ".join(f"[{e}](edition-{e}.md)" for e in editions),
+              "- By category: " + ", ".join(f"[{t}](category-{c}.md)" for c, t in CATEGORY.items()), ""]
     (out / "columns" / "index.md").write_text("\n".join(lines))
+    for e in editions:
+        members = [n for n in names if n.startswith(f"simd{e}_")]
+        page = [f"# SIMD {e} columns", "", f"{len(members)} columns.", "", "| Column | Category | History | Main |", "| --- | --- | --- | --- |"]
+        page += [f"| [`{n}`]({n}.md) | {CATEGORY[(schemas['history'].get(n) or schemas['main'][n])['source']]} | "
+                 f"{'yes' if n in schemas['history'] else ''} | {'yes' if n in schemas['main'] else ''} |" for n in members]
+        (out / "columns" / f"edition-{e}.md").write_text("\n".join(page))
+    for c, t in CATEGORY.items():
+        members = [n for n in names if any(n in schemas[tb] and schemas[tb][n]["source"] == c for tb in TABLES)]
+        page = [f"# {t.capitalize()}", "", f"{len(members)} columns.", "", "| Column | History | Main |", "| --- | --- | --- |"]
+        page += [f"| [`{n}`]({n}.md) | {'yes' if n in schemas['history'] else ''} | {'yes' if n in schemas['main'] else ''} |" for n in members]
+        (out / "columns" / f"category-{c}.md").write_text("\n".join(page))
 
-    # Sources.
+    # Sources: one page per pinned file, grouped by the object it is downloaded in.
     licences = registry.licences
-    lines = ["# Pinned sources", "", "Every published file the build reads, pinned by SHA256: a changed byte stops the build.", "",
-             "| Object | Publisher | Columns fed |", "| --- | --- | --- |"]
+    lines = ["# Pinned sources", "", f"Every file the build reads, {len(registry.files)} in {len(registry.objects)} downloads, "
+             "pinned by SHA256: a changed byte stops the build.", ""]
     for o in registry.objects:
-        lines.append(f"| [`{o.key}`]({_slug(o.key)}.md) | {o.publisher} | {len(by_source.get(o.key, ()))} |")
-        page = [f"# `{o.key}`", "", f"**Publisher:** {o.publisher}. **Licence:** {licences.get(o.publisher, 'see the registry')}.", "",
-                f"**Download:** <{o.url}>", "", f"**Object SHA256:** `{o.sha256}`", "", "| File | SHA256 | Role |", "| --- | --- | --- |"]
-        page += [f"| `{f.path}` | `{f.sha256}` | {f.role} |" for f in o.files] + [""]
-        fed = sorted(by_source.get(o.key, ()))
-        page += [f"**Columns it feeds ({len(fed)}):** " + (", ".join(f"[`{n}`](../columns/{n}.md)" for n in fed) or "none (documentation or geometry support)"), ""]
-        (out / "sources" / f"{_slug(o.key)}.md").write_text("\n".join(page))
+        lines += [f"## `{o.key}`", "", f"{o.publisher}; <{o.url}>", "", "| File | Role | Columns fed |", "| --- | --- | --- |"]
+        for f in o.files:
+            fed = sorted(by_file.get(f.path, ()))
+            lines.append(f"| [`{f.path}`]({_slug(f.path)}.md) | {f.role} | {len(fed)} |")
+            page = [f"# `{f.path}`", "", f"**Publisher:** {o.publisher}. **Licence:** {licences.get(o.publisher, 'see the registry')}.", "",
+                    f"**Downloaded in:** `{o.key}`, <{o.url}>" + (f" (archive member `{f.member}`)" if f.member else ""), "",
+                    f"**SHA256:** `{f.sha256}`. **Role:** {f.role}.", "",
+                    f"**Columns it feeds ({len(fed)}):** " + (", ".join(f"[`{n}`](../columns/{n}.md)" for n in fed)
+                                                             or "none (documentation, or a shapefile member read with the others)"), ""]
+            (out / "sources" / f"{_slug(f.path)}.md").write_text("\n".join(page))
+        lines.append("")
     (out / "sources" / "index.md").write_text("\n".join(lines))
 
     # Decisions.
@@ -253,9 +296,14 @@ def write(out: Path) -> dict:
         "- [Columns](columns/index.md): one page per column name, each table's provenance side by side where they differ",
         "- [Pinned sources](sources/index.md): every published file the build reads, and the columns it feeds",
         "- [Decisions](decisions/index.md): why each column is made the way it is",
-        "- [Checks](checks.md): what each build check tests", ""]
+        "- [Checks](checks.md): what each build check tests", "",
+        "## Review status", "",
+        f"Descriptions extracted from the pinned NRS dictionaries: {sum(1 for e in descriptions.values() if not e.get('reviewed'))} "
+        f"of {len(descriptions)} not yet reviewed. From the SIMD 2020v2 glossary: "
+        f"{sum(1 for e in glossary.values() if not e.get('reviewed'))} of {len(glossary)} not yet reviewed. "
+        "Each page marks unreviewed text as such.", ""]
     (out / "index.md").write_text("\n".join(home))
-    return {"columns": len(names), "sources": len(registry.objects), "decisions": len(decisions), "checks": len(used)}
+    return {"columns": len(names), "sources": len(registry.files), "decisions": len(decisions), "checks": len(used)}
 
 
 def main(argv=None) -> int:

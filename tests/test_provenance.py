@@ -44,6 +44,36 @@ def test_every_column_has_a_description():
             assert (f.get("note") or "").strip() or (nrs and f["name"] in descriptions), (table, f["name"])
 
 
+def test_every_table_variant_has_a_nonempty_description():
+    """Per table, not per name: a history NRS field needs an SPD dictionary entry for a file it is
+    in, a main one an SSPL entry, and every other column a schema note."""
+    descriptions = yaml.safe_load((PACKAGE / "column_descriptions.yaml").read_text())
+    spd = yaml.safe_load((PACKAGE / "spd_schema.yaml").read_text())
+    for f in SCHEMAS["history"]:
+        if f["source"] == "directory":
+            labels = [l for l, role in (("spd_small_user", "small_user"), ("spd_large_user", "large_user")) if f["name"] in spd[role]]
+            assert any(descriptions[f["name"]].get(l, {}).get("text") for l in labels), f["name"]
+        else:
+            assert (f.get("note") or "").strip(), f["name"]
+    for f in SCHEMAS["main"]:
+        if f["source"] == "lookup":
+            assert descriptions[f["name"]].get("sspl", {}).get("text"), f["name"]
+        else:
+            assert (f.get("note") or "").strip(), f["name"]
+
+
+def test_unreviewed_descriptions_are_labelled_on_the_pages(tmp_path):
+    write(tmp_path)
+    descriptions = yaml.safe_load((PACKAGE / "column_descriptions.yaml").read_text())
+    unreviewed = [n for n, e in descriptions.items() if not e.get("reviewed")]
+    home = (tmp_path / "index.md").read_text()
+    assert f"{len(unreviewed)} of {len(descriptions)} not yet reviewed" in home
+    for name in unreviewed:
+        page = tmp_path / "columns" / f"{name}.md"
+        if page.is_file():
+            assert "not yet reviewed" in page.read_text(), name
+
+
 def test_each_nrs_description_names_its_pinned_dictionary():
     from simd_ingest.core.sources import load_registry
     pinned = {f.path: f.sha256 for f in load_registry(PACKAGE / "sources.yaml").files}
@@ -65,6 +95,8 @@ def test_every_input_reference_exists(L):
                 assert i["path"] in pinned, (key, i["path"])
             elif i["kind"] == "repository_file":
                 assert (ROOT / i["path"]).is_file(), (key, i["path"])
+            elif i["kind"] == "derived_column":
+                assert i["field"] in {f["name"] for f in SCHEMAS[key[0]]}, (key, i["field"])
 
 
 def test_every_decision_exists(L):
@@ -153,7 +185,9 @@ def test_the_site_has_a_page_per_column_and_every_link_resolves(tmp_path):
     names = {f["name"] for fields in SCHEMAS.values() for f in fields}
     assert counts["columns"] == len(names) == 444
     pages = list(tmp_path.rglob("*.md"))
-    assert {p.stem for p in (tmp_path / "columns").glob("*.md")} - {"index"} == names
+    column_pages = {p.stem for p in (tmp_path / "columns").glob("*.md")
+                    if p.stem != "index" and not p.stem.startswith(("edition-", "category-"))}
+    assert column_pages == names
     for page in pages:
         for target in re.findall(r"\]\(([^)#]+\.md)\)", page.read_text()):
             assert (page.parent / target).resolve().is_file(), (page.name, target)
@@ -164,3 +198,43 @@ def test_a_page_never_claims_a_check_passed(tmp_path):
     text = (tmp_path / "columns" / "simd2020v2_income_domain_decile.md").read_text()
     assert "manifest.json[\"checks\"]" in text
     assert not re.search(r"\b(passed|pass)\b", text.split("**How it is checked**")[1].split("**Why")[0].split(")", 1)[1])
+
+
+def test_housing_bands_carry_the_declared_disagreements(L):
+    """The band pages, not only the status page, must say that 628 zones are admitted although
+    their two ranks differ, and cite the list and its check."""
+    for band in ("quintile", "decile", "vigintile"):
+        r = L[("history", f"simd2020v2_housing_domain_{band}")]
+        assert any(i["path"] == "simd_ingest/sgs_2020_housing_rank_disagreements.csv" for i in r["inputs"])
+        assert "govscot.2020v2.bands.housing.rank_disagreements_as_pinned" in r["checks"]
+        assert "disagreement list" in r["transformation"]["rule"]
+    other = L[("history", "simd2020v2_income_domain_decile")]
+    assert not any(i["kind"] == "repository_file" for i in other["inputs"])
+
+
+def test_rurality_names_the_po_box_rule_and_its_inputs(L):
+    r = L[("history", "urbanrural2016_6fold")]
+    fields = [i["field"] for i in r["inputs"]]
+    assert "LinkedSmallUserPostcode" in fields and "spd_user_type" in fields
+    assert "attach_rurality" in r["transformation"]["code"] and "PO box" in r["transformation"]["rule"]
+
+
+def test_pc_base_depends_on_the_split_indicator(L):
+    assert "SplitIndicator" in [i["field"] for i in L[("history", "pc_base")]["inputs"]]
+
+
+def test_joins_name_both_keys(L):
+    assert L[("main", "simd2016_pw_scotland_decile")]["inputs"][0]["join"] == "DataZone2011Code = DataZone"
+    assert L[("history", "simd2004_income_domain_rank")]["inputs"][0]["join"] == "DataZone2001Code = datazone"
+    assert L[("history", "simd2009v2_employment_domain_decile")]["inputs"][0]["join"] == "DataZone2001Code = FeatureCode"
+
+
+def test_sources_are_mapped_per_pinned_file_and_columns_can_be_filtered(tmp_path):
+    from simd_ingest.core.sources import load_registry
+    counts = write(tmp_path)
+    files = load_registry(PACKAGE / "sources.yaml").files
+    assert counts["sources"] == len(files) == 59
+    assert len([p for p in (tmp_path / "sources").glob("*.md") if p.stem != "index"]) == 59
+    assert (tmp_path / "columns" / "edition-2020v2.md").is_file() and (tmp_path / "columns" / "category-computed.md").is_file()
+    decile = (tmp_path / "sources" / "statistics.gov.scot-simd_2020.csv.md").read_text()
+    assert "simd2020v2_housing_domain_decile" in decile

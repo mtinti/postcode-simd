@@ -1,6 +1,7 @@
-"""Extract the NRS field descriptions from the pinned data dictionaries, once, for review.
+"""Extract the field descriptions from the pinned data dictionaries and glossary, once, for review.
 
     python -m simd_ingest.extract_descriptions        # writes simd_ingest/column_descriptions.yaml
+                                                      # and simd_ingest/simd_glossary.yaml
 
 The SPD dictionary has one table for small-user and one for large-user fields; the SSPL
 dictionary one. Each field's type, range and comment is kept per dictionary table, with the
@@ -55,8 +56,39 @@ def extract(root: Path) -> dict:
     return out
 
 
+GLOSSARY_OUT = PACKAGE / "simd_glossary.yaml"
+GLOSSARY = "SIMD2020v2 - GIS files - glossary.xlsx"
+
+
+def extract_glossary(root: Path) -> dict:
+    """The Scottish Government's SIMD 2020v2 glossary: each shapefile field's label, type,
+    description and the domain it belongs to. It describes the 2020v2 shapefile only."""
+    import pandas as pd
+    registry = load_registry(PACKAGE / "sources.yaml")
+    f = next(f for f in registry.files if Path(f.path).name == GLOSSARY)
+    sheet = pd.read_excel(Path(root) / f.path, sheet_name=0, header=None)
+    header = [str(v).strip() for v in sheet.iloc[0, 1:4]]
+    if header != ["Indicator label", "Indicator type", "Description"]:
+        raise ValueError(f"{f.path}: unexpected header {header}")
+    out, domain = {}, None
+    for _, row in sheet.iloc[1:].iterrows():
+        if pd.notna(row[0]):
+            domain = _clean(str(row[0]))
+        label = _clean(str(row[1]))
+        out[label.lower()] = {"label": label, "domain": domain, "type": _clean(str(row[2])),
+                              "description": _clean(str(row[3])), "reviewed": False,
+                              "source": {"file": f.path, "sha256": f.sha256}}
+    return out
+
+
 def main(argv=None) -> int:
     root = Path(argv[0]) if argv else PACKAGE.parent / "manual_data"
+    glossary = extract_glossary(root)
+    GLOSSARY_OUT.write_text("# The Scottish Government's SIMD 2020v2 GIS glossary, extracted from the pinned file by\n"
+                            "# simd_ingest/extract_descriptions.py, keyed by shapefile field (lower case). It describes the\n"
+                            "# 2020v2 shapefile only. reviewed: false until a person has read it against the glossary.\n"
+                            + yaml.safe_dump(glossary, sort_keys=False, allow_unicode=True, width=100))
+    print(f"wrote {GLOSSARY_OUT}: {len(glossary)} fields")
     descriptions = extract(root)
     header = ("# NRS field descriptions, extracted from the pinned SPD and SSPL data dictionaries by\n"
               "# simd_ingest/extract_descriptions.py, per dictionary table, with the file and hash they came\n"
