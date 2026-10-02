@@ -118,7 +118,35 @@ def _glossary() -> dict:
     return yaml.safe_load((PACKAGE / "simd_glossary.yaml").read_text())
 
 
-def _input_row(i: dict, glossary: dict) -> str:
+REPOSITORY = "https://github.com/mtinti/postcode-simd/blob/main/"
+
+
+def _review() -> dict:
+    """The review verdicts, kept apart from the extracted text (simd_ingest/description_review.yaml)."""
+    raw = yaml.safe_load((PACKAGE / "description_review.yaml").read_text())
+    raw["by_id"] = {r["id"]: r for r in raw["reviews"]}
+    return raw
+
+
+def _verdict_label(entry: dict | None, review: dict) -> str:
+    """How a description's review stands, in words, with who reviewed it and how."""
+    if not entry:
+        return "not yet reviewed"
+    r = review["by_id"][entry["review"]]
+    who = f"{r['kind']} review, {r['date']}, [record]({REPOSITORY}{r['record']})"
+    if entry["verdict"] == "approved":
+        return f"reviewed ({who})"
+    return f"corrected after review ({who}); awaiting confirmation"
+
+
+def _glossary_label(entry: dict, review: dict, edition: str | None) -> str:
+    verdict = review["glossary"].get(entry["label"].lower())
+    if edition and edition != "2020v2":
+        return "SIMD 2020v2 glossary: a 2020v2 example, not verified for this edition"
+    return "SIMD 2020v2 glossary; " + _verdict_label(verdict, review)
+
+
+def _input_row(i: dict, glossary: dict, review: dict) -> str:
     if i["kind"] == "pinned_file":
         ref = f"[`{i['path']}`](../sources/{_slug(i['path'])}.md) (pinned, SHA256 `{i['sha256'][:12]}…`)"
     elif i["kind"] == "repository_file":
@@ -130,13 +158,13 @@ def _input_row(i: dict, glossary: dict) -> str:
     field = f"`{i['field']}`"
     entry = glossary.get(str(i["field"]).lower()) if i["kind"] == "pinned_file" and i["path"].endswith("SG_SIMD_2020.dbf") else None
     if entry:
-        field += f": {entry['description']} (SIMD 2020v2 glossary{'' if entry.get('reviewed') else ', not yet reviewed'})"
+        field += f": {entry['description']} ({_glossary_label(entry, review, '2020v2')})"
     return f"| {ref} | {field} | {i['condition'] or ''} | {('`' + i['join'] + '`') if i['join'] else 'the row itself'} |"
 
 
-def _lineage_block(r: dict, lines: list, glossary: dict) -> None:
+def _lineage_block(r: dict, lines: list, glossary: dict, review: dict) -> None:
     lines += ["**Where it comes from**", "", "| Input | Field | Condition | Reaches the row by |", "| --- | --- | --- | --- |"]
-    lines += [_input_row(i, glossary) for i in r["inputs"]] + [""]
+    lines += [_input_row(i, glossary, review) for i in r["inputs"]] + [""]
     lines += [f"**Scope:** {r['scope']}.", "",
               f"**What was done to it:** *{r['transformation']['kind']}*. {r['transformation']['rule']} "
               f"(code: `{r['transformation']['code']}`)", ""]
@@ -151,6 +179,17 @@ def _general(r: dict) -> dict:
     g = {k: v for k, v in r.items() if k != "table"}
     g["checks"] = [re.sub(r"\.(history|main)\b", ".<table>", c) for c in r["checks"]]
     return g
+
+
+def _review_status(descriptions: dict, glossary: dict, review: dict) -> str:
+    def count(kind: str, names) -> str:
+        verdicts = [review[kind].get(n, {}).get("verdict") for n in names]
+        return (f"{verdicts.count('approved')} approved, {verdicts.count('corrected')} corrected and awaiting confirmation, "
+                f"{verdicts.count(None)} not yet reviewed")
+    reviews = "; ".join(f"{r['reviewer']}, {r['date']}, [record]({REPOSITORY}{r['record']})" for r in review["reviews"])
+    return (f"Descriptions extracted from the pinned NRS dictionaries ({len(descriptions)}): {count('nrs', descriptions)}. "
+            f"From the SIMD 2020v2 glossary ({len(glossary)}): {count('glossary', glossary)}; "
+            f"{review['scope_notes']['glossary']} Reviews: {reviews}. Each page states the review status of its text.")
 
 
 def write(out: Path) -> dict:
@@ -181,6 +220,7 @@ def _write_pages(out: Path) -> dict:
     contract = text_output.load_contract(PACKAGE / "export_contract.yaml")
     descriptions = yaml.safe_load((PACKAGE / "column_descriptions.yaml").read_text())
     glossary = _glossary()
+    review = _review()
     indicators = defaultdict(list)
     for e in glossary.values():
         if e["domain"] in GLOSSARY_DOMAIN and e["type"] != "Rank":
@@ -205,19 +245,24 @@ def _write_pages(out: Path) -> dict:
         if any(notes.values()):
             lines += [n for n in dict.fromkeys(v for v in notes.values() if v)] + [""]
         if nrs:
-            lines += ["**NRS data dictionary**" + ("" if nrs.get("reviewed") else " (extracted, not yet reviewed)"), "",
+            verdict = review["nrs"].get(name)
+            lines += [f"**NRS data dictionary** (extracted; {_verdict_label(verdict, review)})", "",
                       "| Dictionary table | Type | Range | Description |", "| --- | --- | --- | --- |"]
             for label in ("spd_small_user", "spd_large_user", "sspl"):
                 if label in nrs:
                     e = nrs[label]
                     lines.append(f"| {label.replace('_', ' ')} (`{Path(e['source']['file']).name}`) | {e['type']} | {e['range']} | {e['text']} |")
             lines.append("")
+            for label, note in ((verdict or {}).get("notes") or {}).items():
+                lines += [f"**Reviewer note ({label.replace('_', ' ')}).** {note}", ""]
         domain = re.search(r"_(income|employment|health|education|access|crime|housing)_domain_", name)
         if domain and indicators.get(domain.group(1)):
+            edition = re.match(r"simd([0-9v]+)_", name)
+            edition = edition.group(1) if edition else None
             lines += [f"**What the {domain.group(1)} domain measures** (indicators in the Scottish Government's SIMD 2020v2 "
                       "glossary; earlier editions' indicators differ in detail):", ""]
-            lines += [f"- {e['description']} (`{e['label']}`, {e['type'].lower()}"
-                      f"{'' if e.get('reviewed') else '; not yet reviewed'})" for e in indicators[domain.group(1)]] + [""]
+            lines += [f"- {e['description']} (`{e['label']}`, {e['type'].lower()}; {_glossary_label(e, review, edition)})"
+                      for e in indicators[domain.group(1)]] + [""]
         lines += ["| Table | Type | Nullable | Category | In the CSV export | SQL Server type |", "| --- | --- | --- | --- | --- | --- |"]
         for t in in_tables:
             f = schemas[t][name]
@@ -228,11 +273,11 @@ def _write_pages(out: Path) -> dict:
         if same:
             lines += ["## Provenance (the same in both tables)", "",
                       "Each table runs its own copy of the table-level checks, named `.history.` and `.main.`.", ""]
-            _lineage_block(_general(records["history"]), lines, glossary)
+            _lineage_block(_general(records["history"]), lines, glossary, review)
         else:
             for t in in_tables:
                 lines += [f"## Provenance in the {TABLE_TITLE[t]}", ""]
-                _lineage_block(records[t], lines, glossary)
+                _lineage_block(records[t], lines, glossary, review)
         emit(out / "columns" / f"{name}.md", "\n".join(lines))
 
     # Column index, grouped by category, in schema order.
@@ -316,10 +361,7 @@ def _write_pages(out: Path) -> dict:
         "- [Decisions](decisions/index.md): why each column is made the way it is",
         "- [Checks](checks.md): what each build check tests", "",
         "## Review status", "",
-        f"Descriptions extracted from the pinned NRS dictionaries: {sum(1 for e in descriptions.values() if not e.get('reviewed'))} "
-        f"of {len(descriptions)} not yet reviewed. From the SIMD 2020v2 glossary: "
-        f"{sum(1 for e in glossary.values() if not e.get('reviewed'))} of {len(glossary)} not yet reviewed. "
-        "Each page marks unreviewed text as such.", ""]
+        _review_status(descriptions, glossary, review), ""]
     emit(out / "index.md", "\n".join(home))
     return {"columns": len(names), "sources": len(registry.files), "decisions": len(decisions), "checks": len(used),
             "_written": written}

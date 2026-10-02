@@ -1,0 +1,2086 @@
+{
+  "sources": [
+    {
+      "path": "SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx",
+      "sha256": "b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a"
+    },
+    {
+      "path": "SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx",
+      "sha256": "7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6"
+    },
+    {
+      "path": "data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx",
+      "sha256": "2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c"
+    }
+  ],
+  "nrs_comparisons": [
+    {
+      "name": "Postcode",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 2,
+      "differences": {}
+    },
+    {
+      "name": "PostcodeDistrict",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 3,
+      "differences": {}
+    },
+    {
+      "name": "PostcodeSector",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 4,
+      "differences": {}
+    },
+    {
+      "name": "DateOfIntroduction",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 5,
+      "differences": {}
+    },
+    {
+      "name": "DateOfDeletion",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 6,
+      "differences": {}
+    },
+    {
+      "name": "DeliveryPointCount",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 7,
+      "differences": {}
+    },
+    {
+      "name": "DeliveryPointCountNonResidential",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 8,
+      "differences": {}
+    },
+    {
+      "name": "HouseholdCount",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 9,
+      "differences": {}
+    },
+    {
+      "name": "GridReferenceEasting",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 10,
+      "differences": {}
+    },
+    {
+      "name": "GridReferenceNorthing",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 11,
+      "differences": {}
+    },
+    {
+      "name": "Latitude",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 12,
+      "differences": {}
+    },
+    {
+      "name": "Longitude",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 13,
+      "differences": {}
+    },
+    {
+      "name": "SplitIndicator",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 14,
+      "differences": {}
+    },
+    {
+      "name": "CouncilArea2019Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 15,
+      "differences": {}
+    },
+    {
+      "name": "UKParliamentaryConstituency2024Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 16,
+      "differences": {}
+    },
+    {
+      "name": "ScottishParliamentaryRegion2026Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 17,
+      "differences": {}
+    },
+    {
+      "name": "ScottishParliamentaryConstituency2026Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 18,
+      "differences": {}
+    },
+    {
+      "name": "ElectoralWard2022Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 19,
+      "differences": {}
+    },
+    {
+      "name": "HealthBoardArea2019Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 20,
+      "differences": {}
+    },
+    {
+      "name": "HealthBoardArea2006Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 21,
+      "differences": {}
+    },
+    {
+      "name": "HealthBoardArea1995Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 22,
+      "differences": {}
+    },
+    {
+      "name": "IntegrationAuthority2019Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 23,
+      "differences": {}
+    },
+    {
+      "name": "OutputArea2022Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 24,
+      "differences": {}
+    },
+    {
+      "name": "OutputArea2011Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 25,
+      "differences": {}
+    },
+    {
+      "name": "OutputArea2001Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 26,
+      "differences": {}
+    },
+    {
+      "name": "OutputArea1991Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 27,
+      "differences": {}
+    },
+    {
+      "name": "DataZone2022Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 28,
+      "differences": {}
+    },
+    {
+      "name": "DataZone2011Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 29,
+      "differences": {}
+    },
+    {
+      "name": "DataZone2001Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 30,
+      "differences": {}
+    },
+    {
+      "name": "IntermediateZone2022Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 31,
+      "differences": {}
+    },
+    {
+      "name": "IntermediateZone2011Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 32,
+      "differences": {}
+    },
+    {
+      "name": "IntermediateZone2001Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 33,
+      "differences": {}
+    },
+    {
+      "name": "CensusHouseholdCount2022",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 34,
+      "differences": {}
+    },
+    {
+      "name": "CensusPopulationCount2022",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 35,
+      "differences": {}
+    },
+    {
+      "name": "CensusHouseholdCount2011",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 36,
+      "differences": {}
+    },
+    {
+      "name": "CensusPopulationCount2011",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 37,
+      "differences": {}
+    },
+    {
+      "name": "CensusHouseholdCount2001",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 38,
+      "differences": {}
+    },
+    {
+      "name": "CensusPopulationCount2001",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 39,
+      "differences": {}
+    },
+    {
+      "name": "CensusHouseholdCount1991",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 40,
+      "differences": {}
+    },
+    {
+      "name": "CensusPopulationCount1991",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 41,
+      "differences": {}
+    },
+    {
+      "name": "ScottishIndexOfMultipleDeprivation2020Rank",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 42,
+      "differences": {}
+    },
+    {
+      "name": "LAU2025Level1Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 43,
+      "differences": {}
+    },
+    {
+      "name": "ITL2025Level2Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 44,
+      "differences": {}
+    },
+    {
+      "name": "ITL2025Level3Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 45,
+      "differences": {}
+    },
+    {
+      "name": "Locality2020Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 46,
+      "differences": {}
+    },
+    {
+      "name": "Locality2022Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 47,
+      "differences": {}
+    },
+    {
+      "name": "Locality2001Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 48,
+      "differences": {}
+    },
+    {
+      "name": "Locality1991Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 49,
+      "differences": {}
+    },
+    {
+      "name": "Settlement2020Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 50,
+      "differences": {}
+    },
+    {
+      "name": "Settlement2022Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 51,
+      "differences": {}
+    },
+    {
+      "name": "Settlement2001Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 52,
+      "differences": {}
+    },
+    {
+      "name": "CivilParish1930Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 53,
+      "differences": {}
+    },
+    {
+      "name": "EnterpriseRegion2008Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 54,
+      "differences": {}
+    },
+    {
+      "name": "IslandCode",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 55,
+      "differences": {}
+    },
+    {
+      "name": "LocalGovernmentDistrict1995Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 56,
+      "differences": {}
+    },
+    {
+      "name": "LocalGovernmentDistrict1991Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 57,
+      "differences": {}
+    },
+    {
+      "name": "NationalPark2010Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 58,
+      "differences": {}
+    },
+    {
+      "name": "RegistrationDistrict2007Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 59,
+      "differences": {}
+    },
+    {
+      "name": "ROACommunityPlanningPartnership2006Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 60,
+      "differences": {}
+    },
+    {
+      "name": "ROALocal2006Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 61,
+      "differences": {}
+    },
+    {
+      "name": "StrategicDevelopmentPlanningArea2013Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 62,
+      "differences": {}
+    },
+    {
+      "name": "TravelToWorkArea2011Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 63,
+      "differences": {}
+    },
+    {
+      "name": "UrbanRural6Fold2022Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 64,
+      "differences": {}
+    },
+    {
+      "name": "UrbanRural8Fold2022Code",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 65,
+      "differences": {}
+    },
+    {
+      "name": "GridLinkIndicator",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 66,
+      "differences": {}
+    },
+    {
+      "name": "GridLinkPositionalAccuracy",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 67,
+      "differences": {}
+    },
+    {
+      "name": "NeverDigitised",
+      "variant": "spd_small_user",
+      "table": 1,
+      "row": 68,
+      "differences": {}
+    },
+    {
+      "name": "Postcode",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 2,
+      "differences": {}
+    },
+    {
+      "name": "PostcodeDistrict",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 3,
+      "differences": {}
+    },
+    {
+      "name": "PostcodeSector",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 4,
+      "differences": {}
+    },
+    {
+      "name": "DateOfIntroduction",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 5,
+      "differences": {}
+    },
+    {
+      "name": "DateOfDeletion",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 6,
+      "differences": {}
+    },
+    {
+      "name": "LinkedSmallUserPostcode",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 7,
+      "differences": {}
+    },
+    {
+      "name": "GridReferenceEasting",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 8,
+      "differences": {}
+    },
+    {
+      "name": "GridReferenceNorthing",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 9,
+      "differences": {}
+    },
+    {
+      "name": "Latitude",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 10,
+      "differences": {}
+    },
+    {
+      "name": "Longitude",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 11,
+      "differences": {}
+    },
+    {
+      "name": "SplitIndicator",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 12,
+      "differences": {}
+    },
+    {
+      "name": "CouncilArea2019Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 13,
+      "differences": {}
+    },
+    {
+      "name": "UKParliamentaryConstituency2024Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 14,
+      "differences": {}
+    },
+    {
+      "name": "ScottishParliamentaryRegion2026Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 15,
+      "differences": {}
+    },
+    {
+      "name": "ScottishParliamentaryConstituency2026Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 16,
+      "differences": {}
+    },
+    {
+      "name": "ElectoralWard2022Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 17,
+      "differences": {}
+    },
+    {
+      "name": "HealthBoardArea2019Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 18,
+      "differences": {}
+    },
+    {
+      "name": "HealthBoardArea2006Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 19,
+      "differences": {}
+    },
+    {
+      "name": "HealthBoardArea1995Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 20,
+      "differences": {}
+    },
+    {
+      "name": "IntegrationAuthority2019Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 21,
+      "differences": {}
+    },
+    {
+      "name": "OutputArea2022Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 22,
+      "differences": {}
+    },
+    {
+      "name": "OutputArea2011Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 23,
+      "differences": {}
+    },
+    {
+      "name": "OutputArea2001Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 24,
+      "differences": {}
+    },
+    {
+      "name": "OutputArea1991Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 25,
+      "differences": {}
+    },
+    {
+      "name": "DataZone2022Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 26,
+      "differences": {}
+    },
+    {
+      "name": "DataZone2011Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 27,
+      "differences": {}
+    },
+    {
+      "name": "DataZone2001Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 28,
+      "differences": {}
+    },
+    {
+      "name": "IntermediateZone2022Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 29,
+      "differences": {}
+    },
+    {
+      "name": "IntermediateZone2011Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 30,
+      "differences": {}
+    },
+    {
+      "name": "IntermediateZone2001Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 31,
+      "differences": {}
+    },
+    {
+      "name": "ScottishIndexOfMultipleDeprivation2020Rank",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 32,
+      "differences": {}
+    },
+    {
+      "name": "LAU2025Level1Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 33,
+      "differences": {}
+    },
+    {
+      "name": "ITL2025Level2Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 34,
+      "differences": {}
+    },
+    {
+      "name": "ITL2025Level3Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 35,
+      "differences": {}
+    },
+    {
+      "name": "Locality2020Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 36,
+      "differences": {}
+    },
+    {
+      "name": "Locality2022Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 37,
+      "differences": {}
+    },
+    {
+      "name": "Locality2001Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 38,
+      "differences": {}
+    },
+    {
+      "name": "Locality1991Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 39,
+      "differences": {}
+    },
+    {
+      "name": "Settlement2020Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 40,
+      "differences": {}
+    },
+    {
+      "name": "Settlement2022Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 41,
+      "differences": {}
+    },
+    {
+      "name": "Settlement2001Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 42,
+      "differences": {}
+    },
+    {
+      "name": "CivilParish1930Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 43,
+      "differences": {}
+    },
+    {
+      "name": "EnterpriseRegion2008Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 44,
+      "differences": {}
+    },
+    {
+      "name": "IslandCode",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 45,
+      "differences": {}
+    },
+    {
+      "name": "LocalGovernmentDistrict1995Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 46,
+      "differences": {}
+    },
+    {
+      "name": "LocalGovernmentDistrict1991Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 47,
+      "differences": {}
+    },
+    {
+      "name": "NationalPark2010Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 48,
+      "differences": {}
+    },
+    {
+      "name": "RegistrationDistrict2007Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 49,
+      "differences": {}
+    },
+    {
+      "name": "ROACommunityPlanningPartnership2006Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 50,
+      "differences": {}
+    },
+    {
+      "name": "ROALocal2006Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 51,
+      "differences": {}
+    },
+    {
+      "name": "StrategicDevelopmentPlanningArea2013Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 52,
+      "differences": {}
+    },
+    {
+      "name": "TravelToWorkArea2011Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 53,
+      "differences": {}
+    },
+    {
+      "name": "UrbanRural6Fold2022Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 54,
+      "differences": {}
+    },
+    {
+      "name": "UrbanRural8Fold2022Code",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 55,
+      "differences": {}
+    },
+    {
+      "name": "GridLinkIndicator",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 56,
+      "differences": {}
+    },
+    {
+      "name": "GridLinkPositionalAccuracy",
+      "variant": "spd_large_user",
+      "table": 2,
+      "row": 57,
+      "differences": {}
+    },
+    {
+      "name": "Postcode",
+      "variant": "sspl",
+      "table": 3,
+      "row": 2,
+      "differences": {}
+    },
+    {
+      "name": "PostcodeDistrict",
+      "variant": "sspl",
+      "table": 3,
+      "row": 3,
+      "differences": {}
+    },
+    {
+      "name": "PostcodeSector",
+      "variant": "sspl",
+      "table": 3,
+      "row": 4,
+      "differences": {}
+    },
+    {
+      "name": "SplitIndicator",
+      "variant": "sspl",
+      "table": 3,
+      "row": 5,
+      "differences": {}
+    },
+    {
+      "name": "LinkedSmallUserPostcode",
+      "variant": "sspl",
+      "table": 3,
+      "row": 6,
+      "differences": {}
+    },
+    {
+      "name": "DateOfIntroduction",
+      "variant": "sspl",
+      "table": 3,
+      "row": 7,
+      "differences": {}
+    },
+    {
+      "name": "DateOfDeletion",
+      "variant": "sspl",
+      "table": 3,
+      "row": 8,
+      "differences": {}
+    },
+    {
+      "name": "PostcodeType",
+      "variant": "sspl",
+      "table": 3,
+      "row": 9,
+      "differences": {}
+    },
+    {
+      "name": "GridReferenceEasting",
+      "variant": "sspl",
+      "table": 3,
+      "row": 10,
+      "differences": {}
+    },
+    {
+      "name": "GridReferenceNorthing",
+      "variant": "sspl",
+      "table": 3,
+      "row": 11,
+      "differences": {}
+    },
+    {
+      "name": "OutputArea2022Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 12,
+      "differences": {}
+    },
+    {
+      "name": "DataZone2022Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 13,
+      "differences": {}
+    },
+    {
+      "name": "IntermediateZone2022Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 14,
+      "differences": {}
+    },
+    {
+      "name": "OutputArea2011Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 15,
+      "differences": {}
+    },
+    {
+      "name": "DataZone2011Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 16,
+      "differences": {}
+    },
+    {
+      "name": "IntermediateZone2011Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 17,
+      "differences": {}
+    },
+    {
+      "name": "OutputArea2001Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 18,
+      "differences": {}
+    },
+    {
+      "name": "DataZone2001Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 19,
+      "differences": {}
+    },
+    {
+      "name": "IntermediateZone2001Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 20,
+      "differences": {}
+    },
+    {
+      "name": "OutputArea1991Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 21,
+      "differences": {}
+    },
+    {
+      "name": "CouncilArea2019Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 22,
+      "differences": {}
+    },
+    {
+      "name": "RegistrationDistrict2007Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 23,
+      "differences": {}
+    },
+    {
+      "name": "LocalGovernmentDistrict1995Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 24,
+      "differences": {}
+    },
+    {
+      "name": "LocalGovernmentDistrict1991Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 25,
+      "differences": {}
+    },
+    {
+      "name": "ElectoralWard2022Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 26,
+      "differences": {}
+    },
+    {
+      "name": "ScottishParliamentaryRegion2026Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 27,
+      "differences": {}
+    },
+    {
+      "name": "ScottishParliamentaryConstituency2026Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 28,
+      "differences": {}
+    },
+    {
+      "name": "UKParliamentaryConstituency2024Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 29,
+      "differences": {}
+    },
+    {
+      "name": "HealthBoardArea2019Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 30,
+      "differences": {}
+    },
+    {
+      "name": "HealthBoardArea2006Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 31,
+      "differences": {}
+    },
+    {
+      "name": "HealthBoardArea1995Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 32,
+      "differences": {}
+    },
+    {
+      "name": "IntegrationAuthority2019Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 33,
+      "differences": {}
+    },
+    {
+      "name": "StrategicDevelopmentPlanningArea2013Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 34,
+      "differences": {}
+    },
+    {
+      "name": "CivilParish1930Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 35,
+      "differences": {}
+    },
+    {
+      "name": "TravelToWorkArea2011Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 36,
+      "differences": {}
+    },
+    {
+      "name": "IslandCode",
+      "variant": "sspl",
+      "table": 3,
+      "row": 37,
+      "differences": {}
+    },
+    {
+      "name": "UrbanRural6Fold2022Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 38,
+      "differences": {}
+    },
+    {
+      "name": "UrbanRural8Fold2022Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 39,
+      "differences": {}
+    },
+    {
+      "name": "LAU2025Level1Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 40,
+      "differences": {}
+    },
+    {
+      "name": "ITL2025Level2Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 41,
+      "differences": {}
+    },
+    {
+      "name": "ITL2025Level3Code",
+      "variant": "sspl",
+      "table": 3,
+      "row": 42,
+      "differences": {}
+    },
+    {
+      "name": "DeliveryPointCount",
+      "variant": "sspl",
+      "table": 3,
+      "row": 43,
+      "differences": {}
+    },
+    {
+      "name": "DeliveryPointCountNonResidential",
+      "variant": "sspl",
+      "table": 3,
+      "row": 44,
+      "differences": {}
+    },
+    {
+      "name": "HouseholdCount",
+      "variant": "sspl",
+      "table": 3,
+      "row": 45,
+      "differences": {}
+    },
+    {
+      "name": "CensusHouseholdCount2022",
+      "variant": "sspl",
+      "table": 3,
+      "row": 46,
+      "differences": {}
+    },
+    {
+      "name": "CensusPopulationCount2022",
+      "variant": "sspl",
+      "table": 3,
+      "row": 47,
+      "differences": {}
+    },
+    {
+      "name": "CensusHouseholdCount2011",
+      "variant": "sspl",
+      "table": 3,
+      "row": 48,
+      "differences": {}
+    },
+    {
+      "name": "CensusPopulationCount2011",
+      "variant": "sspl",
+      "table": 3,
+      "row": 49,
+      "differences": {}
+    },
+    {
+      "name": "CensusHouseholdCount2001",
+      "variant": "sspl",
+      "table": 3,
+      "row": 50,
+      "differences": {}
+    },
+    {
+      "name": "CensusPopulationCount2001",
+      "variant": "sspl",
+      "table": 3,
+      "row": 51,
+      "differences": {}
+    },
+    {
+      "name": "CensusHouseholdCount1991",
+      "variant": "sspl",
+      "table": 3,
+      "row": 52,
+      "differences": {}
+    },
+    {
+      "name": "CensusPopulationCount1991",
+      "variant": "sspl",
+      "table": 3,
+      "row": 53,
+      "differences": {}
+    },
+    {
+      "name": "ScottishIndexOfMultipleDeprivation2020Rank",
+      "variant": "sspl",
+      "table": 3,
+      "row": 54,
+      "differences": {}
+    }
+  ],
+  "glossary_comparisons": [
+    {
+      "name": "datazone",
+      "row": 2,
+      "differences": {}
+    },
+    {
+      "name": "laname",
+      "row": 3,
+      "differences": {}
+    },
+    {
+      "name": "sape2017",
+      "row": 4,
+      "differences": {}
+    },
+    {
+      "name": "wape2017",
+      "row": 5,
+      "differences": {}
+    },
+    {
+      "name": "rankv2",
+      "row": 6,
+      "differences": {}
+    },
+    {
+      "name": "quintilev2",
+      "row": 7,
+      "differences": {}
+    },
+    {
+      "name": "decilev2",
+      "row": 8,
+      "differences": {}
+    },
+    {
+      "name": "vigintilv2",
+      "row": 9,
+      "differences": {}
+    },
+    {
+      "name": "percentv2",
+      "row": 10,
+      "differences": {}
+    },
+    {
+      "name": "incrate",
+      "row": 11,
+      "differences": {}
+    },
+    {
+      "name": "incnumdep",
+      "row": 12,
+      "differences": {}
+    },
+    {
+      "name": "incrankv2",
+      "row": 13,
+      "differences": {}
+    },
+    {
+      "name": "emprate",
+      "row": 14,
+      "differences": {}
+    },
+    {
+      "name": "empnumdep",
+      "row": 15,
+      "differences": {}
+    },
+    {
+      "name": "emprank",
+      "row": 16,
+      "differences": {}
+    },
+    {
+      "name": "hlthcifsr",
+      "row": 17,
+      "differences": {}
+    },
+    {
+      "name": "hlthalcsr",
+      "row": 18,
+      "differences": {}
+    },
+    {
+      "name": "hlthdrugsr",
+      "row": 19,
+      "differences": {}
+    },
+    {
+      "name": "hlthsmr",
+      "row": 20,
+      "differences": {}
+    },
+    {
+      "name": "hlthdprspc",
+      "row": 21,
+      "differences": {}
+    },
+    {
+      "name": "hlthlbwtpc",
+      "row": 22,
+      "differences": {}
+    },
+    {
+      "name": "hlthemersr",
+      "row": 23,
+      "differences": {}
+    },
+    {
+      "name": "hlthrank",
+      "row": 24,
+      "differences": {}
+    },
+    {
+      "name": "eduattend",
+      "row": 25,
+      "differences": {}
+    },
+    {
+      "name": "eduattain",
+      "row": 26,
+      "differences": {}
+    },
+    {
+      "name": "edunoquals",
+      "row": 27,
+      "differences": {}
+    },
+    {
+      "name": "edunotpart",
+      "row": 28,
+      "differences": {}
+    },
+    {
+      "name": "eduuniver",
+      "row": 29,
+      "differences": {}
+    },
+    {
+      "name": "edurank",
+      "row": 30,
+      "differences": {}
+    },
+    {
+      "name": "gaccpetrol",
+      "row": 31,
+      "differences": {}
+    },
+    {
+      "name": "gaccdtgp",
+      "row": 32,
+      "differences": {}
+    },
+    {
+      "name": "gaccdtpost",
+      "row": 33,
+      "differences": {}
+    },
+    {
+      "name": "gaccdtpsch",
+      "row": 34,
+      "differences": {}
+    },
+    {
+      "name": "gaccdtssch",
+      "row": 35,
+      "differences": {}
+    },
+    {
+      "name": "gaccdtret",
+      "row": 36,
+      "differences": {}
+    },
+    {
+      "name": "gaccptgp",
+      "row": 37,
+      "differences": {}
+    },
+    {
+      "name": "gaccptpost",
+      "row": 38,
+      "differences": {}
+    },
+    {
+      "name": "gaccptret",
+      "row": 39,
+      "differences": {}
+    },
+    {
+      "name": "gaccbrdbnd",
+      "row": 40,
+      "differences": {}
+    },
+    {
+      "name": "gaccrank",
+      "row": 41,
+      "differences": {}
+    },
+    {
+      "name": "crimecount",
+      "row": 42,
+      "differences": {}
+    },
+    {
+      "name": "crimerate",
+      "row": 43,
+      "differences": {}
+    },
+    {
+      "name": "crimerank",
+      "row": 44,
+      "differences": {}
+    },
+    {
+      "name": "housenumoc",
+      "row": 45,
+      "differences": {}
+    },
+    {
+      "name": "housenumnc",
+      "row": 46,
+      "differences": {}
+    },
+    {
+      "name": "houseocrat",
+      "row": 47,
+      "differences": {}
+    },
+    {
+      "name": "housencrat",
+      "row": 48,
+      "differences": {}
+    },
+    {
+      "name": "houserank",
+      "row": 49,
+      "differences": {}
+    }
+  ],
+  "numbered_fields": [
+    {
+      "name": "GridLinkPositionalAccuracy",
+      "variant": "spd_small_user",
+      "items": [
+        {
+          "num_id": "13",
+          "format": "decimal",
+          "pattern": "%1",
+          "text": "        Automatically calculated to be within the building of the matched address closest to the postcode."
+        },
+        {
+          "num_id": "13",
+          "format": "decimal",
+          "pattern": "%1",
+          "text": "        As for status value 1, except by visual inspection of OS MasterMap\u00ae Topography Layer maps."
+        },
+        {
+          "num_id": "13",
+          "format": "decimal",
+          "pattern": "%1",
+          "text": "        Approximate to within 50 m of true position."
+        },
+        {
+          "num_id": "13",
+          "format": "decimal",
+          "pattern": "%1",
+          "text": "        Postcode unit mean \u2013 (mean of matched addresses with the same postcode, but not snapped to a building)."
+        },
+        {
+          "num_id": "13",
+          "format": "decimal",
+          "pattern": "%1",
+          "text": "        Postcode imputed by ONS by reference to surrounding known postcodes."
+        },
+        {
+          "num_id": "13",
+          "format": "decimal",
+          "pattern": "%1",
+          "text": "        Postcode sector mean \u2013 mainly PO boxes."
+        },
+        {
+          "num_id": "13",
+          "format": "decimal",
+          "pattern": "%1",
+          "text": "        Postcode terminated. The accuracy of the data is as indicated by its status value immediately prior to its termination."
+        },
+        {
+          "num_id": "13",
+          "format": "decimal",
+          "pattern": "%1",
+          "text": "        No coordinates available."
+        }
+      ]
+    },
+    {
+      "name": "GridLinkPositionalAccuracy",
+      "variant": "spd_large_user",
+      "items": [
+        {
+          "num_id": "14",
+          "format": "decimal",
+          "pattern": "%1",
+          "text": "        Automatically calculated to be within the building of the matched address closest to the postcode."
+        },
+        {
+          "num_id": "14",
+          "format": "decimal",
+          "pattern": "%1",
+          "text": "        As for status value 1, except by visual inspection of OS MasterMap\u00ae Topography Layer maps."
+        },
+        {
+          "num_id": "14",
+          "format": "decimal",
+          "pattern": "%1",
+          "text": "        Approximate to within 50 m of true position."
+        },
+        {
+          "num_id": "14",
+          "format": "decimal",
+          "pattern": "%1",
+          "text": "        Postcode unit mean \u2013 (mean of matched addresses with the same postcode, but not snapped to a building)."
+        },
+        {
+          "num_id": "14",
+          "format": "decimal",
+          "pattern": "%1",
+          "text": "        Postcode imputed by ONS by reference to surrounding known postcodes."
+        },
+        {
+          "num_id": "14",
+          "format": "decimal",
+          "pattern": "%1",
+          "text": "        Postcode sector mean \u2013 mainly PO boxes."
+        },
+        {
+          "num_id": "14",
+          "format": "decimal",
+          "pattern": "%1",
+          "text": "        Postcode terminated. The accuracy of the data is as indicated by its status value immediately prior to its termination."
+        },
+        {
+          "num_id": "14",
+          "format": "decimal",
+          "pattern": "%1",
+          "text": "        No coordinates available."
+        }
+      ]
+    }
+  ],
+  "nrs_missing_or_extra_variants": [],
+  "review": {
+    "reviewer": "Codex (AI-assisted editorial review)",
+    "date": "2026-10-02",
+    "commit": "4a40b6e538a149d87a3ab2f37665eae92c6ebb17",
+    "scope": "Source transcription, retained table variants, source types and ranges, units, geography vintage and edition context. This does not independently validate the publishers' statistical methodology.",
+    "nrs": {
+      "CensusHouseholdCount1991": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "CensusHouseholdCount2001": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "CensusHouseholdCount2011": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "CensusHouseholdCount2022": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "CensusPopulationCount1991": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "CensusPopulationCount2001": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "CensusPopulationCount2011": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "CensusPopulationCount2022": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "CivilParish1930Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "CouncilArea2019Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "DataZone2001Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "DataZone2011Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "DataZone2022Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "DateOfDeletion": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "DateOfIntroduction": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "DeliveryPointCount": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "DeliveryPointCountNonResidential": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "ElectoralWard2022Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "EnterpriseRegion2008Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "GridLinkIndicator": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "GridLinkPositionalAccuracy": {
+        "verdict": "changes_requested",
+        "note": "Restore the source numbered code labels 1 through 8; plain cell text omits Word numbering."
+      },
+      "GridReferenceEasting": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "GridReferenceNorthing": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "HealthBoardArea1995Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "HealthBoardArea2006Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "HealthBoardArea2019Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "HouseholdCount": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "ITL2025Level2Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "ITL2025Level3Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "IntegrationAuthority2019Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "IntermediateZone2001Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "IntermediateZone2011Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "IntermediateZone2022Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "IslandCode": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "LAU2025Level1Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "Latitude": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "LinkedSmallUserPostcode": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "LocalGovernmentDistrict1991Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "LocalGovernmentDistrict1995Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "Locality1991Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "Locality2001Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "Locality2020Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "Locality2022Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "Longitude": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "NationalPark2010Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "NeverDigitised": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "OutputArea1991Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "OutputArea2001Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "OutputArea2011Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "OutputArea2022Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "Postcode": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "PostcodeDistrict": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "PostcodeSector": {
+        "verdict": "changes_requested",
+        "note": "Annotate the source dictionary inconsistency: large-user Char(4) conflicts with EH10 4 and the pinned CSV, which contains sectors up to six characters."
+      },
+      "PostcodeType": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "ROACommunityPlanningPartnership2006Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "ROALocal2006Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "RegistrationDistrict2007Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "ScottishIndexOfMultipleDeprivation2020Rank": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "ScottishParliamentaryConstituency2026Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "ScottishParliamentaryRegion2026Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "Settlement2001Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "Settlement2020Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "Settlement2022Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "SplitIndicator": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "StrategicDevelopmentPlanningArea2013Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "TravelToWorkArea2011Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "UKParliamentaryConstituency2024Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "UrbanRural6Fold2022Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      },
+      "UrbanRural8Fold2022Code": {
+        "verdict": "approved",
+        "note": "Accepted as a description from the identified NRS dictionary table; preserve that attribution."
+      }
+    },
+    "glossary": {
+      "datazone": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "laname": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "sape2017": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "wape2017": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "rankv2": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "quintilev2": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "decilev2": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "vigintilv2": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "percentv2": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "incrate": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "incnumdep": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "incrankv2": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "emprate": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "empnumdep": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "emprank": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "hlthcifsr": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "hlthalcsr": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "hlthdrugsr": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "hlthsmr": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "hlthdprspc": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "hlthlbwtpc": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "hlthemersr": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "hlthrank": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "eduattend": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "eduattain": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "edunoquals": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "edunotpart": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "eduuniver": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "edurank": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "gaccpetrol": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "gaccdtgp": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "gaccdtpost": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "gaccdtpsch": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "gaccdtssch": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "gaccdtret": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "gaccptgp": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "gaccptpost": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "gaccptret": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "gaccbrdbnd": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "gaccrank": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "crimecount": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "crimerate": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "crimerank": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "housenumoc": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "housenumnc": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "houseocrat": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "housencrat": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      },
+      "houserank": {
+        "verdict": "approved",
+        "note": "Accepted as the pinned SIMD 2020v2 glossary definition; does not define earlier editions."
+      }
+    },
+    "validation": {
+      "provenance_tests_passed": 28,
+      "strict_site_build": "passed"
+    },
+    "repository_files_changed": false
+  }
+}

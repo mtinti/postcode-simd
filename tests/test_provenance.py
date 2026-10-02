@@ -62,16 +62,48 @@ def test_every_table_variant_has_a_nonempty_description():
             assert (f.get("note") or "").strip(), f["name"]
 
 
-def test_unreviewed_descriptions_are_labelled_on_the_pages(tmp_path):
+def test_every_page_states_the_review_status_of_its_dictionary_text(tmp_path):
     write(tmp_path)
     descriptions = yaml.safe_load((PACKAGE / "column_descriptions.yaml").read_text())
-    unreviewed = [n for n, e in descriptions.items() if not e.get("reviewed")]
-    home = (tmp_path / "index.md").read_text()
-    assert f"{len(unreviewed)} of {len(descriptions)} not yet reviewed" in home
-    for name in unreviewed:
+    review = yaml.safe_load((PACKAGE / "description_review.yaml").read_text())
+    for name in descriptions:
         page = tmp_path / "columns" / f"{name}.md"
-        if page.is_file():
-            assert "not yet reviewed" in page.read_text(), name
+        if not page.is_file():
+            continue
+        head = next(l for l in page.read_text().splitlines() if l.startswith("**NRS data dictionary**"))
+        verdict = review["nrs"].get(name, {}).get("verdict")
+        expected = {"approved": "reviewed (AI-assisted review", "corrected": "awaiting confirmation", None: "not yet reviewed"}[verdict]
+        assert expected in head, (name, head)
+    assert "Reviews: Codex" in (tmp_path / "index.md").read_text()
+
+
+def test_the_review_is_kept_apart_from_the_extracted_text():
+    """Re-extracting must never erase a review: the extracted files carry no verdicts, the review
+    file names a committed record for every review it cites, and every verdict is a known one."""
+    for name in ("column_descriptions.yaml", "simd_glossary.yaml"):
+        assert "reviewed" not in (PACKAGE / name).read_text().split("\n", 3)[-1]
+    review = yaml.safe_load((PACKAGE / "description_review.yaml").read_text())
+    ids = {r["id"]: r for r in review["reviews"]}
+    for r in ids.values():
+        assert (ROOT / r["record"]).is_file() and r["kind"] == "AI-assisted"
+    for kind in ("nrs", "glossary"):
+        for name, entry in review[kind].items():
+            assert entry["verdict"] in ("approved", "corrected") and entry["review"] in ids, (kind, name)
+    descriptions = yaml.safe_load((PACKAGE / "column_descriptions.yaml").read_text())
+    glossary = yaml.safe_load((PACKAGE / "simd_glossary.yaml").read_text())
+    assert set(review["nrs"]) == set(descriptions) and set(review["glossary"]) == set(glossary)
+
+
+def test_the_two_corrections_the_review_asked_for():
+    descriptions = yaml.safe_load((PACKAGE / "column_descriptions.yaml").read_text())
+    for variant in ("spd_small_user", "spd_large_user"):
+        text = descriptions["GridLinkPositionalAccuracy"][variant]["text"]
+        positions = [text.index(f" {n}. ") for n in range(1, 9)]
+        assert positions == sorted(positions), variant
+        assert "8. No coordinates available." in text and "PO Box" in text
+    review = yaml.safe_load((PACKAGE / "description_review.yaml").read_text())
+    assert descriptions["PostcodeSector"]["spd_large_user"]["type"] == "Char(4)"        # the source, quoted unchanged
+    assert "46,661 of the 51,004" in review["nrs"]["PostcodeSector"]["notes"]["spd_large_user"]
 
 
 def test_each_nrs_description_names_its_pinned_dictionary():
@@ -190,6 +222,8 @@ def test_the_site_has_a_page_per_column_and_every_link_resolves(tmp_path):
     assert column_pages == names
     for page in pages:
         for target in re.findall(r"\]\(([^)#]+\.md)\)", page.read_text()):
+            if target.startswith(("http://", "https://")):
+                continue                               # external: the review record on GitHub
             assert (page.parent / target).resolve().is_file(), (page.name, target)
 
 
@@ -241,15 +275,18 @@ def test_sources_are_mapped_per_pinned_file_and_columns_can_be_filtered(tmp_path
 
 
 def test_glossary_text_is_labelled_wherever_it_appears(tmp_path):
-    """Every line quoting the SIMD 2020v2 glossary says so, and says when it is unreviewed."""
+    """Every line quoting the SIMD 2020v2 glossary names it; on an earlier edition's page it says
+    the text is a 2020v2 example, not verified for that edition."""
     write(tmp_path)
     glossary = yaml.safe_load((PACKAGE / "simd_glossary.yaml").read_text())
-    unreviewed = {e["label"] for e in glossary.values() if not e.get("reviewed")}
-    for page in (tmp_path / "columns").glob("*.md"):
+    labels = {e["label"] for e in glossary.values()}
+    for page in (tmp_path / "columns").glob("simd*.md"):
+        edition = page.stem.split("_")[0].removeprefix("simd")
         for line in page.read_text().splitlines():
-            labels = [l for l in unreviewed if f"(`{l}`," in line or f"`{l.lower()}`: " in line]
-            if labels:
-                assert "not yet reviewed" in line, (page.name, line[:120])
+            if any(f"(`{l}`," in line or f"`{l.lower()}`: " in line for l in labels):
+                assert "SIMD 2020v2 glossary" in line, (page.name, line[:120])
+                if edition != "2020v2":
+                    assert "not verified for this edition" in line, (page.name, line[:120])
 
 
 def test_rurality_attributes_come_from_the_dbf_and_geometry_from_the_shp(L, tmp_path):

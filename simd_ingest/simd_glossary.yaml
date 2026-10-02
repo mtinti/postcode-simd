@@ -1,12 +1,11 @@
 # The Scottish Government's SIMD 2020v2 GIS glossary, extracted from the pinned file by
 # simd_ingest/extract_descriptions.py, keyed by shapefile field (lower case). It describes the
-# 2020v2 shapefile only. reviewed: false until a person has read it against the glossary.
+# 2020v2 shapefile only. Review verdicts are in simd_ingest/description_review.yaml.
 datazone:
   label: DataZone
   domain: Geography
   type: Code
   description: 2011 data zone
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -15,7 +14,6 @@ laname:
   domain: Geography
   type: Name
   description: Council area name
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -24,7 +22,6 @@ sape2017:
   domain: Population
   type: Count
   description: 2017 NRS small area population estimates
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -33,7 +30,6 @@ wape2017:
   domain: Population
   type: Count
   description: 2017 NRS small area population estimates and state pension age
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -42,7 +38,6 @@ rankv2:
   domain: Overall SIMD
   type: Rank
   description: Rank
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -51,7 +46,6 @@ quintilev2:
   domain: Overall SIMD
   type: Quantile
   description: Quintile
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -60,7 +54,6 @@ decilev2:
   domain: Overall SIMD
   type: Quantile
   description: Decile
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -69,7 +62,6 @@ vigintilv2:
   domain: Overall SIMD
   type: Quantile
   description: Vigintile
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -78,7 +70,6 @@ percentv2:
   domain: Overall SIMD
   type: Quantile
   description: Percentile
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -87,7 +78,6 @@ incrate:
   domain: Income
   type: Percentage
   description: Percentage of people who are income deprived
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -96,7 +86,6 @@ incnumdep:
   domain: Income
   type: Count
   description: Number of people who are income deprived
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -105,7 +94,6 @@ incrankv2:
   domain: Income
   type: Rank
   description: Income domain rank
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -114,7 +102,6 @@ emprate:
   domain: Employment
   type: Percentage
   description: Percentage of working age people who are employment deprived
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -123,7 +110,6 @@ empnumdep:
   domain: Employment
   type: Count
   description: Number of working age people who are employment deprived
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -132,7 +118,6 @@ emprank:
   domain: Employment
   type: Rank
   description: Employment domain rank
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -141,7 +126,6 @@ hlthcifsr:
   domain: Health
   type: Standardised ratio
   description: Comparative illness factor
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -150,7 +134,6 @@ hlthalcsr:
   domain: Health
   type: Standardised ratio
   description: Hospital stays related to alcohol use
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -159,7 +142,6 @@ hlthdrugsr:
   domain: Health
   type: Standardised ratio
   description: Hospital stays related to drug use
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -168,7 +150,6 @@ hlthsmr:
   domain: Health
   type: Standardised ratio
   description: Mortality
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -177,7 +158,6 @@ hlthdprspc:
   domain: Health
   type: Percentage
   description: Proportion of population being prescribed drugs for anxiety, depression or psychosis
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -186,7 +166,6 @@ hlthlbwtpc:
   domain: Health
   type: Percentage
   description: Proportion of live singleton births of low birth weight
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -195,7 +174,6 @@ hlthemersr:
   domain: Health
   type: Standardised ratio
   description: Emergency stays in hospital
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -204,7 +182,6 @@ hlthrank:
   domain: Health
   type: Rank
   description: Health domain rank
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -213,7 +190,6 @@ eduattend:
   domain: Education, Skills and Training
   type: Percentage
   description: School pupil attendance
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -222,7 +198,6 @@ eduattain:
   domain: Education, Skills and Training
   type: Score
   description: Attainment of school leavers
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -231,7 +206,6 @@ edunoquals:
   domain: Education, Skills and Training
   type: Standardised ratio
   description: Working age people with no qualifications
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -240,7 +214,6 @@ edunotpart:
   domain: Education, Skills and Training
   type: Percentage
   description: Proportion of people aged 16-19 not participating in education, employment or training
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -249,7 +222,6 @@ eduuniver:
   domain: Education, Skills and Training
   type: Percentage
   description: 17-21 year olds entering university as a proportion of the 17-21 population
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -258,7 +230,6 @@ edurank:
   domain: Education, Skills and Training
   type: Rank
   description: Education domain rank
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -267,7 +238,6 @@ gaccpetrol:
   domain: Geographic Access to Services
   type: Time (minutes)
   description: Average drive time to a petrol station in minutes
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -276,7 +246,6 @@ gaccdtgp:
   domain: Geographic Access to Services
   type: Time (minutes)
   description: Average drive time to a GP surgery in minutes
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -285,7 +254,6 @@ gaccdtpost:
   domain: Geographic Access to Services
   type: Time (minutes)
   description: Average drive time to a post office in minutes
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -294,7 +262,6 @@ gaccdtpsch:
   domain: Geographic Access to Services
   type: Time (minutes)
   description: Average drive time to a primary school in minutes
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -303,7 +270,6 @@ gaccdtssch:
   domain: Geographic Access to Services
   type: Time (minutes)
   description: Average drive time to a secondary school in minutes
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -312,7 +278,6 @@ gaccdtret:
   domain: Geographic Access to Services
   type: Time (minutes)
   description: Average drive time to a retail centre in minutes
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -321,7 +286,6 @@ gaccptgp:
   domain: Geographic Access to Services
   type: Time (minutes)
   description: Public transport travel time to a GP surgery in minutes
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -330,7 +294,6 @@ gaccptpost:
   domain: Geographic Access to Services
   type: Time (minutes)
   description: Public transport travel time to a post office in minutes
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -339,7 +302,6 @@ gaccptret:
   domain: Geographic Access to Services
   type: Time (minutes)
   description: Public transport travel time to a retail centre in minutes
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -349,7 +311,6 @@ gaccbrdbnd:
   type: Percentage
   description: Percentage of premises without access to superfast broadband (at least 30Mb/s download
     speed)
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -358,7 +319,6 @@ gaccrank:
   domain: Geographic Access to Services
   type: Rank
   description: Access domain rank
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -368,7 +328,6 @@ crimecount:
   type: Count
   description: Number of recorded crimes of violence, sexual offences, domestic housebreaking, vandalism,
     drugs offences, and common assault
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -378,7 +337,6 @@ crimerate:
   type: Rate
   description: Recorded crimes of violence, sexual offences, domestic housebreaking, vandalism, drugs
     offences, and common assault per 10,000 population
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -387,7 +345,6 @@ crimerank:
   domain: Crime
   type: Rank
   description: Crime domain rank
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -396,7 +353,6 @@ housenumoc:
   domain: Housing
   type: Count
   description: Number of people in households that are overcrowded
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -405,7 +361,6 @@ housenumnc:
   domain: Housing
   type: Count
   description: Number of people in households without central heating
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -414,7 +369,6 @@ houseocrat:
   domain: Housing
   type: Percentage
   description: Percentage of people in households that are overcrowded
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -423,7 +377,6 @@ housencrat:
   domain: Housing
   type: Percentage
   description: Percentage of people in households without central heating
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c
@@ -432,7 +385,6 @@ houserank:
   domain: Housing
   type: Rank
   description: Housing domain rank
-  reviewed: false
   source:
     file: data.gov.uk/SG_SIMD_2020/SIMD2020v2 - GIS files - glossary.xlsx
     sha256: 2e4896cc5ed192353ffc47c17f37f55a98a9b15a6ce2c08221a44d0dc4f6a20c

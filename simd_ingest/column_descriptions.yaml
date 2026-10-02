@@ -1,8 +1,7 @@
 # NRS field descriptions, extracted from the pinned SPD and SSPL data dictionaries by
 # simd_ingest/extract_descriptions.py, per dictionary table, with the file and hash they came
-# from. reviewed: false until a person has read the entry against the dictionary.
+# from. Review verdicts and reviewer notes are in simd_ingest/description_review.yaml.
 CensusHouseholdCount1991:
-  reviewed: false
   spd_small_user:
     range: ''
     source:
@@ -22,7 +21,6 @@ CensusHouseholdCount1991:
       and household counts are: Population Household SH25 0SAA 247 0 TD9 0TJA 2 1'
     type: Integer
 CensusHouseholdCount2001:
-  reviewed: false
   spd_small_user:
     range: ''
     source:
@@ -38,7 +36,6 @@ CensusHouseholdCount2001:
     text: 2001 Census postcode household count.
     type: Integer
 CensusHouseholdCount2011:
-  reviewed: false
   spd_small_user:
     range: ''
     source:
@@ -54,7 +51,6 @@ CensusHouseholdCount2011:
     text: 2011 Census postcode household count.
     type: Integer
 CensusHouseholdCount2022:
-  reviewed: false
   spd_small_user:
     range: ''
     source:
@@ -76,7 +72,6 @@ CensusHouseholdCount2022:
       website.
     type: Integer
 CensusPopulationCount1991:
-  reviewed: false
   spd_small_user:
     range: ''
     source:
@@ -96,7 +91,6 @@ CensusPopulationCount1991:
       are: Population Household SH25 0SAA 247 0 TD9 0TJA 2 1'
     type: Integer
 CensusPopulationCount2001:
-  reviewed: false
   spd_small_user:
     range: ''
     source:
@@ -112,7 +106,6 @@ CensusPopulationCount2001:
     text: 2001 Census postcode residential count.
     type: Integer
 CensusPopulationCount2011:
-  reviewed: false
   spd_small_user:
     range: ''
     source:
@@ -128,7 +121,6 @@ CensusPopulationCount2011:
     text: 2011 Census postcode residential count.
     type: Integer
 CensusPopulationCount2022:
-  reviewed: false
   spd_small_user:
     range: ''
     source:
@@ -150,7 +142,6 @@ CensusPopulationCount2022:
       Census website.
     type: Integer
 CivilParish1930Code:
-  reviewed: false
   spd_large_user:
     range: S35000001 to S35000871
     source:
@@ -173,7 +164,6 @@ CivilParish1930Code:
     text: A code that identifies a 1930 Civil Parish.
     type: Char(9)
 CouncilArea2019Code:
-  reviewed: false
   spd_large_user:
     range: S12000005 to S12000050
     source:
@@ -196,7 +186,6 @@ CouncilArea2019Code:
     text: A code that identifies a 2019 Council Area.
     type: Char(9)
 DataZone2001Code:
-  reviewed: false
   spd_large_user:
     range: S01000001 to S01006505
     source:
@@ -219,7 +208,6 @@ DataZone2001Code:
     text: A code that identifies a 2001 Data Zone (built from 2001 Output Areas).
     type: Char(9)
 DataZone2011Code:
-  reviewed: false
   spd_large_user:
     range: S01006506 to S01013481
     source:
@@ -242,7 +230,6 @@ DataZone2011Code:
     text: A code that identifies a 2011 Data Zone (built from 2011 Output Areas).
     type: Char(9)
 DataZone2022Code:
-  reviewed: false
   spd_large_user:
     range: S01013482 to S01020873
     source:
@@ -265,7 +252,6 @@ DataZone2022Code:
     text: A code that identifies a 2022 Data Zone (built from 2022 Output Areas).
     type: Char(9)
 DateOfDeletion:
-  reviewed: false
   spd_large_user:
     range: ''
     source:
@@ -288,7 +274,6 @@ DateOfDeletion:
     text: Postcode deletion date.
     type: Date
 DateOfIntroduction:
-  reviewed: false
   spd_large_user:
     range: ''
     source:
@@ -311,7 +296,6 @@ DateOfIntroduction:
     text: Postcode introduction date.
     type: Date
 DeliveryPointCount:
-  reviewed: false
   spd_small_user:
     range: ''
     source:
@@ -327,7 +311,6 @@ DeliveryPointCount:
     text: The Royal Mail delivery point count.
     type: Integer
 DeliveryPointCountNonResidential:
-  reviewed: false
   spd_small_user:
     range: ''
     source:
@@ -343,7 +326,6 @@ DeliveryPointCountNonResidential:
     text: The Royal Mail delivery point count (non-residential)
     type: Integer
 ElectoralWard2022Code:
-  reviewed: false
   spd_large_user:
     range: S13002516 to S13003156
     source:
@@ -366,7 +348,6 @@ ElectoralWard2022Code:
     text: A code that identifies a 2022 Electoral Ward.
     type: Char(9)
 EnterpriseRegion2008Code:
-  reviewed: false
   spd_large_user:
     range: S09000001 to S09000006
     source:
@@ -382,7 +363,6 @@ EnterpriseRegion2008Code:
     text: A code that identifies a 2008 Scottish Enterprise Region.
     type: Char(9)
 GridLinkIndicator:
-  reviewed: false
   spd_large_user:
     range: Y or N
     source:
@@ -398,22 +378,22 @@ GridLinkIndicator:
     text: Indicates whether the grid reference has been assigned via GridLink.
     type: Char(1)
 GridLinkPositionalAccuracy:
-  reviewed: false
   spd_large_user:
     range: 1 to 8
     source:
       file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
       sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
     text: Indicates the positional accuracy of the GridLink grid reference allocated to each postcode.
-      Description of status values Automatically calculated to be within the building of the matched address
-      closest to the postcode. As for status value 1, except by visual inspection of OS MasterMap® Topography
-      Layer maps. Approximate to within 50 m of true position. Postcode unit mean – (mean of matched addresses
-      with the same postcode, but not snapped to a building). Postcode imputed by ONS by reference to
-      surrounding known postcodes. Postcode sector mean – mainly PO boxes. Postcode terminated. The accuracy
-      of the data is as indicated by its status value immediately prior to its termination. No coordinates
-      available. Note that grid references for PO Box postcodes are assigned to the local Royal Mail sorting/delivery
-      office and are deemed low quality. While the Gridlink® RPC is showing as 1 (which is high quality),
-      this is purely because the address is being matched to the local Royal Mail sorting/delivery office.
+      Description of status values 1. Automatically calculated to be within the building of the matched
+      address closest to the postcode. 2. As for status value 1, except by visual inspection of OS MasterMap®
+      Topography Layer maps. 3. Approximate to within 50 m of true position. 4. Postcode unit mean – (mean
+      of matched addresses with the same postcode, but not snapped to a building). 5. Postcode imputed
+      by ONS by reference to surrounding known postcodes. 6. Postcode sector mean – mainly PO boxes. 7.
+      Postcode terminated. The accuracy of the data is as indicated by its status value immediately prior
+      to its termination. 8. No coordinates available. Note that grid references for PO Box postcodes
+      are assigned to the local Royal Mail sorting/delivery office and are deemed low quality. While the
+      Gridlink® RPC is showing as 1 (which is high quality), this is purely because the address is being
+      matched to the local Royal Mail sorting/delivery office.
     type: Char(1)
   spd_small_user:
     range: 1 to 8
@@ -421,18 +401,18 @@ GridLinkPositionalAccuracy:
       file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
       sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
     text: Indicates the positional accuracy of the GridLink grid reference allocated to each postcode.
-      Description of status values Automatically calculated to be within the building of the matched address
-      closest to the postcode. As for status value 1, except by visual inspection of OS MasterMap® Topography
-      Layer maps. Approximate to within 50 m of true position. Postcode unit mean – (mean of matched addresses
-      with the same postcode, but not snapped to a building). Postcode imputed by ONS by reference to
-      surrounding known postcodes. Postcode sector mean – mainly PO boxes. Postcode terminated. The accuracy
-      of the data is as indicated by its status value immediately prior to its termination. No coordinates
-      available. Note that grid references for PO Box postcodes are assigned to the local Royal Mail sorting/delivery
-      office and are deemed low quality. While the Gridlink® RPC is showing as 1 (which is high quality),
-      this is purely because the address is being matched to the local Royal Mail sorting/delivery office.
+      Description of status values 1. Automatically calculated to be within the building of the matched
+      address closest to the postcode. 2. As for status value 1, except by visual inspection of OS MasterMap®
+      Topography Layer maps. 3. Approximate to within 50 m of true position. 4. Postcode unit mean – (mean
+      of matched addresses with the same postcode, but not snapped to a building). 5. Postcode imputed
+      by ONS by reference to surrounding known postcodes. 6. Postcode sector mean – mainly PO boxes. 7.
+      Postcode terminated. The accuracy of the data is as indicated by its status value immediately prior
+      to its termination. 8. No coordinates available. Note that grid references for PO Box postcodes
+      are assigned to the local Royal Mail sorting/delivery office and are deemed low quality. While the
+      Gridlink® RPC is showing as 1 (which is high quality), this is purely because the address is being
+      matched to the local Royal Mail sorting/delivery office.
     type: Char(1)
 GridReferenceEasting:
-  reviewed: false
   spd_large_user:
     range: ''
     source:
@@ -455,7 +435,6 @@ GridReferenceEasting:
     text: Grid reference easting to 1 metre resolution.
     type: Char(6)
 GridReferenceNorthing:
-  reviewed: false
   spd_large_user:
     range: ''
     source:
@@ -478,7 +457,6 @@ GridReferenceNorthing:
     text: Grid reference northing to 1 metre resolution.
     type: Char(7)
 HealthBoardArea1995Code:
-  reviewed: false
   spd_large_user:
     range: 01 to 15
     source:
@@ -501,7 +479,6 @@ HealthBoardArea1995Code:
     text: A code that identifies a 1995 Health Board.
     type: Char(2)
 HealthBoardArea2006Code:
-  reviewed: false
   spd_large_user:
     range: S08000001 to S08000014
     source:
@@ -524,7 +501,6 @@ HealthBoardArea2006Code:
     text: A code that identifies a 2006 Health Board.
     type: Char(9)
 HealthBoardArea2019Code:
-  reviewed: false
   spd_large_user:
     range: S08000015 to S08000032
     source:
@@ -547,7 +523,6 @@ HealthBoardArea2019Code:
     text: A code that identifies a 2019 Health Board.
     type: Char(9)
 HouseholdCount:
-  reviewed: false
   spd_small_user:
     range: ''
     source:
@@ -563,7 +538,6 @@ HouseholdCount:
     text: The Royal Mail Household count.
     type: Integer
 ITL2025Level2Code:
-  reviewed: false
   spd_large_user:
     range: TLM0 to TLM9
     source:
@@ -586,7 +560,6 @@ ITL2025Level2Code:
     text: International Territorial Levels (ITLs) 2025 Level 2.
     type: Char(4)
 ITL2025Level3Code:
-  reviewed: false
   spd_large_user:
     range: TLM01 to TLM95
     source:
@@ -609,7 +582,6 @@ ITL2025Level3Code:
     text: International Territorial Levels (ITLs) 2025 Level 3.
     type: Char(5)
 IntegrationAuthority2019Code:
-  reviewed: false
   spd_large_user:
     range: S37000001 to S37000035
     source:
@@ -632,7 +604,6 @@ IntegrationAuthority2019Code:
     text: A code that identifies a 2019 Integration Authority, also known as Health and Social Care Partnership.
     type: Char(9)
 IntermediateZone2001Code:
-  reviewed: false
   spd_large_user:
     range: S02000001 to S02001235
     source:
@@ -655,7 +626,6 @@ IntermediateZone2001Code:
     text: A code that identifies a 2001 Intermediate Zone (built from 2001 Data Zones).
     type: Char(9)
 IntermediateZone2011Code:
-  reviewed: false
   spd_large_user:
     range: S02001236 to S02002514
     source:
@@ -678,7 +648,6 @@ IntermediateZone2011Code:
     text: A code that identifies a 2011 Intermediate Zone (built from 2011 Data Zones).
     type: Char(9)
 IntermediateZone2022Code:
-  reviewed: false
   spd_large_user:
     range: S02002515 to S02003848
     source:
@@ -701,7 +670,6 @@ IntermediateZone2022Code:
     text: A code that identifies a 2022 Intermediate Zone (built from 2022 Data Zones).
     type: Char(9)
 IslandCode:
-  reviewed: false
   spd_large_user:
     range: 000 to 180
     source:
@@ -724,7 +692,6 @@ IslandCode:
     text: A code that identifies an island.
     type: Char(3)
 LAU2025Level1Code:
-  reviewed: false
   spd_large_user:
     range: S30000003 to S30000056
     source:
@@ -747,7 +714,6 @@ LAU2025Level1Code:
     text: European Area Classification Local Administrative Unit (LAU) 2025 level 1.
     type: Char(9)
 Latitude:
-  reviewed: false
   spd_large_user:
     range: ''
     source:
@@ -765,7 +731,6 @@ Latitude:
       ESRI translation and projected to WGS1984 datum (EPSG 4326).
     type: Numeric
 LinkedSmallUserPostcode:
-  reviewed: false
   spd_large_user:
     range: ''
     source:
@@ -783,7 +748,6 @@ LinkedSmallUserPostcode:
       PO Boxes shown as NO LINKP. This can contain split postcodes.
     type: Char(9)
 LocalGovernmentDistrict1991Code:
-  reviewed: false
   spd_large_user:
     range: 01 to 56
     source:
@@ -806,7 +770,6 @@ LocalGovernmentDistrict1991Code:
     text: A code that identifies a 1991 Local Government District.
     type: Char(2)
 LocalGovernmentDistrict1995Code:
-  reviewed: false
   spd_large_user:
     range: 01 to 56
     source:
@@ -829,7 +792,6 @@ LocalGovernmentDistrict1995Code:
     text: A code that identifies a 1995 Local Government District.
     type: Char(2)
 Locality1991Code:
-  reviewed: false
   spd_large_user:
     range: 001 to 603
     source:
@@ -845,7 +807,6 @@ Locality1991Code:
     text: A code that identifies the 1991 Census Locality.
     type: Char(3)
 Locality2001Code:
-  reviewed: false
   spd_large_user:
     range: 001001 to 521001
     source:
@@ -861,7 +822,6 @@ Locality2001Code:
     text: A code that identifies the 2001 Census Locality.
     type: Char(6)
 Locality2020Code:
-  reviewed: false
   spd_large_user:
     range: S19001928 to S19002583
     source:
@@ -877,7 +837,6 @@ Locality2020Code:
     text: A code that identifies a 2020 Locality.
     type: Char(9)
 Locality2022Code:
-  reviewed: false
   spd_large_user:
     range: S52000001 to S52000656
     source:
@@ -893,7 +852,6 @@ Locality2022Code:
     text: A code that identifies a 2022 Census Locality.
     type: Char(9)
 Longitude:
-  reviewed: false
   spd_large_user:
     range: ''
     source:
@@ -911,7 +869,6 @@ Longitude:
       ESRI translation and projected to WGS1984 datum (EPSG 4326).
     type: Numeric
 NationalPark2010Code:
-  reviewed: false
   spd_large_user:
     range: S21000002 to S21000003
     source:
@@ -927,7 +884,6 @@ NationalPark2010Code:
     text: A code that identifies a 2010 National Park.
     type: Char(9)
 NeverDigitised:
-  reviewed: false
   spd_small_user:
     range: Y or Null
     source:
@@ -939,7 +895,6 @@ NeverDigitised:
       user postcodes as they had no distinctive geographical position.
     type: Char(1)
 OutputArea1991Code:
-  reviewed: false
   spd_large_user:
     range: 5601AB02 to 6756AK12
     source:
@@ -974,7 +929,6 @@ OutputArea1991Code:
       a 9th char is added which indicates how many Output Areas make up the 1981 Enumeration District).'
     type: Char(9)
 OutputArea2001Code:
-  reviewed: false
   spd_large_user:
     range: S00000001 to S00042604
     source:
@@ -997,7 +951,6 @@ OutputArea2001Code:
     text: A code that identifies a 2001 Census Output Area.
     type: Char(9)
 OutputArea2011Code:
-  reviewed: false
   spd_large_user:
     range: S00088956 to S00135306
     source:
@@ -1020,7 +973,6 @@ OutputArea2011Code:
     text: A code that identifies a 2011 Census Output Area.
     type: Char(9)
 OutputArea2022Code:
-  reviewed: false
   spd_large_user:
     range: S00135307 to S00181669
     source:
@@ -1043,7 +995,6 @@ OutputArea2022Code:
     text: A code that identifies a 2022 Census Output Area.
     type: Char(9)
 Postcode:
-  reviewed: false
   spd_large_user:
     range: ''
     source:
@@ -1068,7 +1019,6 @@ Postcode:
     text: 'The Royal Mail postcode. Comprised of for example: Area EH District 10 Sector 4 Unit SU'
     type: Char(9)
 PostcodeDistrict:
-  reviewed: false
   spd_large_user:
     range: ''
     source:
@@ -1091,7 +1041,6 @@ PostcodeDistrict:
     text: Postcode District. For example EH10
     type: Char(4)
 PostcodeSector:
-  reviewed: false
   spd_large_user:
     range: ''
     source:
@@ -1114,7 +1063,6 @@ PostcodeSector:
     text: Postcode Sector. For example EH10 4
     type: Char(6)
 PostcodeType:
-  reviewed: false
   sspl:
     range: S or L
     source:
@@ -1123,7 +1071,6 @@ PostcodeType:
     text: Small or Large User postcode indicator.
     type: Char(1)
 ROACommunityPlanningPartnership2006Code:
-  reviewed: false
   spd_large_user:
     range: S05000001 to S05000028
     source:
@@ -1139,7 +1086,6 @@ ROACommunityPlanningPartnership2006Code:
     text: A code that identifies a 2006 Regeneration Outcome Area Community Planning Partnerships (CPP).
     type: Char(9)
 ROALocal2006Code:
-  reviewed: false
   spd_large_user:
     range: S06000001 to S06000180
     source:
@@ -1155,7 +1101,6 @@ ROALocal2006Code:
     text: A code that identifies a 2006 Regeneration Outcome Area Local.
     type: Char(9)
 RegistrationDistrict2007Code:
-  reviewed: false
   spd_large_user:
     range: S12000005 to S12000050
     source:
@@ -1184,7 +1129,6 @@ RegistrationDistrict2007Code:
       as Council Area boundaries .
     type: Char(9)
 ScottishIndexOfMultipleDeprivation2020Rank:
-  reviewed: false
   spd_large_user:
     range: 0001 to 6976
     source:
@@ -1210,7 +1154,6 @@ ScottishIndexOfMultipleDeprivation2020Rank:
       deprived ranked 6976. Linked using 2011 Data Zones.
     type: Char(4)
 ScottishParliamentaryConstituency2026Code:
-  reviewed: false
   spd_large_user:
     range: S16000151 to S16000223
     source:
@@ -1233,7 +1176,6 @@ ScottishParliamentaryConstituency2026Code:
     text: A code that identifies a 2026 Scottish Parliamentary Constituency.
     type: Char(9)
 ScottishParliamentaryRegion2026Code:
-  reviewed: false
   spd_large_user:
     range: S17000021 to S17000028
     source:
@@ -1256,7 +1198,6 @@ ScottishParliamentaryRegion2026Code:
     text: A code that identifies a 2026 Scottish Parliamentary Region.
     type: Char(9)
 Settlement2001Code:
-  reviewed: false
   spd_large_user:
     range: 001 to 521
     source:
@@ -1272,7 +1213,6 @@ Settlement2001Code:
     text: A code that identifies the 2001 Census Settlement.
     type: Char(3)
 Settlement2020Code:
-  reviewed: false
   spd_large_user:
     range: S20001538 to S20002051
     source:
@@ -1288,7 +1228,6 @@ Settlement2020Code:
     text: A code that identifies a 2020 Settlement.
     type: Char(9)
 Settlement2022Code:
-  reviewed: false
   spd_large_user:
     range: S53000001 to S53000503
     source:
@@ -1304,7 +1243,6 @@ Settlement2022Code:
     text: A code that identifies a 2022 Census Settlement
     type: Char(9)
 SplitIndicator:
-  reviewed: false
   spd_large_user:
     range: Y or N
     source:
@@ -1328,7 +1266,6 @@ SplitIndicator:
       an A, B, or C suffix.
     type: Char(1)
 StrategicDevelopmentPlanningArea2013Code:
-  reviewed: false
   spd_large_user:
     range: S11000001 to S11000005
     source:
@@ -1351,7 +1288,6 @@ StrategicDevelopmentPlanningArea2013Code:
     text: A code that identifies a 2013 Strategic Development Planning Area.
     type: Char(9)
 TravelToWorkArea2011Code:
-  reviewed: false
   spd_large_user:
     range: S22000005 to S22000086, K01000009 and K01000010
     source:
@@ -1374,7 +1310,6 @@ TravelToWorkArea2011Code:
     text: A code that identifies a 2011 Travel to Work Area.
     type: Char(9)
 UKParliamentaryConstituency2024Code:
-  reviewed: false
   spd_large_user:
     range: S14000021 to S14000111
     source:
@@ -1397,7 +1332,6 @@ UKParliamentaryConstituency2024Code:
     text: A code that identifies a 2024 UK Parliamentary Constituency.
     type: Char(9)
 UrbanRural6Fold2022Code:
-  reviewed: false
   spd_large_user:
     range: 1 to 6
     source:
@@ -1423,7 +1357,6 @@ UrbanRural6Fold2022Code:
       Rural classification (6 fold).
     type: Char(1)
 UrbanRural8Fold2022Code:
-  reviewed: false
   spd_large_user:
     range: 1 to 8
     source:

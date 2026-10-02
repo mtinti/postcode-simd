@@ -1,0 +1,424 @@
+# Review verdicts for the extracted descriptions (simd_ingest/column_descriptions.yaml and
+# simd_glossary.yaml). Never written by the extractor. Verdicts: approved; corrected (a change the
+# review asked for, applied, awaiting confirmation). An entry absent here is not yet reviewed.
+reviews:
+- id: 2026-10-02-column-descriptions
+  reviewer: Codex (AI-assisted editorial review)
+  kind: AI-assisted
+  date: '2026-10-02'
+  commit: 4a40b6e538a149d87a3ab2f37665eae92c6ebb17
+  record: docs/reviews/2026-10-02-column-descriptions.md
+scope_notes:
+  glossary: 'The SIMD glossary describes the 2020v2 shapefile. Its approval covers 2020v2 only: on an
+    earlier edition''s page its descriptions are 2020v2 examples, not a verification of that edition''s
+    indicators.'
+nrs:
+  CensusHouseholdCount1991:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  CensusHouseholdCount2001:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  CensusHouseholdCount2011:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  CensusHouseholdCount2022:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  CensusPopulationCount1991:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  CensusPopulationCount2001:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  CensusPopulationCount2011:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  CensusPopulationCount2022:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  CivilParish1930Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  CouncilArea2019Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  DataZone2001Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  DataZone2011Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  DataZone2022Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  DateOfDeletion:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  DateOfIntroduction:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  DeliveryPointCount:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  DeliveryPointCountNonResidential:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  ElectoralWard2022Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  EnterpriseRegion2008Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  GridLinkIndicator:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  GridLinkPositionalAccuracy:
+    verdict: corrected
+    review: 2026-10-02-column-descriptions
+    change: 'The status values 1 to 8 are numbered again, in the dictionary''s words: the extraction had
+      dropped Word''s list numbers. Awaiting confirmation.'
+  GridReferenceEasting:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  GridReferenceNorthing:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  HealthBoardArea1995Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  HealthBoardArea2006Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  HealthBoardArea2019Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  HouseholdCount:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  ITL2025Level2Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  ITL2025Level3Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  IntegrationAuthority2019Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  IntermediateZone2001Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  IntermediateZone2011Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  IntermediateZone2022Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  IslandCode:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  LAU2025Level1Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  Latitude:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  LinkedSmallUserPostcode:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  LocalGovernmentDistrict1991Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  LocalGovernmentDistrict1995Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  Locality1991Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  Locality2001Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  Locality2020Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  Locality2022Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  Longitude:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  NationalPark2010Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  NeverDigitised:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  OutputArea1991Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  OutputArea2001Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  OutputArea2011Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  OutputArea2022Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  Postcode:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  PostcodeDistrict:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  PostcodeSector:
+    verdict: corrected
+    review: 2026-10-02-column-descriptions
+    change: A reviewer note added to the SPD large-user variant. Awaiting confirmation.
+    notes:
+      spd_large_user: 'The NRS large-user dictionary declares Char(4), quoted unchanged above, but gives
+        EH10 4 as its example, and 46,661 of the 51,004 pinned large-user records have sectors longer
+        than four characters. This is an inconsistency in the source dictionary, not in the data: the
+        column is kept as published, as text, and exported as nvarchar(200). The neighbouring PostcodeDistrict
+        declaration (Char(6)) suggests the two lengths may have been swapped; that is not confirmed.'
+  PostcodeType:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  ROACommunityPlanningPartnership2006Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  ROALocal2006Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  RegistrationDistrict2007Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  ScottishIndexOfMultipleDeprivation2020Rank:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  ScottishParliamentaryConstituency2026Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  ScottishParliamentaryRegion2026Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  Settlement2001Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  Settlement2020Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  Settlement2022Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  SplitIndicator:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  StrategicDevelopmentPlanningArea2013Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  TravelToWorkArea2011Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  UKParliamentaryConstituency2024Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  UrbanRural6Fold2022Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+  UrbanRural8Fold2022Code:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+glossary:
+  datazone:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  laname:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  sape2017:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  wape2017:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  rankv2:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  quintilev2:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  decilev2:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  vigintilv2:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  percentv2:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  incrate:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  incnumdep:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  incrankv2:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  emprate:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  empnumdep:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  emprank:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  hlthcifsr:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  hlthalcsr:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  hlthdrugsr:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  hlthsmr:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  hlthdprspc:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  hlthlbwtpc:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  hlthemersr:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  hlthrank:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  eduattend:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  eduattain:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  edunoquals:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  edunotpart:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  eduuniver:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  edurank:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  gaccpetrol:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  gaccdtgp:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  gaccdtpost:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  gaccdtpsch:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  gaccdtssch:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  gaccdtret:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  gaccptgp:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  gaccptpost:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  gaccptret:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  gaccbrdbnd:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  gaccrank:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  crimecount:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  crimerate:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  crimerank:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  housenumoc:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  housenumnc:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  houseocrat:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  housencrat:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
+  houserank:
+    verdict: approved
+    review: 2026-10-02-column-descriptions
+    scope: 2020v2
