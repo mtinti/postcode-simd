@@ -1,5 +1,8 @@
 # Postcode-SIMD reference tables
 
+**Column provenance: <https://mtinti.github.io/postcode-simd/>**. For every column of both tables:
+where its value comes from, what was done to it, how the build checks it, and why.
+
 A CLI pipeline that rebuilds two postcode-to-SIMD tables from hash-pinned public files.
 Routine maintenance is a refresh of one of the two NRS postcode products. Adding a SIMD
 edition is a separate, less frequent change to the source registry and output schemas.
