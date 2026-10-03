@@ -1,48 +1,93 @@
-# The column provenance site (docs/plans/Column_Provenance_Site_Plan.md). Generated from the
-# committed schemas, registry, decisions and lineage map: metadata only, no data, no sources.
-# Every push and pull request runs the provenance tests, then builds it (strict: a broken link
-# fails); only main, or a manual run, deploys it to GitHub Pages, and only after both pass.
+# The column provenance site (docs/plans/Column_Provenance_Site_Plan.md), published like nbdev's docs:
+# built here and pushed to the gh-pages branch, which GitHub Pages serves. Generated from the committed
+# schemas, registry, decisions and lineage map: metadata only, no data, no sources.
+#
+#   main                 -> https://mtinti.github.io/postcode-simd/
+#   any other branch     -> https://mtinti.github.io/postcode-simd/preview/<branch, / as ->/
+#   a deleted branch     -> its preview folder is removed
+#   a pull request       -> built and tested only (it may come from a fork, which cannot push)
+#
+# The provenance tests run first: a site that fails them is never built, let alone published. A main
+# publish replaces everything except preview/; a preview replaces only its own folder.
 name: pages
 on:
   push:
   pull_request:
   workflow_dispatch:
+  delete:
 
 permissions:
-  contents: read
-
-concurrency:
-  group: pages-${{ github.ref }}
-  cancel-in-progress: true
+  contents: write
 
 jobs:
   build:
+    if: github.event_name != 'delete'
     runs-on: ubuntu-latest
+    concurrency:
+      group: pages-build-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install -e ".[dev,docs]"
-      # The provenance tests gate the site: every column traced, every reference real, the
-      # exceptional cases right. A site that fails them is never built, let alone deployed.
       - run: python -m pytest tests/test_provenance.py -q -rs
+      - name: Where this build is published
+        id: target
+        run: |
+          branch="${GITHUB_REF_NAME}"
+          if [ "$branch" = "main" ]; then dest=""; else dest="preview/${branch//\//-}"; fi
+          echo "dest=$dest" >> "$GITHUB_OUTPUT"
+          echo "SITE_URL=https://mtinti.github.io/postcode-simd/${dest:+$dest/}" >> "$GITHUB_ENV"
       - run: python -m simd_ingest.provenance_site
       - run: mkdocs build
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: build/provenance_site
+      - name: Publish to gh-pages
+        if: github.event_name != 'pull_request'
+        env:
+          DEST: ${{ steps.target.outputs.dest }}
+        run: |
+          set -euo pipefail
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          remote="https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git"
+          if git ls-remote --exit-code --heads "$remote" gh-pages > /dev/null; then
+            git clone --quiet --depth 1 --branch gh-pages "$remote" pages
+          else
+            git init --quiet pages && git -C pages checkout --quiet --orphan gh-pages
+          fi
+          if [ -z "$DEST" ]; then
+            # main: replace the whole site, keeping every branch preview.
+            find pages -mindepth 1 -maxdepth 1 ! -name .git ! -name preview -exec rm -rf {} +
+            cp -R build/provenance_site/. pages/
+          else
+            rm -rf "pages/$DEST"
+            mkdir -p "pages/$DEST"
+            cp -R build/provenance_site/. "pages/$DEST/"
+          fi
+          touch pages/.nojekyll
+          cd pages
+          git add -A
+          if git diff --cached --quiet; then echo "nothing changed"; exit 0; fi
+          git commit --quiet -m "Publish ${GITHUB_REF_NAME} at ${GITHUB_SHA::7}${DEST:+ to $DEST}"
+          git push --quiet "$remote" HEAD:gh-pages
 
-  deploy:
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
-    needs: build
+  remove-preview:
+    if: github.event_name == 'delete' && github.event.ref_type == 'branch'
     runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Remove the deleted branch's preview
+        env:
+          BRANCH: ${{ github.event.ref }}
+        run: |
+          set -euo pipefail
+          dest="preview/${BRANCH//\//-}"
+          remote="https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git"
+          git ls-remote --exit-code --heads "$remote" gh-pages > /dev/null || exit 0
+          git clone --quiet --depth 1 --branch gh-pages "$remote" pages
+          [ -d "pages/$dest" ] || { echo "no preview for $BRANCH"; exit 0; }
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C pages rm -r --quiet "$dest"
+          git -C pages commit --quiet -m "Remove the preview of $BRANCH"
+          git -C pages push --quiet "$remote" HEAD:gh-pages

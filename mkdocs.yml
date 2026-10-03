@@ -1,7 +1,8 @@
 # The column provenance site (docs/plans/Column_Provenance_Site_Plan.md). The pages are generated:
 #   python -m simd_ingest.provenance_site && mkdocs build
 site_name: Postcode-SIMD column provenance
-site_url: https://mtinti.github.io/postcode-simd/
+# The workflow sets SITE_URL for a branch preview (…/preview/<branch>/); main uses the default.
+site_url: !ENV [SITE_URL, 'https://mtinti.github.io/postcode-simd/']
 repo_url: https://github.com/mtinti/postcode-simd
 docs_dir: build/provenance_docs
 site_dir: build/provenance_site
