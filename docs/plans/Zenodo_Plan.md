@@ -2,7 +2,8 @@
 
 Drafted 3 October 2026, revised the same day: the NRS files are cited, never uploaded, and NRS is
 not asked. Status: the sources record is published (10.5281/zenodo.23119743, 3 October 2026);
-the software record follows the 6.1.0 release.
+the software record is archived from the 6.1.0 release (10.5281/zenodo.23120391, concept DOI
+10.5281/zenodo.23120390, the README badge).
 
 ## Aim
 

@@ -16,6 +16,7 @@ authors:
     affiliation: "Health Informatics Centre (HIC), University of Dundee"
     orcid: "https://orcid.org/0000-0002-0051-017X"
 version: "6.1.0"
+doi: "10.5281/zenodo.23120390"   # the concept DOI: every release; each release also has its own
 license: MIT
 repository-code: "https://github.com/mtinti/postcode-simd"
 url: "https://mtinti.github.io/postcode-simd/"

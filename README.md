@@ -1,5 +1,7 @@
 # Postcode-SIMD reference tables
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23120390.svg)](https://doi.org/10.5281/zenodo.23120390)
+
 **Column provenance: <https://mtinti.github.io/postcode-simd/>**. For every column of both tables:
 where its value comes from, what was done to it, how the build checks it, and why.
 
