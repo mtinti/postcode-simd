@@ -53,21 +53,30 @@ def _fetch_object(obj: RemoteObject, cache: Path, log) -> Path:
     target.parent.mkdir(parents=True, exist_ok=True)
     part = target.with_name(target.name + ".part")
     last = None
-    for attempt in range(1, ATTEMPTS + 1):
-        try:
-            digest, size = _download(obj.url, part)
-            if digest != obj.sha256:
+    # The publisher's URL first; its archived copy only if that fails. The SHA256 decides either
+    # way, so a mirror can rescue a moved file but never change what is built.
+    for source, url in [("publisher", obj.url)] + ([("mirror", obj.mirror)] if obj.mirror else []):
+        for attempt in range(1, ATTEMPTS + 1):
+            try:
+                digest, size = _download(url, part)
+                if digest != obj.sha256:
+                    # Different bytes are not a transient error: no retry from this source. The
+                    # next source, if any, is tried; the pin is never changed.
+                    part.unlink(missing_ok=True)
+                    last = FetchError(f"{obj.key}: expected {obj.sha256[:12]}, downloaded {digest[:12]} ({size:,} bytes) from the {source}")
+                    log(f"  differs  {obj.key} from the {source}: {digest[:12]}, pinned {obj.sha256[:12]}")
+                    break
+                os.replace(part, target)
+                log(f"  fetched  {obj.key}  {size:,} bytes  {digest[:12]}" + ("  (from the archived mirror)" if source == "mirror" else ""))
+                return target
+            except (requests.RequestException, OSError) as exc:
+                last = exc
                 part.unlink(missing_ok=True)
-                raise FetchError(f"{obj.key}: expected {obj.sha256[:12]}, downloaded {digest[:12]} ({size:,} bytes)")
-            os.replace(part, target)
-            log(f"  fetched  {obj.key}  {size:,} bytes  {digest[:12]}")
-            return target
-        except (requests.RequestException, OSError) as exc:
-            last = exc
-            part.unlink(missing_ok=True)
-            log(f"  retry    {obj.key} attempt {attempt}: {exc}")
-            time.sleep(2 ** attempt)
-    raise FetchError(f"{obj.key}: download failed after {ATTEMPTS} attempts: {last}")
+                log(f"  retry    {obj.key} {source} attempt {attempt}: {exc}")
+                time.sleep(2 ** attempt)
+    if isinstance(last, FetchError):
+        raise last
+    raise FetchError(f"{obj.key}: download failed from every source after {ATTEMPTS} attempts each: {last}")
 
 
 def _download(url: str, part: Path) -> tuple:

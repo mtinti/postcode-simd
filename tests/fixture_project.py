@@ -198,6 +198,9 @@ def project(tmp: Path, release="test-1", extra_edition=False) -> Path:
     contract["tables"]["history"]["exclude"] = []
     contract["tables"]["history"]["structural_nulls"] = {"large_user": ["NeverDigitised"],
                                                          "small_user": ["LinkedSmallUserPostcode"]}
+    # The synthetic project pins under its own publisher names; give each a redistribution setting,
+    # NRS cited as in the real registry.
+    raw["redistribution"] = {o["publisher"]: ("cite" if o["publisher"] == "NRS" else "upload") for o in raw["remote_objects"]}
     for filename, data in (("sources.yaml", raw), ("spd_schema.yaml", spd_schema), ("sspl_schema.yaml", sspl_schema),
                            ("output_schema.yaml", main), ("output_schema_history.yaml", history),
                            ("export_contract.yaml", contract), ("decisions.yaml", {"decisions": []})):

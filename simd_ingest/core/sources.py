@@ -29,6 +29,9 @@ class RemoteObject:
     format: str
     sha256: str
     files: tuple
+    # An archived copy of the same bytes (Zenodo), tried only if the publisher's URL fails; the
+    # SHA256 must match either way, so a mirror cannot change what is built.
+    mirror: str | None = None
 
 
 @dataclass(frozen=True)
@@ -47,6 +50,7 @@ class Registry:
     sspl_file: dict
     rurality_versions: tuple = ()
     rurality_published: dict | None = None
+    redistribution: dict | None = None
 
     @property
     def files(self) -> tuple:
@@ -116,7 +120,7 @@ def load_registry(path: Path) -> Registry:
             raise ValueError(f"{o['key']}: a plain file object must have one file with the same hash")
         if o["format"] == "zip" and any(f.member is None for f in files):
             raise ValueError(f"{o['key']}: every archive file needs a member name")
-        objects.append(RemoteObject(o["key"], o["publisher"], o["url"], o["format"], o["sha256"], files))
+        objects.append(RemoteObject(o["key"], o["publisher"], o["url"], o["format"], o["sha256"], files, o.get("mirror")))
     paths = [f.path for o in objects for f in o.files]
     if len(paths) != len(set(paths)):
         raise ValueError("Duplicate logical file path in registry")
@@ -127,7 +131,8 @@ def load_registry(path: Path) -> Registry:
                    directory_rank=raw.get("directory_rank"),
                    sspl_release=str(raw["sspl_release"]), sspl_file=raw["sspl_file"],
                    rurality_versions=tuple(raw.get("rurality_versions", ())),
-                   rurality_published=raw.get("rurality_published"))
+                   rurality_published=raw.get("rurality_published"),
+                   redistribution=raw.get("redistribution"))
     known = set(paths)
     for section in (reg.phs_editions, reg.govscot_editions, reg.spd_files, (reg.sspl_file,)):
         for entry in section:
@@ -155,6 +160,14 @@ def load_registry(path: Path) -> Registry:
         raise ValueError("rurality_published must name a declared version and sensible thresholds")
     if len({o.key for o in objects}) != len(objects):
         raise ValueError("Duplicate remote object key")
+    if reg.redistribution is not None:
+        unknown = {k: v for k, v in reg.redistribution.items() if v not in ("upload", "cite")}
+        missing = sorted({o.publisher for o in objects} - set(reg.redistribution))
+        if unknown or missing:
+            raise ValueError(f"redistribution: every publisher needs upload or cite; unknown {unknown}, missing {missing}")
+        cited_mirrors = [o.key for o in objects if o.mirror and reg.redistribution[o.publisher] == "cite"]
+        if cited_mirrors:
+            raise ValueError(f"a cited, never redistributed object cannot have a mirror: {cited_mirrors}")
     phs = {e["key"]: e for e in reg.phs_editions}
     gov = {e["key"]: e for e in reg.govscot_editions}
     if not phs or len(phs) != len(reg.phs_editions) or len(gov) != len(reg.govscot_editions):

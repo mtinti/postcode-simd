@@ -21,6 +21,16 @@ licences:
   maps_gov_scot: "Open Government Licence, stated in each shapefile's .shp.xml"
   statistics_gov_scot: "Open Government Licence v3.0, stated on each dataset page; publisher the Scottish Government, contact simd@gov.scot"
 
+# What may be archived on Zenodo (docs/plans/Zenodo_Plan.md). upload: the Open Government Licence
+# allows redistribution with attribution, so the downloads are archived byte for byte. cite: the
+# downloads are cited in full (product, release, URL, SHA256), never redistributed (decided
+# 3 October 2026). Every publisher of a remote object must have a setting.
+redistribution:
+  phs: upload
+  maps_gov_scot: upload
+  statistics_gov_scot: upload
+  nrs: cite
+
 remote_objects:
   - key: phs_2004
     publisher: phs

@@ -1,0 +1,28 @@
+{
+  "title": "Postcode-SIMD reference tables",
+  "upload_type": "software",
+  "description": "<p>A CLI pipeline that attaches every edition of the Scottish Index of Multiple Deprivation (2004 to 2020v2), its domain ranks and bands and the Urban Rural Classification to the NRS Scottish Postcode Directory and Scottish Statistics Postcode Lookup, from hash-pinned public sources. Column-level provenance: <a href=\"https://mtinti.github.io/postcode-simd/\">https://mtinti.github.io/postcode-simd/</a>. The pinned open-licence sources are archived in a separate Zenodo record; the NRS postcode products are cited, not redistributed.</p>",
+  "creators": [
+    {
+      "name": "Tinti, Michele",
+      "affiliation": "Health Informatics Centre (HIC), University of Dundee"
+    }
+  ],
+  "license": "MIT",
+  "keywords": [
+    "SIMD",
+    "Scottish Index of Multiple Deprivation",
+    "postcode",
+    "deprivation",
+    "urban rural classification",
+    "data linkage",
+    "Scotland"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://mtinti.github.io/postcode-simd/",
+      "relation": "isDocumentedBy",
+      "scheme": "url"
+    }
+  ]
+}

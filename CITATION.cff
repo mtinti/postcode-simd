@@ -1,0 +1,27 @@
+# How to cite this software. Read by GitHub ("Cite this repository") and by Zenodo, which archives
+# every GitHub release; .zenodo.json adds what CFF does not carry. Keep version in step with
+# pyproject.toml (tested).
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Postcode-SIMD reference tables"
+abstract: >-
+  A CLI pipeline that attaches every edition of the Scottish Index of Multiple Deprivation (2004 to
+  2020v2), its domains and the Urban Rural Classification to the NRS Scottish Postcode Directory and
+  Scottish Statistics Postcode Lookup, from hash-pinned public sources, with a column-level
+  provenance site.
+authors:
+  - family-names: Tinti
+    given-names: Michele
+    affiliation: "Health Informatics Centre (HIC), University of Dundee"
+version: "6.1.0"
+license: MIT
+repository-code: "https://github.com/mtinti/postcode-simd"
+url: "https://mtinti.github.io/postcode-simd/"
+keywords:
+  - SIMD
+  - Scottish Index of Multiple Deprivation
+  - postcode
+  - deprivation
+  - urban rural classification
+  - data linkage
+  - Scotland
