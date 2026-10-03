@@ -13,6 +13,7 @@ authors:
   - family-names: Tinti
     given-names: Michele
     affiliation: "Health Informatics Centre (HIC), University of Dundee"
+    orcid: "https://orcid.org/0000-0002-0051-017X"
 version: "6.1.0"
 license: MIT
 repository-code: "https://github.com/mtinti/postcode-simd"

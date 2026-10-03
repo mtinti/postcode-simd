@@ -30,11 +30,6 @@ from .core.sources import load_registry, sha256
 PACKAGE = Path(__file__).resolve().parent
 ROOT = PACKAGE.parent
 HOSTS = {"zenodo": "https://zenodo.org", "sandbox": "https://sandbox.zenodo.org"}
-ATTRIBUTION = {
-    "phs": "Contains Public Health Scotland data licensed under the Open Government Licence v3.0.",
-    "maps_gov_scot": "Contains Scottish Government data licensed under the Open Government Licence v3.0.",
-    "statistics_gov_scot": "Contains Scottish Government data licensed under the Open Government Licence v3.0.",
-}
 PUBLISHER = {"phs": "Public Health Scotland", "maps_gov_scot": "Scottish Government (maps.gov.scot / data.gov.uk)",
              "statistics_gov_scot": "Scottish Government (statistics.gov.scot)", "nrs": "National Records of Scotland"}
 
@@ -84,8 +79,9 @@ def stage(out: Path, registry=None, cache: Path = ROOT / "data" / "cache", root:
             shutil.copyfile(source, out / name)
             if sha256(out / name) != obj.sha256:
                 raise RefusedFile(f"{obj.key}: the staged copy does not match the pin")
-            entry.update(included=True, file=name, size=(out / name).stat().st_size,
-                         attribution=ATTRIBUTION.get(obj.publisher))
+            evidence = registry.redistribution_evidence[obj.key]
+            entry.update(included=True, file=name, size=(out / name).stat().st_size, licence=evidence["licence"],
+                         licence_evidence=evidence["evidence"], credit=evidence["credit"])
         else:
             entry.update(included=False, file=None,
                          citation=f"{PUBLISHER.get(obj.publisher, obj.publisher)}. {obj.key}. Downloaded from {obj.url}; "
@@ -110,11 +106,15 @@ def readme(manifest: dict) -> str:
              f"Registry at commit `{manifest['commit'][:12]}` (`sources.yaml`, SHA256 `{manifest['registry_sha256'][:12]}…`). "
              f"SPD release {manifest['spd_release'].replace('_', '/')}, SSPL release {manifest['sspl_release'].replace('_', '/')}.", "",
              f"## Included ({len(included)} downloads)", "",
-             "Licensed under the Open Government Licence v3.0 (https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/), "
-             "which allows redistribution with attribution.", "",
+             "Each is licensed under the Open Government Licence (https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/), "
+             "which allows redistribution with attribution. The evidence for each file's licence and the credit its publisher "
+             "requires are listed below and in `MANIFEST.json`; the original notices inside each archive are unchanged.", "",
              "| File | Publisher | Original URL | SHA256 |", "| --- | --- | --- | --- |"]
     lines += [f"| `{e['file']}` | {e['publisher']} | <{e['url']}> | `{e['sha256']}` |" for e in included]
-    lines += ["", "Attribution: " + " ".join(sorted({e["attribution"] for e in included if e.get("attribution")})), "",
+    lines += ["", "### Licence evidence and required credit, per file", ""]
+    for e in included:
+        lines += [f"- `{e['file']}`: {e['licence']}, {e['licence_evidence']}. Credit: \"{e['credit']}\""]
+    lines += ["",
               f"## Cited, not included ({len(cited)} downloads)", "",
               "The National Records of Scotland postcode products are not redistributed here. Fetch them from NRS; "
               "the build verifies each by its SHA256.", "",
@@ -133,7 +133,8 @@ def metadata(manifest: dict) -> dict:
                         "Scotland postcode products are cited, not redistributed. Software: "
                         "<a href=\"https://github.com/mtinti/postcode-simd\">https://github.com/mtinti/postcode-simd</a>; "
                         "column provenance: <a href=\"https://mtinti.github.io/postcode-simd/\">https://mtinti.github.io/postcode-simd/</a>.</p>"),
-        "creators": [{"name": "Tinti, Michele", "affiliation": "Health Informatics Centre (HIC), University of Dundee"}],
+        "creators": [{"name": "Tinti, Michele", "affiliation": "Health Informatics Centre (HIC), University of Dundee",
+                      "orcid": "0000-0002-0051-017X"}],
         "license": "OGL-UK-3.0",
         "access_right": "open",
         "keywords": ["SIMD", "Scottish Index of Multiple Deprivation", "Urban Rural Classification", "Scotland", "deprivation"],
@@ -173,6 +174,9 @@ def draft(staged: Path, manifest: dict, host: str, token: str, log=print) -> dic
     # Verify what Zenodo holds: every staged file is there with the MD5 checksum of the staged copy,
     # whose SHA256 was checked against the registry when it was staged.
     held = {f["filename"]: f for f in deposition.get("files", [])}
+    unexpected = sorted(set(held) - set(names))
+    if unexpected:
+        raise RuntimeError(f"the draft holds files this record does not stage: {unexpected}")
     wrong = [n for n in names if n not in held or held[n]["checksum"].removeprefix("md5:") != _md5(staged / n)]
     if wrong:
         raise RuntimeError(f"the draft does not hold these files as staged: {wrong}")

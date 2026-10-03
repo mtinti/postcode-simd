@@ -201,6 +201,9 @@ def project(tmp: Path, release="test-1", extra_edition=False) -> Path:
     # The synthetic project pins under its own publisher names; give each a redistribution setting,
     # NRS cited as in the real registry.
     raw["redistribution"] = {o["publisher"]: ("cite" if o["publisher"] == "NRS" else "upload") for o in raw["remote_objects"]}
+    raw["redistribution_evidence"] = {o["key"]: {"licence": "Open Government Licence", "evidence": "fixture",
+                                                 "credit": f"Fixture credit for {o['key']}."}
+                                      for o in raw["remote_objects"] if o["publisher"] != "NRS"}
     for filename, data in (("sources.yaml", raw), ("spd_schema.yaml", spd_schema), ("sspl_schema.yaml", sspl_schema),
                            ("output_schema.yaml", main), ("output_schema_history.yaml", history),
                            ("export_contract.yaml", contract), ("decisions.yaml", {"decisions": []})):

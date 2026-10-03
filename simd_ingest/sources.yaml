@@ -18,7 +18,7 @@ sspl_release: '2026_2'
 licences:
   phs: "Open Government Licence v3.0, stated in the PHS open data package metadata"
   nrs: "NRS terms; confirm before redistributing copies of the index"
-  maps_gov_scot: "Open Government Licence, stated in each shapefile's .shp.xml"
+  maps_gov_scot: "Open Government Licence; the evidence for each file is under redistribution_evidence"
   statistics_gov_scot: "Open Government Licence v3.0, stated on each dataset page; publisher the Scottish Government, contact simd@gov.scot"
 
 # What may be archived on Zenodo (docs/plans/Zenodo_Plan.md). upload: the Open Government Licence
@@ -30,6 +30,106 @@ redistribution:
   maps_gov_scot: upload
   statistics_gov_scot: upload
   nrs: cite
+
+# Why each uploaded download may be redistributed: its licence, where that is stated, and the credit
+# it requires, carried into the Zenodo record. Every object of an upload publisher needs an entry.
+redistribution_evidence:
+  sg_simd_2004:
+    licence: Open Government Licence
+    evidence: stated in the file's own metadata, SG_SIMD_2004.shp.xml
+    credit: Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right (insert year). [as specified by the publisher]
+  sg_simd_2006:
+    licence: Open Government Licence
+    evidence: stated in the file's own metadata, SG_SIMD_2006.shp.xml
+    credit: Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right (insert year). [as specified by the publisher]
+  sg_simd_2009:
+    licence: Open Government Licence
+    evidence: stated in the file's own metadata, SG_SIMD_2009.shp.xml
+    credit: Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right (insert year). [as specified by the publisher]
+  sg_simd_2012:
+    licence: Open Government Licence
+    evidence: stated in the file's own metadata, SG_SIMD_2012.shp.xml
+    credit: Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right (insert year). [as specified by the publisher]
+  sg_simd_2016:
+    licence: Open Government Licence
+    evidence: stated in the file's own metadata, SG_SIMD_2016.shp.xml
+    credit: Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right (insert year). [as specified by the publisher]
+  sg_simd_2020:
+    licence: Open Government Licence
+    evidence: stated in the file's own metadata, SG_SIMD_2020.shp.xml
+    credit: Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right (insert year). [as specified by the publisher]
+  sg_urbanrural_2011_2012:
+    licence: Open Government Licence
+    evidence: stated in the Scottish Government's catalogue record 564db46c-3153-423c-ac84-90d41ec2652c (Urban Rural Classification - Scotland, revised 16 December 2024), which links this version; the file's own metadata names the earlier Ordnance Survey OpenData Licence, which it superseded
+    credit: Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right (insert year). [as specified by the publisher]
+  sg_urbanrural_2013_2014:
+    licence: Open Government Licence
+    evidence: stated in the Scottish Government's catalogue record 564db46c-3153-423c-ac84-90d41ec2652c (Urban Rural Classification - Scotland, revised 16 December 2024), which links this version; the file's own metadata names the earlier Ordnance Survey OpenData Licence, which it superseded
+    credit: Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right (insert year). [as specified by the publisher]
+  sg_urbanrural_2016:
+    licence: Open Government Licence
+    evidence: stated in the Scottish Government's catalogue record 564db46c-3153-423c-ac84-90d41ec2652c (Urban Rural Classification - Scotland, revised 16 December 2024), which links this version; also stated in SG_UrbanRural_2016.shp.xml
+    credit: Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right (insert year). [as specified by the publisher]
+  sg_urbanrural_2020:
+    licence: Open Government Licence
+    evidence: stated in the Scottish Government's catalogue record 564db46c-3153-423c-ac84-90d41ec2652c (Urban Rural Classification - Scotland, revised 16 December 2024), which links this version; also stated in SG_UrbanRural_2020.shp.xml
+    credit: Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right (insert year). [as specified by the publisher]
+  sg_urbanrural_2022:
+    licence: Open Government Licence
+    evidence: stated in the Scottish Government's catalogue record 564db46c-3153-423c-ac84-90d41ec2652c (Urban Rural Classification - Scotland, revised 16 December 2024), which links this version; also stated in SG_UrbanRural_2022.shp.xml
+    credit: Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right (insert year). [as specified by the publisher]
+  sg_urbanrural_2003_2004:
+    licence: Open Government Licence
+    evidence: 'confirmed by the Scottish Government''s Rural Statistics team by email on 25 September 2026: the four versions not in the catalogue are under the same Open Government Licence (decision rurality-early-versions-confirmed); the file''s own metadata carries no licence'
+    credit: Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right (insert year). [as specified by the publisher]
+  sg_urbanrural_2005_2006:
+    licence: Open Government Licence
+    evidence: 'confirmed by the Scottish Government''s Rural Statistics team by email on 25 September 2026: the four versions not in the catalogue are under the same Open Government Licence (decision rurality-early-versions-confirmed); the file''s own metadata carries no licence'
+    credit: Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right (insert year). [as specified by the publisher]
+  sg_urbanrural_2007_2008:
+    licence: Open Government Licence
+    evidence: 'confirmed by the Scottish Government''s Rural Statistics team by email on 25 September 2026: the four versions not in the catalogue are under the same Open Government Licence (decision rurality-early-versions-confirmed); the file''s own metadata carries no licence'
+    credit: Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right (insert year). [as specified by the publisher]
+  sg_urbanrural_2009_2010:
+    licence: Open Government Licence
+    evidence: 'confirmed by the Scottish Government''s Rural Statistics team by email on 25 September 2026: the four versions not in the catalogue are under the same Open Government Licence (decision rurality-early-versions-confirmed); the file''s own metadata carries no licence but a pre-2010 note on the HMSO Click-Use licence, which the Open Government Licence replaced'
+    credit: Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right (insert year). [as specified by the publisher]
+  phs_2004:
+    licence: Open Government Licence v3.0
+    evidence: stated in the Public Health Scotland open data package metadata
+    credit: 'Contains public sector information licensed under the Open Government Licence v3.0. Source: Public Health Scotland.'
+  phs_2006:
+    licence: Open Government Licence v3.0
+    evidence: stated in the Public Health Scotland open data package metadata
+    credit: 'Contains public sector information licensed under the Open Government Licence v3.0. Source: Public Health Scotland.'
+  phs_2009v2:
+    licence: Open Government Licence v3.0
+    evidence: stated in the Public Health Scotland open data package metadata
+    credit: 'Contains public sector information licensed under the Open Government Licence v3.0. Source: Public Health Scotland.'
+  phs_2012:
+    licence: Open Government Licence v3.0
+    evidence: stated in the Public Health Scotland open data package metadata
+    credit: 'Contains public sector information licensed under the Open Government Licence v3.0. Source: Public Health Scotland.'
+  phs_2016:
+    licence: Open Government Licence v3.0
+    evidence: stated in the Public Health Scotland open data package metadata
+    credit: 'Contains public sector information licensed under the Open Government Licence v3.0. Source: Public Health Scotland.'
+  phs_2020v2:
+    licence: Open Government Licence v3.0
+    evidence: stated in the Public Health Scotland open data package metadata
+    credit: 'Contains public sector information licensed under the Open Government Licence v3.0. Source: Public Health Scotland.'
+  sgs_simd_2004_2012:
+    licence: Open Government Licence v3.0
+    evidence: stated on the statistics.gov.scot dataset page
+    credit: 'Contains public sector information licensed under the Open Government Licence v3.0. Source: Scottish Government, statistics.gov.scot.'
+  sgs_simd_2016:
+    licence: Open Government Licence v3.0
+    evidence: stated on the statistics.gov.scot dataset page
+    credit: 'Contains public sector information licensed under the Open Government Licence v3.0. Source: Scottish Government, statistics.gov.scot.'
+  sgs_simd_2020:
+    licence: Open Government Licence v3.0
+    evidence: stated on the statistics.gov.scot dataset page
+    credit: 'Contains public sector information licensed under the Open Government Licence v3.0. Source: Scottish Government, statistics.gov.scot.'
 
 remote_objects:
   - key: phs_2004

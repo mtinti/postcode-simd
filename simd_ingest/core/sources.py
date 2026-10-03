@@ -51,6 +51,7 @@ class Registry:
     rurality_versions: tuple = ()
     rurality_published: dict | None = None
     redistribution: dict | None = None
+    redistribution_evidence: dict | None = None
 
     @property
     def files(self) -> tuple:
@@ -132,7 +133,8 @@ def load_registry(path: Path) -> Registry:
                    sspl_release=str(raw["sspl_release"]), sspl_file=raw["sspl_file"],
                    rurality_versions=tuple(raw.get("rurality_versions", ())),
                    rurality_published=raw.get("rurality_published"),
-                   redistribution=raw.get("redistribution"))
+                   redistribution=raw.get("redistribution"),
+                   redistribution_evidence=raw.get("redistribution_evidence"))
     known = set(paths)
     for section in (reg.phs_editions, reg.govscot_editions, reg.spd_files, (reg.sspl_file,)):
         for entry in section:
@@ -165,6 +167,11 @@ def load_registry(path: Path) -> Registry:
         missing = sorted({o.publisher for o in objects} - set(reg.redistribution))
         if unknown or missing:
             raise ValueError(f"redistribution: every publisher needs upload or cite; unknown {unknown}, missing {missing}")
+        evidence = reg.redistribution_evidence or {}
+        unsupported = [o.key for o in objects if reg.redistribution[o.publisher] == "upload"
+                       and not all((evidence.get(o.key) or {}).get(k) for k in ("licence", "evidence", "credit"))]
+        if unsupported:
+            raise ValueError(f"uploaded objects need redistribution_evidence (licence, evidence, credit): {unsupported}")
         cited_mirrors = [o.key for o in objects if o.mirror and reg.redistribution[o.publisher] == "cite"]
         if cited_mirrors:
             raise ValueError(f"a cited, never redistributed object cannot have a mirror: {cited_mirrors}")

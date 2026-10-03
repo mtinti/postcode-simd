@@ -84,7 +84,12 @@ def test_staging_uploads_open_files_and_only_cites_nrs(synthetic, tmp_path):
     staged = {p.name for p in (tmp_path / "record").iterdir()}
     assert not any(e["key"] in n for e in manifest["objects"] if not e["included"] for n in staged)
     assert {"MANIFEST.json", "README.md", "sources.yaml"} <= staged
-    assert "Cited, not included" in (tmp_path / "record" / "README.md").read_text()
+    readme = (tmp_path / "record" / "README.md").read_text()
+    assert "Cited, not included" in readme
+    # Every included file carries its licence evidence and its publisher's credit, verbatim.
+    for entry in manifest["objects"]:
+        if entry["included"]:
+            assert entry["credit"] in readme and entry["licence_evidence"] in readme
 
 
 def test_a_file_whose_bytes_differ_from_the_pin_is_refused(synthetic, tmp_path):
@@ -142,3 +147,44 @@ def test_without_a_mirror_changed_bytes_still_stop(tmp_path):
     with patch.object(fetch, "_download", fake_download({obj.url: b"changed"})), patch.object(fetch.time, "sleep"):
         with pytest.raises(fetch.FetchError, match="publisher"):
             fetch._fetch_object(obj, tmp_path, log=lambda *_: None)
+
+
+def test_the_registry_refuses_an_upload_without_licence_evidence(tmp_path):
+    def drop(raw):
+        raw["redistribution_evidence"].pop("sg_urbanrural_2009_2010")
+    with pytest.raises(ValueError, match="need redistribution_evidence"):
+        load_registry(registry_with(tmp_path, drop))
+
+
+def test_every_ordnance_survey_credit_is_the_publishers_verbatim():
+    registry = load_registry(ROOT / "simd_ingest" / "sources.yaml")
+    shapefiles = [o.key for o in registry.objects if o.publisher == "maps_gov_scot"]
+    for key in shapefiles:
+        credit = registry.redistribution_evidence[key]["credit"]
+        assert credit.startswith("Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right (insert year)."), key
+
+
+def test_draft_verification_rejects_an_unexpected_file(synthetic, tmp_path):
+    """A draft holding a file this record does not stage fails verification, as a missing one does."""
+    from simd_ingest import zenodo_sources
+    registry, root, _ = synthetic
+    record = tmp_path / "record"
+    manifest = stage(record, registry, cache=tmp_path / "no-cache", root=root)
+    names = [e["file"] for e in manifest["objects"] if e["included"]] + ["MANIFEST.json", "README.md", "sources.yaml"]
+    held = [{"filename": n, "checksum": "md5:" + zenodo_sources._md5(record / n)} for n in names]
+
+    class Response:
+        def __init__(self, body): self.body, self.ok = body, True
+        def json(self): return self.body
+        def raise_for_status(self): pass
+
+    deposition = {"id": 1, "state": "unsubmitted", "submitted": False, "links": {"bucket": "https://bucket.invalid", "html": "x"},
+                  "files": held + [{"filename": "unexpected.csv", "checksum": "md5:0"}]}
+    with patch("requests.post", return_value=Response(deposition)), patch("requests.put", return_value=Response({})), \
+         patch("requests.get", return_value=Response(deposition)):
+        with pytest.raises(RuntimeError, match="unexpected.csv"):
+            zenodo_sources.draft(record, manifest, "sandbox", "token", log=lambda *_: None)
+    deposition["files"] = held
+    with patch("requests.post", return_value=Response(deposition)), patch("requests.put", return_value=Response({})), \
+         patch("requests.get", return_value=Response(deposition)):
+        assert zenodo_sources.draft(record, manifest, "sandbox", "token", log=lambda *_: None)["id"] == 1
