@@ -3,6 +3,11 @@
 **Column provenance: <https://mtinti.github.io/postcode-simd/>**. For every column of both tables:
 where its value comes from, what was done to it, how the build checks it, and why.
 
+**Pinned sources archived on Zenodo: <https://doi.org/10.5281/zenodo.23119742>**. Every open-licence
+download the build reads, byte for byte, with its licence evidence and credit; the NRS postcode
+products are cited there, not redistributed. The build falls back to these copies if a publisher
+moves a file, and verifies them by SHA256 like any other.
+
 A CLI pipeline that rebuilds two postcode-to-SIMD tables from hash-pinned public files.
 Routine maintenance is a refresh of one of the two NRS postcode products. Adding a SIMD
 edition is a separate, less frequent change to the source registry and output schemas.
