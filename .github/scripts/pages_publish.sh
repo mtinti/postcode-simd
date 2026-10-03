@@ -8,8 +8,10 @@
 #
 # Every attempt starts from the latest gh-pages and applies only this run's change, so two runs
 # publishing different branches at once both land: a rejected push is retried from the new state.
-# A push made with GITHUB_TOKEN does not itself trigger a Pages build, so one is requested
-# explicitly, and the script fails unless that build completes.
+# A push made with GITHUB_TOKEN does not itself trigger a Pages build, so the script always ends by
+# making sure a completed build contains the current gh-pages, requesting one if not, and fails
+# otherwise. It does so even when this run changed nothing: a rerun after a push that landed but
+# whose build request failed must deploy, never report success.
 set -euo pipefail
 
 dest_for() {
@@ -30,13 +32,13 @@ remote="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.g
 git config --global user.name "github-actions[bot]"
 git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-pushed=""
+pushed=""; unchanged=""
 for attempt in 1 2 3 4 5; do
   work=$(mktemp -d)
   if git ls-remote --exit-code --heads "$remote" gh-pages > /dev/null; then
     git clone --quiet --depth 1 --branch gh-pages "$remote" "$work/pages"
   elif [ "$mode" = "remove" ]; then
-    echo "no gh-pages branch: nothing to remove"; exit 0
+    echo "no gh-pages branch: nothing to remove or deploy"; exit 0
   else
     git init --quiet "$work/pages" && git -C "$work/pages" checkout --quiet --orphan gh-pages
   fi
@@ -55,35 +57,45 @@ for attempt in 1 2 3 4 5; do
       message="Publish ${branch} at ${GITHUB_SHA::7}${dest:+ to $dest}" ;;
     remove)
       [ -n "$dest" ] || { echo "main is never removed"; exit 1; }
-      [ -d "$pages/$dest" ] || { echo "no preview for $branch at $dest"; exit 0; }
+      if [ ! -d "$pages/$dest" ]; then echo "no preview for $branch at $dest"; unchanged=yes; break; fi
       git -C "$pages" rm -r --quiet "$dest"
       message="Remove the preview of ${branch} ($dest)" ;;
     *) echo "unknown mode $mode"; exit 2 ;;
   esac
   git -C "$pages" add -A
-  if git -C "$pages" diff --cached --quiet; then echo "nothing changed"; exit 0; fi
+  if git -C "$pages" diff --cached --quiet; then echo "nothing changed on gh-pages"; unchanged=yes; break; fi
   git -C "$pages" commit --quiet -m "$message"
   if git -C "$pages" push --quiet "$remote" HEAD:gh-pages; then pushed=yes; break; fi
   echo "push rejected (attempt $attempt): gh-pages moved; retrying from its latest state"
   sleep $(( attempt * 5 + RANDOM % 5 ))
 done
-[ -n "$pushed" ] || { echo "could not update gh-pages after 5 attempts"; exit 1; }
+[ -n "$pushed" ] || [ -n "$unchanged" ] || { echo "could not update gh-pages after 5 attempts"; exit 1; }
 
-# Pages rebuilds only when asked: request a build and wait until a completed build contains this
-# run's commit (it may be a later one, if another run published meanwhile).
+# Make sure a completed Pages build contains the current gh-pages, whether or not this run changed
+# it: request a build only when none does, then wait. A later build (another run published since)
+# that contains it counts.
 commit=$(git -C "$pages" rev-parse HEAD)
+contains() {   # does build commit $1 contain $commit?
+  [ "$1" = "$commit" ] && return 0
+  case "$(gh api "repos/${GITHUB_REPOSITORY}/compare/${commit}...$1" --jq '.status' 2>/dev/null || echo unknown)" in
+    identical|ahead) return 0 ;; *) return 1 ;;
+  esac
+}
+read -r status built < <(gh api "repos/${GITHUB_REPOSITORY}/pages/builds/latest" --jq '"\(.status) \(.commit)"' 2>/dev/null || echo "none none")
+if [ "$status" = "built" ] && contains "$built"; then
+  echo "Pages already built ${built::7}, which contains ${commit::7}"; exit 0
+fi
 gh api -X POST "repos/${GITHUB_REPOSITORY}/pages/builds" > /dev/null
+echo "requested a Pages build for ${commit::7}"
 for i in $(seq 1 60); do
   sleep 10
   read -r status built < <(gh api "repos/${GITHUB_REPOSITORY}/pages/builds/latest" --jq '"\(.status) \(.commit)"')
-  contains=$(gh api "repos/${GITHUB_REPOSITORY}/compare/${commit}...${built}" --jq '.status' 2>/dev/null || echo unknown)
-  case "$contains" in
-    identical|ahead)
-      case "$status" in
-        built) echo "Pages built ${built::7}, which contains ${commit::7}"; exit 0 ;;
-        errored) echo "Pages build of ${built::7} errored"; exit 1 ;;
-      esac ;;
-  esac
+  if contains "$built"; then
+    case "$status" in
+      built) echo "Pages built ${built::7}, which contains ${commit::7}"; exit 0 ;;
+      errored) echo "Pages build of ${built::7} errored"; exit 1 ;;
+    esac
+  fi
   echo "waiting: latest Pages build ${built::7} is ${status}"
 done
 echo "Pages did not finish a build containing ${commit::7} in time"; exit 1
