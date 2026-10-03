@@ -1785,7 +1785,7 @@ fields:
   type: string
   nullable: true
   source: govscot_bands
-  note: rank_sources_disagree where the Scottish Government's statistics.gov.scot dataset and its shapefile give this zone different housing ranks (the rank here is the shapefile's, which the ranks workbook confirms; the bands are the published ones, and for 626 of the 628 zones the same under either ranking); null otherwise
+  note: rank_sources_disagree where the Scottish Government's statistics.gov.scot dataset and its shapefile give this zone different housing ranks (the rank here is the shapefile's, equal to the SIMD 2020v2 ranks workbook, which the SIMD team confirmed on 2 October 2026 is the definitive version; the bands are the published ones, and for 626 of the 628 zones the same under either ranking); null otherwise
 - name: simd2004_income_domain_pw_scotland_quintile
   type: int8
   nullable: false

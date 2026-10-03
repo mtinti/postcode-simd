@@ -1,0 +1,1383 @@
+# NRS field descriptions, extracted from the pinned SPD and SSPL data dictionaries by
+# simd_ingest/extract_descriptions.py, per dictionary table, with the file and hash they came
+# from. Review verdicts and reviewer notes are in simd_ingest/description_review.yaml.
+CensusHouseholdCount1991:
+  spd_small_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: '1991 Census postcode usually resident household count. Census counts for shipping postcode
+      SH25 0SAA and English postcode TD9 0TJA have been excluded from the Postcode Index. The population
+      and household counts are: Population Household SH25 0SAA 247 0 TD9 0TJA 2 1'
+    type: Integer
+  sspl:
+    range: ''
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: '1991 Census postcode usually resident household count. Census counts for shipping postcode
+      SH25 0SAA and English postcode TD9 0TJA have been excluded from the Postcode Index. The population
+      and household counts are: Population Household SH25 0SAA 247 0 TD9 0TJA 2 1'
+    type: Integer
+CensusHouseholdCount2001:
+  spd_small_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: 2001 Census postcode household count.
+    type: Integer
+  sspl:
+    range: ''
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: 2001 Census postcode household count.
+    type: Integer
+CensusHouseholdCount2011:
+  spd_small_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: 2011 Census postcode household count.
+    type: Integer
+  sspl:
+    range: ''
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: 2011 Census postcode household count.
+    type: Integer
+CensusHouseholdCount2022:
+  spd_small_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: 2022 Census postcode household count. Cell Key Perturbation has been applied to Scotland’s Census
+      2022 outputs. This means that small adjustments are made automatically to cells in tables. This
+      is part of our Statistical Disclosure Control methodology; you can read more on the Scotland’s Census
+      website.
+    type: Integer
+  sspl:
+    range: ''
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: 2022 Census postcode household count. Cell Key Perturbation has been applied to Scotland’s Census
+      2022 outputs. This means that small adjustments are made automatically to cells in tables. This
+      is part of our Statistical Disclosure Control methodology; you can read more on the Scotland’s Census
+      website.
+    type: Integer
+CensusPopulationCount1991:
+  spd_small_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: '1991 Census postcode residential count. Census counts for shipping postcode SH25 0SAA and English
+      postcode TD9 0TJA have been excluded from the Postcode Index. The population and household counts
+      are: Population Household SH25 0SAA 247 0 TD9 0TJA 2 1'
+    type: Integer
+  sspl:
+    range: ''
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: '1991 Census postcode residential count. Census counts for shipping postcode SH25 0SAA and English
+      postcode TD9 0TJA have been excluded from the Postcode Index. The population and household counts
+      are: Population Household SH25 0SAA 247 0 TD9 0TJA 2 1'
+    type: Integer
+CensusPopulationCount2001:
+  spd_small_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: 2001 Census postcode residential count.
+    type: Integer
+  sspl:
+    range: ''
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: 2001 Census postcode residential count.
+    type: Integer
+CensusPopulationCount2011:
+  spd_small_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: 2011 Census postcode residential count.
+    type: Integer
+  sspl:
+    range: ''
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: 2011 Census postcode residential count.
+    type: Integer
+CensusPopulationCount2022:
+  spd_small_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: 2022 Census postcode residential count. Cell Key Perturbation has been applied to Scotland’s
+      Census 2022 outputs. This means that small adjustments are made automatically to cells in tables.
+      This is part of our Statistical Disclosure Control methodology; you can read more on the Scotland’s
+      Census website.
+    type: Integer
+  sspl:
+    range: ''
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: 2022 Census postcode residential count. Cell Key Perturbation has been applied to Scotland’s
+      Census 2022 outputs. This means that small adjustments are made automatically to cells in tables.
+      This is part of our Statistical Disclosure Control methodology; you can read more on the Scotland’s
+      Census website.
+    type: Integer
+CivilParish1930Code:
+  spd_large_user:
+    range: S35000001 to S35000871
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 1930 Civil Parish.
+    type: Char(9)
+  spd_small_user:
+    range: S35000001 to S35000871
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 1930 Civil Parish.
+    type: Char(9)
+  sspl:
+    range: S35000001 to S35000871
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 1930 Civil Parish.
+    type: Char(9)
+CouncilArea2019Code:
+  spd_large_user:
+    range: S12000005 to S12000050
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2019 Council Area.
+    type: Char(9)
+  spd_small_user:
+    range: S12000005 to S12000050
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2019 Council Area.
+    type: Char(9)
+  sspl:
+    range: S12000005 to S12000050
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 2019 Council Area.
+    type: Char(9)
+DataZone2001Code:
+  spd_large_user:
+    range: S01000001 to S01006505
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2001 Data Zone (built from 2001 Output Areas).
+    type: Char(9)
+  spd_small_user:
+    range: S01000001 to S01006505
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2001 Data Zone (built from 2001 Output Areas).
+    type: Char(9)
+  sspl:
+    range: S01000001 to S01006505
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 2001 Data Zone (built from 2001 Output Areas).
+    type: Char(9)
+DataZone2011Code:
+  spd_large_user:
+    range: S01006506 to S01013481
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2011 Data Zone (built from 2011 Output Areas).
+    type: Char(9)
+  spd_small_user:
+    range: S01006506 to S01013481
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2011 Data Zone (built from 2011 Output Areas).
+    type: Char(9)
+  sspl:
+    range: S01006506 to S01013481
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 2011 Data Zone (built from 2011 Output Areas).
+    type: Char(9)
+DataZone2022Code:
+  spd_large_user:
+    range: S01013482 to S01020873
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2022 Data Zone (built from 2022 Output Areas).
+    type: Char(9)
+  spd_small_user:
+    range: S01013482 to S01020873
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2022 Data Zone (built from 2022 Output Areas).
+    type: Char(9)
+  sspl:
+    range: S01013482 to S01020873
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 2022 Data Zone (built from 2022 Output Areas).
+    type: Char(9)
+DateOfDeletion:
+  spd_large_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Postcode deletion date.
+    type: Date
+  spd_small_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Postcode deletion date.
+    type: Date
+  sspl:
+    range: ''
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: Postcode deletion date.
+    type: Date
+DateOfIntroduction:
+  spd_large_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Postcode introduction date.
+    type: Date
+  spd_small_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Postcode introduction date.
+    type: Date
+  sspl:
+    range: ''
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: Postcode introduction date.
+    type: Date
+DeliveryPointCount:
+  spd_small_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: The Royal Mail delivery point count.
+    type: Integer
+  sspl:
+    range: ''
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: The Royal Mail delivery point count.
+    type: Integer
+DeliveryPointCountNonResidential:
+  spd_small_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: The Royal Mail delivery point count (non-residential)
+    type: Integer
+  sspl:
+    range: ''
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: The Royal Mail delivery point count (non-residential)
+    type: Integer
+ElectoralWard2022Code:
+  spd_large_user:
+    range: S13002516 to S13003156
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2022 Electoral Ward.
+    type: Char(9)
+  spd_small_user:
+    range: S13002516 to S13003156
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2022 Electoral Ward.
+    type: Char(9)
+  sspl:
+    range: S13002516 to S13003156
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 2022 Electoral Ward.
+    type: Char(9)
+EnterpriseRegion2008Code:
+  spd_large_user:
+    range: S09000001 to S09000006
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2008 Scottish Enterprise Region.
+    type: Char(9)
+  spd_small_user:
+    range: S09000001 to S09000006
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2008 Scottish Enterprise Region.
+    type: Char(9)
+GridLinkIndicator:
+  spd_large_user:
+    range: Y or N
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Indicates whether the grid reference has been assigned via GridLink.
+    type: Char(1)
+  spd_small_user:
+    range: Y or N
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Indicates whether the grid reference has been assigned via GridLink.
+    type: Char(1)
+GridLinkPositionalAccuracy:
+  spd_large_user:
+    range: 1 to 8
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Indicates the positional accuracy of the GridLink grid reference allocated to each postcode.
+      Description of status values 1. Automatically calculated to be within the building of the matched
+      address closest to the postcode. 2. As for status value 1, except by visual inspection of OS MasterMap®
+      Topography Layer maps. 3. Approximate to within 50 m of true position. 4. Postcode unit mean – (mean
+      of matched addresses with the same postcode, but not snapped to a building). 5. Postcode imputed
+      by ONS by reference to surrounding known postcodes. 6. Postcode sector mean – mainly PO boxes. 7.
+      Postcode terminated. The accuracy of the data is as indicated by its status value immediately prior
+      to its termination. 8. No coordinates available. Note that grid references for PO Box postcodes
+      are assigned to the local Royal Mail sorting/delivery office and are deemed low quality. While the
+      Gridlink® RPC is showing as 1 (which is high quality), this is purely because the address is being
+      matched to the local Royal Mail sorting/delivery office.
+    type: Char(1)
+  spd_small_user:
+    range: 1 to 8
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Indicates the positional accuracy of the GridLink grid reference allocated to each postcode.
+      Description of status values 1. Automatically calculated to be within the building of the matched
+      address closest to the postcode. 2. As for status value 1, except by visual inspection of OS MasterMap®
+      Topography Layer maps. 3. Approximate to within 50 m of true position. 4. Postcode unit mean – (mean
+      of matched addresses with the same postcode, but not snapped to a building). 5. Postcode imputed
+      by ONS by reference to surrounding known postcodes. 6. Postcode sector mean – mainly PO boxes. 7.
+      Postcode terminated. The accuracy of the data is as indicated by its status value immediately prior
+      to its termination. 8. No coordinates available. Note that grid references for PO Box postcodes
+      are assigned to the local Royal Mail sorting/delivery office and are deemed low quality. While the
+      Gridlink® RPC is showing as 1 (which is high quality), this is purely because the address is being
+      matched to the local Royal Mail sorting/delivery office.
+    type: Char(1)
+GridReferenceEasting:
+  spd_large_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Grid reference easting to 1 metre resolution.
+    type: Char(6)
+  spd_small_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Grid reference easting to 1 metre resolution.
+    type: Char(6)
+  sspl:
+    range: ''
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: Grid reference easting to 1 metre resolution.
+    type: Char(6)
+GridReferenceNorthing:
+  spd_large_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Grid reference northing to 1 metre resolution.
+    type: Char(7)
+  spd_small_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Grid reference northing to 1 metre resolution.
+    type: Char(7)
+  sspl:
+    range: ''
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: Grid reference northing to 1 metre resolution.
+    type: Char(7)
+HealthBoardArea1995Code:
+  spd_large_user:
+    range: 01 to 15
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 1995 Health Board.
+    type: Char(2)
+  spd_small_user:
+    range: 01 to 15
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 1995 Health Board.
+    type: Char(2)
+  sspl:
+    range: 01 to 15
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 1995 Health Board.
+    type: Char(2)
+HealthBoardArea2006Code:
+  spd_large_user:
+    range: S08000001 to S08000014
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2006 Health Board.
+    type: Char(9)
+  spd_small_user:
+    range: S08000001 to S08000014
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2006 Health Board.
+    type: Char(9)
+  sspl:
+    range: S08000001 to S08000014
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 2006 Health Board.
+    type: Char(9)
+HealthBoardArea2019Code:
+  spd_large_user:
+    range: S08000015 to S08000032
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2019 Health Board.
+    type: Char(9)
+  spd_small_user:
+    range: S08000015 to S08000032
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2019 Health Board.
+    type: Char(9)
+  sspl:
+    range: S08000015 to S08000032
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 2019 Health Board.
+    type: Char(9)
+HouseholdCount:
+  spd_small_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: The Royal Mail Household count.
+    type: Integer
+  sspl:
+    range: ''
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: The Royal Mail Household count.
+    type: Integer
+ITL2025Level2Code:
+  spd_large_user:
+    range: TLM0 to TLM9
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: International Territorial Levels (ITLs) 2025 Level 2.
+    type: Char(4)
+  spd_small_user:
+    range: TLM0 to TLM9
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: International Territorial Levels (ITLs) 2025 Level 2.
+    type: Char(4)
+  sspl:
+    range: TLM0 to TLM9
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: International Territorial Levels (ITLs) 2025 Level 2.
+    type: Char(4)
+ITL2025Level3Code:
+  spd_large_user:
+    range: TLM01 to TLM95
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: International Territorial Levels (ITLs) 2025 Level 3.
+    type: Char(5)
+  spd_small_user:
+    range: TLM01 to TLM95
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: International Territorial Levels (ITLs) 2025 Level 3.
+    type: Char(5)
+  sspl:
+    range: TLM01 to TLM95
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: International Territorial Levels (ITLs) 2025 Level 3.
+    type: Char(5)
+IntegrationAuthority2019Code:
+  spd_large_user:
+    range: S37000001 to S37000035
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2019 Integration Authority, also known as Health and Social Care Partnership.
+    type: Char(9)
+  spd_small_user:
+    range: S37000001 to S37000035
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2019 Integration Authority, also known as Health and Social Care Partnership.
+    type: Char(9)
+  sspl:
+    range: S37000001 to S37000035
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 2019 Integration Authority, also known as Health and Social Care Partnership.
+    type: Char(9)
+IntermediateZone2001Code:
+  spd_large_user:
+    range: S02000001 to S02001235
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2001 Intermediate Zone (built from 2001 Data Zones).
+    type: Char(9)
+  spd_small_user:
+    range: S02000001 to S02001235
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2001 Intermediate Zone (built from 2001 Data Zones).
+    type: Char(9)
+  sspl:
+    range: S02000001 to S02001235
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 2001 Intermediate Zone (built from 2001 Data Zones).
+    type: Char(9)
+IntermediateZone2011Code:
+  spd_large_user:
+    range: S02001236 to S02002514
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2011 Intermediate Zone (built from 2011 Data Zones).
+    type: Char(9)
+  spd_small_user:
+    range: S02001236 to S02002514
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2011 Intermediate Zone (built from 2011 Data Zones).
+    type: Char(9)
+  sspl:
+    range: S02001236 to S02002514
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 2011 Intermediate Zone (built from 2011 Data Zones).
+    type: Char(9)
+IntermediateZone2022Code:
+  spd_large_user:
+    range: S02002515 to S02003848
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2022 Intermediate Zone (built from 2022 Data Zones).
+    type: Char(9)
+  spd_small_user:
+    range: S02002515 to S02003848
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2022 Intermediate Zone (built from 2022 Data Zones).
+    type: Char(9)
+  sspl:
+    range: S02002515 to S02003848
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 2022 Intermediate Zone (built from 2022 Data Zones).
+    type: Char(9)
+IslandCode:
+  spd_large_user:
+    range: 000 to 180
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies an island.
+    type: Char(3)
+  spd_small_user:
+    range: 000 to 180
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies an island.
+    type: Char(3)
+  sspl:
+    range: 000 to 180
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies an island.
+    type: Char(3)
+LAU2025Level1Code:
+  spd_large_user:
+    range: S30000003 to S30000056
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: European Area Classification Local Administrative Unit (LAU) 2025 level 1.
+    type: Char(9)
+  spd_small_user:
+    range: S30000003 to S30000056
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: European Area Classification Local Administrative Unit (LAU) 2025 level 1.
+    type: Char(9)
+  sspl:
+    range: S30000003 to S30000056
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: European Area Classification Local Administrative Unit (LAU) 2025 level 1.
+    type: Char(9)
+Latitude:
+  spd_large_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Postcode co-ordinates in degrees latitude. Calculated from the 1 metre grid reference using
+      ESRI translation and projected to WGS1984 datum (EPSG 4326).
+    type: Numeric
+  spd_small_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Postcode co-ordinates in degrees latitude. Calculated from the 1 metre grid reference using
+      ESRI translation and projected to WGS1984 datum (EPSG 4326).
+    type: Numeric
+LinkedSmallUserPostcode:
+  spd_large_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Provides the Small User postcode that contains the grid reference of the Large User postcode.
+      PO Boxes shown as NO LINKP.
+    type: Char(9)
+  sspl:
+    range: ''
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: Provides the Small User postcode that contains the grid reference of the Large User postcode.
+      PO Boxes shown as NO LINKP. This can contain split postcodes.
+    type: Char(9)
+LocalGovernmentDistrict1991Code:
+  spd_large_user:
+    range: 01 to 56
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 1991 Local Government District.
+    type: Char(2)
+  spd_small_user:
+    range: 01 to 56
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 1991 Local Government District.
+    type: Char(2)
+  sspl:
+    range: 01 to 56
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 1991 Local Government District.
+    type: Char(2)
+LocalGovernmentDistrict1995Code:
+  spd_large_user:
+    range: 01 to 56
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 1995 Local Government District.
+    type: Char(2)
+  spd_small_user:
+    range: 01 to 56
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 1995 Local Government District.
+    type: Char(2)
+  sspl:
+    range: 01 to 56
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 1995 Local Government District.
+    type: Char(2)
+Locality1991Code:
+  spd_large_user:
+    range: 001 to 603
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies the 1991 Census Locality.
+    type: Char(3)
+  spd_small_user:
+    range: 001 to 603
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies the 1991 Census Locality.
+    type: Char(3)
+Locality2001Code:
+  spd_large_user:
+    range: 001001 to 521001
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies the 2001 Census Locality.
+    type: Char(6)
+  spd_small_user:
+    range: 001001 to 521001
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies the 2001 Census Locality.
+    type: Char(6)
+Locality2020Code:
+  spd_large_user:
+    range: S19001928 to S19002583
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2020 Locality.
+    type: Char(9)
+  spd_small_user:
+    range: S19001928 to S19002583
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2020 Locality.
+    type: Char(9)
+Locality2022Code:
+  spd_large_user:
+    range: S52000001 to S52000656
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2022 Census Locality.
+    type: Char(9)
+  spd_small_user:
+    range: S52000001 to S52000656
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2022 Census Locality.
+    type: Char(9)
+Longitude:
+  spd_large_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Postcode co-ordinates in degrees longitude. Calculated from the 1 metre grid reference using
+      ESRI translation and projected to WGS1984 datum (EPSG 4326).
+    type: Numeric
+  spd_small_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Postcode co-ordinates in degrees longitude. Calculated from the 1 metre grid reference using
+      ESRI translation and projected to WGS1984 datum (EPSG 4326).
+    type: Numeric
+NationalPark2010Code:
+  spd_large_user:
+    range: S21000002 to S21000003
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2010 National Park.
+    type: Char(9)
+  spd_small_user:
+    range: S21000002 to S21000003
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2010 National Park.
+    type: Char(9)
+NeverDigitised:
+  spd_small_user:
+    range: Y or Null
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Indicates whether a postcode boundary has been digitised. Royal Mail introduced a mix of small
+      and large user postcodes prior to the 2007 Election. These postcodes were introduced for use in
+      postal votes. As they were planned for an ‘administrative’ use, we could not digitise the small
+      user postcodes as they had no distinctive geographical position.
+    type: Char(1)
+OutputArea1991Code:
+  spd_large_user:
+    range: 5601AB02 to 6756AK12
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: 'A code that identifies a 1991 Census Output Area. Comprised of for example: Local Government
+      Region code (1st 2 chars) 56 Local Government District code (2nd 2 chars) 01 NRS Code for the PC
+      Sector (2nd 4 chars) 01AB 1981 Enumeration Code (2nd 6 chars) 01AB03 1991 Output Area Code (all
+      of code) 5601AB03A. (If an Output Area is one of several which make up a 1981 Enumeration District,
+      a 9th char is added which indicates how many Output Areas make up the 1981 Enumeration District).'
+    type: Char(9)
+  spd_small_user:
+    range: 5601AB02 to 6756AK12
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: 'A code that identifies a 1991 Census Output Area. Comprised of for example: Local Government
+      Region code (1st 2 chars) 56 Local Government District code (2nd 2 chars) 01 NRS Code for the PC
+      Sector (2nd 4 chars) 01AB 1981 Enumeration Code (2nd 6 chars) 01AB03 1991 Output Area Code (all
+      of code) 5601AB03A. (If an Output Area is one of several which make up a 1981 Enumeration District,
+      a 9th char is added which indicates how many Output Areas make up the 1981 Enumeration District).'
+    type: Char(9)
+  sspl:
+    range: 5601AB02 to 6756AK12
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: 'A code that identifies a 1991 Census Output Area. Comprised of for example: Local Government
+      Region code (1st 2 chars) 56 Local Government District code (2nd 2 chars) 01 NRS Code for the PC
+      Sector (2nd 4 chars) 01AB 1981 Enumeration Code (2nd 6 chars) 01AB03 1991 Output Area Code (all
+      of code) 5601AB03A. (If an Output Area is one of several which make up a 1981 Enumeration District,
+      a 9th char is added which indicates how many Output Areas make up the 1981 Enumeration District).'
+    type: Char(9)
+OutputArea2001Code:
+  spd_large_user:
+    range: S00000001 to S00042604
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2001 Census Output Area.
+    type: Char(9)
+  spd_small_user:
+    range: S00000001 to S00042604
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2001 Census Output Area.
+    type: Char(9)
+  sspl:
+    range: S00000001 to S00042604
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 2001 Census Output Area.
+    type: Char(9)
+OutputArea2011Code:
+  spd_large_user:
+    range: S00088956 to S00135306
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2011 Census Output Area.
+    type: Char(9)
+  spd_small_user:
+    range: S00088956 to S00135306
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2011 Census Output Area.
+    type: Char(9)
+  sspl:
+    range: S00088956 to S00135306
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 2011 Census Output Area.
+    type: Char(9)
+OutputArea2022Code:
+  spd_large_user:
+    range: S00135307 to S00181669
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2022 Census Output Area.
+    type: Char(9)
+  spd_small_user:
+    range: S00135307 to S00181669
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2022 Census Output Area.
+    type: Char(9)
+  sspl:
+    range: S00135307 to S00181669
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 2022 Census Output Area.
+    type: Char(9)
+Postcode:
+  spd_large_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: 'The Royal Mail postcode. Comprised of for example: Area EH District 10 Sector 4 Unit SU Along
+      with any split indicator added by NRS - A,B,C.'
+    type: Char(9)
+  spd_small_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: 'The Royal Mail postcode. Comprised of for example: Area EH District 10 Sector 4 Unit SU Along
+      with any split indicator added by NRS - A,B,C.'
+    type: Char(9)
+  sspl:
+    range: ''
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: 'The Royal Mail postcode. Comprised of for example: Area EH District 10 Sector 4 Unit SU'
+    type: Char(9)
+PostcodeDistrict:
+  spd_large_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Postcode District. For example, EH10
+    type: Char(6)
+  spd_small_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Postcode District. For example, EH10
+    type: Char(4)
+  sspl:
+    range: ''
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: Postcode District. For example EH10
+    type: Char(4)
+PostcodeSector:
+  spd_large_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Postcode Sector. For example, EH10 4
+    type: Char(4)
+  spd_small_user:
+    range: ''
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Postcode Sector. For example, EH10 4
+    type: Char(6)
+  sspl:
+    range: ''
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: Postcode Sector. For example EH10 4
+    type: Char(6)
+PostcodeType:
+  sspl:
+    range: S or L
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: Small or Large User postcode indicator.
+    type: Char(1)
+ROACommunityPlanningPartnership2006Code:
+  spd_large_user:
+    range: S05000001 to S05000028
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2006 Regeneration Outcome Area Community Planning Partnerships (CPP).
+    type: Char(9)
+  spd_small_user:
+    range: S05000001 to S05000028
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2006 Regeneration Outcome Area Community Planning Partnerships (CPP).
+    type: Char(9)
+ROALocal2006Code:
+  spd_large_user:
+    range: S06000001 to S06000180
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2006 Regeneration Outcome Area Local.
+    type: Char(9)
+  spd_small_user:
+    range: S06000001 to S06000180
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2006 Regeneration Outcome Area Local.
+    type: Char(9)
+RegistrationDistrict2007Code:
+  spd_large_user:
+    range: S12000005 to S12000050
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2019 Council Area. Note that following the Local Electoral Administration
+      and Registration Services (Scotland) Act 2006, Registration Districts boundaries are the exact same
+      as Council Area boundaries .
+    type: Char(9)
+  spd_small_user:
+    range: S12000005 to S12000050
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2019 Council Area. Note that following the Local Electoral Administration
+      and Registration Services (Scotland) Act 2006, Registration Districts boundaries are the exact same
+      as Council Area boundaries.
+    type: Char(9)
+  sspl:
+    range: S12000005 to S12000050
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 2019 Council Area. Note that following the Local Electoral Administration
+      and Registration Services (Scotland) Act 2006, Registration Districts boundaries are the exact same
+      as Council Area boundaries .
+    type: Char(9)
+ScottishIndexOfMultipleDeprivation2020Rank:
+  spd_large_user:
+    range: 0001 to 6976
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that ranks small areas called Data Zones from the most deprived ranked 1 to the least
+      deprived ranked 6976. Linked using 2011 Data Zones.
+    type: Char(4)
+  spd_small_user:
+    range: 0001 to 6976
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that ranks small areas called Data Zones from the most deprived ranked 1 to the least
+      deprived ranked 6976. Linked using 2011 Data Zones.
+    type: Char(4)
+  sspl:
+    range: 0001 to 6976
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that ranks small areas called Data Zones from the most deprived ranked 1 to the least
+      deprived ranked 6976. Linked using 2011 Data Zones.
+    type: Char(4)
+ScottishParliamentaryConstituency2026Code:
+  spd_large_user:
+    range: S16000151 to S16000223
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2026 Scottish Parliamentary Constituency.
+    type: Char(9)
+  spd_small_user:
+    range: S16000151 to S16000223
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2026 Scottish Parliamentary Constituency.
+    type: Char(9)
+  sspl:
+    range: S16000151 to S16000223
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 2026 Scottish Parliamentary Constituency.
+    type: Char(9)
+ScottishParliamentaryRegion2026Code:
+  spd_large_user:
+    range: S17000021 to S17000028
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2026 Scottish Parliamentary Region.
+    type: Char(9)
+  spd_small_user:
+    range: S17000021 to S17000028
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2026 Scottish Parliamentary Region.
+    type: Char(9)
+  sspl:
+    range: S17000021 to S17000028
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 2026 Scottish Parliamentary Region.
+    type: Char(9)
+Settlement2001Code:
+  spd_large_user:
+    range: 001 to 521
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies the 2001 Census Settlement.
+    type: Char(3)
+  spd_small_user:
+    range: 001 to 521
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies the 2001 Census Settlement.
+    type: Char(3)
+Settlement2020Code:
+  spd_large_user:
+    range: S20001538 to S20002051
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2020 Settlement.
+    type: Char(9)
+  spd_small_user:
+    range: S20001538 to S20002051
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2020 Settlement.
+    type: Char(9)
+Settlement2022Code:
+  spd_large_user:
+    range: S53000001 to S53000503
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2022 Census Settlement
+    type: Char(9)
+  spd_small_user:
+    range: S53000001 to S53000503
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2022 Census Settlement
+    type: Char(9)
+SplitIndicator:
+  spd_large_user:
+    range: Y or N
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Split postcode indicator for the linked small user postcode.
+    type: Char(1)
+  spd_small_user:
+    range: Y or N
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: Split postcode indicator.
+    type: Char(1)
+  sspl:
+    range: Y or N
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: Split postcode indicator. On the NRS Scottish Postcode Directory, this postcode is shown with
+      an A, B, or C suffix.
+    type: Char(1)
+StrategicDevelopmentPlanningArea2013Code:
+  spd_large_user:
+    range: S11000001 to S11000005
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2013 Strategic Development Planning Area.
+    type: Char(9)
+  spd_small_user:
+    range: S11000001 to S11000005
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2013 Strategic Development Planning Area.
+    type: Char(9)
+  sspl:
+    range: S11000001 to S11000005
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 2013 Strategic Development Planning Area.
+    type: Char(9)
+TravelToWorkArea2011Code:
+  spd_large_user:
+    range: S22000005 to S22000086, K01000009 and K01000010
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2011 Travel to Work Area.
+    type: Char(9)
+  spd_small_user:
+    range: S22000005 to S22000086, K01000009 and K01000010
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2011 Travel to Work Area.
+    type: Char(9)
+  sspl:
+    range: S22000005 to S22000086, K01000009 and K01000010
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 2011 Travel to Work Area.
+    type: Char(9)
+UKParliamentaryConstituency2024Code:
+  spd_large_user:
+    range: S14000021 to S14000111
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2024 UK Parliamentary Constituency.
+    type: Char(9)
+  spd_small_user:
+    range: S14000021 to S14000111
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that identifies a 2024 UK Parliamentary Constituency.
+    type: Char(9)
+  sspl:
+    range: S14000021 to S14000111
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that identifies a 2024 UK Parliamentary Constituency.
+    type: Char(9)
+UrbanRural6Fold2022Code:
+  spd_large_user:
+    range: 1 to 6
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that provides a standard definition of rural Scotland using the Scottish Government Urban
+      Rural classification (6 fold).
+    type: Char(1)
+  spd_small_user:
+    range: 1 to 6
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that provides a standard definition of rural Scotland using the Scottish Government Urban
+      Rural classification (6 fold).
+    type: Char(1)
+  sspl:
+    range: 1 to 6
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that provides a standard definition of rural Scotland using the Scottish Government Urban
+      Rural classification (6 fold).
+    type: Char(1)
+UrbanRural8Fold2022Code:
+  spd_large_user:
+    range: 1 to 8
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that provides a standard definition of rural Scotland using the Scottish Government Urban
+      Rural classification (8 fold).
+    type: Char(1)
+  spd_small_user:
+    range: 1 to 8
+    source:
+      file: SPD/spd_postcodeindex_cut_26_2_csv/spd-indexdatadictionary-2026-2.docx
+      sha256: b543a10df0155caf3bc642c30371ccf848657ef52fb25922afcc0f938fc4214a
+    text: A code that provides a standard definition of rural Scotland using the Scottish Government Urban
+      Rural classification (8 fold).
+    type: Char(1)
+  sspl:
+    range: 1 to 8
+    source:
+      file: SSPL/sspl-2026-2/SSPL Data Dictionary 2026-2.docx
+      sha256: 7009e3cf415f444b63acfc92613959dbd7994c6ea1a4ba14ddc916f688c39cb6
+    text: A code that provides a standard definition of rural Scotland using the Scottish Government Urban
+      Rural classification (8 fold).
+    type: Char(1)

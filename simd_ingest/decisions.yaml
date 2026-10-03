@@ -775,6 +775,14 @@ decisions:
       every edition and zone. The datasets are byte-identical across downloads. The 230 history
       and 187 main columns of 4.0.0 keep their fingerprints. Plans:
       docs/plans/Domain_Ntiles_Test_Plan.md and docs/plans/Domain_Bands_Plan.md.
+      Answered 2 October 2026 by the Scottish Government's SIMD team (email to Michele Tinti): the
+      SIMD 2020v2 ranks workbook is the definitive version, the differences are too small to
+      worry about, and are probably due to how ties were treated. The ranks we carry equal the
+      workbook in every zone, so the status marks zones where statistics.gov.scot departs from the
+      definitive ranking. Our check of the explanation: 115 of the 628 zones are tied in neither
+      ranking, and the largest tied group among them has six zones, which cannot account for a
+      4.5-place difference, so ties explain only part; the effect remains two band changes, no
+      quintile. No change to the build.
 
   - id: computed-weighted-domain-bands
     date: 2026-10-01

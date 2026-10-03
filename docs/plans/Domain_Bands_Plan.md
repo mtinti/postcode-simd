@@ -57,6 +57,10 @@ The checklist as planned:
   record it under `licences`.
 - **Write to the SIMD team** asking which 2020 housing ranking is authoritative, citing both
   ranks for S01008634 (2093 and 2092.5). The feature does not wait for the answer.
+  **Answered 2 October 2026:** the SIMD 2020v2 ranks workbook is the definitive version (the one
+  our housing ranks equal), and the differences are too small to matter, probably from tie
+  handling. Ties explain only part: 115 of the 628 zones are tied in neither ranking. Nothing
+  changes: the status marks where statistics.gov.scot departs from the definitive ranking.
 
 ## Design
 

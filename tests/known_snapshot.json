@@ -1,7 +1,7 @@
 {
   "description": "SPD 2026/2 history regression is independent of SSPL refreshes. Main is SSPL 2026/2, reviewed on 2026-09-13: all 50 raw columns and 84 SIMD columns matched the pinned CSV/DBF sources on all 230103 rows. Main requires all pins and its own schema; never update just to clear a test. History moved to postcode_simd_wide_v2 on 2026-09-21, which appends 27 rurality columns: wide_v1_columns_fingerprint is the fingerprint of the original 162 columns alone and must never change for these pins; logical_fingerprint covers all 189. 4.0.0 appends the 41 Scottish Government domain ranks to both tables (wide_v3, sspl_v3): wide_v2_columns_fingerprint and main_v2_columns_fingerprint pin the columns that existed before. 5.0.0 appends the Scottish Government's published domain bands and the 2020v2 housing source status to both tables (wide_v4, sspl_v4): wide_v3_columns_fingerprint and main_v3_columns_fingerprint pin the 230 and 187 columns of 4.0.0. 6.0.0 appends the computed population-weighted domain bands and each edition's data-zone population (wide_v5, sspl_v5): wide_v4_columns_fingerprint and main_v4_columns_fingerprint pin the 354 and 311 columns of 5.0.0.",
   "sspl_object_sha256": "b3cc78a21b1cdecd8f29d972b6385c48cabb24a40d7c17b99d82ceae1a30ecbb",
-  "main_schema_sha256": "555c2960587dbe41c5333cf49cc2d8b625ff78637ef314ed647dec1eff828b0e",
+  "main_schema_sha256": "6dedd30660b16558c6e36b35a79fd1218571e0b3c1a35482df3fe0258fd7602b",
   "remote_object_sha256": [
     "33f166949c0e8a54fe2601d63cd760fdd41b1f2aee54e7f3d411c82b7c38b9e0",
     "3a98af3b181d8273eca18587663175ca28d18f338d3003be620798001aeca3a6",
@@ -30,7 +30,7 @@
     "3be67d034964cbbbba379291ac2014bd347ac28d6134341a5ef3c05d5203341a",
     "25fea7ddaf54659ac24c6d9e9c6af73d3da18ef2a8477c30b61a7c937f3dabbf"
   ],
-  "schema_sha256": "f96531472409f548ac2d03e9e5af328629805099afcc2c60d2de512a795eafe0",
+  "schema_sha256": "a93a03275531a9ac8ef586edfcb1ec38117c081b57c86d32723d873953e43c6b",
   "logical_fingerprint": "0f16a678a0723d8ce6a31f83ff6c9cc0335849ed30ca7cb2f2ea125571ea420a",
   "main_logical_fingerprint": "270e9bacc2901193044d83e21234fac4a5e60b4e548dcd17fa16fcafe7c5dff9",
   "wide_v1_columns_fingerprint": "59369357e44e45a5ac74b217692fd8e4799fd0aafc3b04e4e2c255abf722dc97",
