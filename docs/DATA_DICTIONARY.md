@@ -8,7 +8,7 @@ postcode-in-zone allocation see the history table, [DATA_DICTIONARY_HISTORY.md](
 Generated from `simd_ingest/output_schema.yaml`; do not edit by hand.
 
 Current build: 230,103 rows by 399 columns, main index release 2026_2,
-allocation `oa2022_centroid`, built 2026-10-02T20:27:55Z. Parquet SHA256 `90b5c3a082136621f4ed9a4dde68acd188012f181130e375cf8a65d21b53eaa8`; rows-only fingerprint
+allocation `oa2022_centroid`, built 2026-10-03T11:29:41Z. Parquet SHA256 `ae6e009a3931497cff43de553c01a846787ec5b9cc0af02f9e57680e6f278259`; rows-only fingerprint
 `270e9bacc2901193044d83e21234fac4a5e60b4e548dcd17fa16fcafe7c5dff9`. The file hash also covers the embedded provenance metadata,
 so it changes when the decision log changes; compare fingerprints under the same pinned runtime.
 
@@ -124,7 +124,7 @@ An empty `deleted_on` is a null and agrees with `is_current`. The source text co
 | statistics_gov_scot | cube-table?uri=http%3A%2F%2Fstatistics.gov.scot%2Fdata%2Fscottish-index-of-multiple-deprivation-historical-ii | `3be67d034964cbbb…` |
 | statistics_gov_scot | cube-table?uri=http%3A%2F%2Fstatistics.gov.scot%2Fdata%2Fscottish-index-of-multiple-deprivation | `25fea7ddaf54659a…` |
 
-Licences: phs: Open Government Licence v3.0, stated in the PHS open data package metadata; nrs: NRS terms; confirm before redistributing copies of the index; maps_gov_scot: Open Government Licence, stated in each shapefile's .shp.xml; statistics_gov_scot: Open Government Licence v3.0, stated on each dataset page; publisher the Scottish Government, contact simd@gov.scot
+Licences: phs: Open Government Licence v3.0, stated in the PHS open data package metadata; nrs: NRS terms; confirm before redistributing copies of the index; maps_gov_scot: Open Government Licence; the evidence for each file is under redistribution_evidence; statistics_gov_scot: Open Government Licence v3.0, stated on each dataset page; publisher the Scottish Government, contact simd@gov.scot
 
 ## Columns
 

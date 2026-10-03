@@ -816,3 +816,28 @@ decisions:
       within 0.036 percentage points. Cutting from the main table's zones instead would drop four
       2011 zones (801 people in 2017) and change five 2020v2 income deciles. The 354 history and
       311 main columns of 5.0.0 keep their fingerprints. Plan: docs/plans/Weighted_Domain_Bands_Plan.md.
+
+  - id: zenodo-archive
+    date: 2026-10-03
+    status: implemented
+    decision: >-
+      The pinned open-licence sources are archived on Zenodo, byte for byte, in the record
+      10.5281/zenodo.23119743 (concept DOI 10.5281/zenodo.23119742), published 3 October 2026:
+      24 downloads from PHS and the Scottish Government, with a manifest, a README and the
+      registry. Each registry object archived there has a mirror URL to its copy, which the
+      fetcher tries only if the publisher's URL fails or serves different bytes; the SHA256
+      decides either way. The NRS postcode products are cited (product, release, URL, SHA256),
+      never uploaded, and NRS was not asked. The software is archived by Zenodo's GitHub
+      integration at each GitHub release, its metadata in .zenodo.json.
+    reason: >-
+      Citable work and durable inputs: a publisher can move or retire a file, as
+      statistics.gov.scot may, and a pinned build must still be reproducible. A Zenodo record is
+      permanent, so only files whose redistribution is evidenced are archived.
+    evidence: >-
+      Each uploaded download's licence evidence and required credit are in sources.yaml
+      (redistribution_evidence): the files' own metadata, the Government's catalogue record
+      564db46c (revised 16 December 2024) for the catalogued Urban Rural versions, and the Rural
+      Statistics team's email of 25 September 2026 for 2003-2010. Every archived file was
+      verified on Zenodo by MD5 before publishing, every mirror answers, and a public download
+      matched its pinned SHA256. Plan: docs/plans/Zenodo_Plan.md.
+

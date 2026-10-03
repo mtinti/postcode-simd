@@ -6,7 +6,7 @@ containing the postcode's own grid reference. For one row per whole postcode see
 [DATA_DICTIONARY.md](DATA_DICTIONARY.md). Generated from `simd_ingest/output_schema_history.yaml`; do not edit by hand.
 
 Current build: 247,773 rows by 442 columns, history index release 2026_2,
-allocation `postcode_grid_reference`, built 2026-10-02T20:27:55Z. Parquet SHA256 `f3d494d1ea41810c3525a25b76df7abaef6aeb0c0b8a45603e0a31e388990e68`; rows-only fingerprint
+allocation `postcode_grid_reference`, built 2026-10-03T11:29:41Z. Parquet SHA256 `70c226e71843c483bca8bcc326e24e1b133a039499603cc65568e5eabe9b2572`; rows-only fingerprint
 `0f16a678a0723d8ce6a31f83ff6c9cc0335849ed30ca7cb2f2ea125571ea420a`. The file hash also covers the embedded provenance metadata,
 so it changes when the decision log changes; compare fingerprints under the same pinned runtime.
 
@@ -129,7 +129,7 @@ An empty `deleted_on` is a null and agrees with `is_current`. The source text co
 | statistics_gov_scot | cube-table?uri=http%3A%2F%2Fstatistics.gov.scot%2Fdata%2Fscottish-index-of-multiple-deprivation-historical-ii | `3be67d034964cbbb…` |
 | statistics_gov_scot | cube-table?uri=http%3A%2F%2Fstatistics.gov.scot%2Fdata%2Fscottish-index-of-multiple-deprivation | `25fea7ddaf54659a…` |
 
-Licences: phs: Open Government Licence v3.0, stated in the PHS open data package metadata; nrs: NRS terms; confirm before redistributing copies of the index; maps_gov_scot: Open Government Licence, stated in each shapefile's .shp.xml; statistics_gov_scot: Open Government Licence v3.0, stated on each dataset page; publisher the Scottish Government, contact simd@gov.scot
+Licences: phs: Open Government Licence v3.0, stated in the PHS open data package metadata; nrs: NRS terms; confirm before redistributing copies of the index; maps_gov_scot: Open Government Licence; the evidence for each file is under redistribution_evidence; statistics_gov_scot: Open Government Licence v3.0, stated on each dataset page; publisher the Scottish Government, contact simd@gov.scot
 
 ## Columns
 

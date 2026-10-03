@@ -318,6 +318,8 @@ def _write_pages(out: Path) -> dict:
             page = [f"# `{f.path}`", "", f"**Publisher:** {o.publisher}. **Licence:** {licences.get(o.publisher, 'see the registry')}.", "",
                     f"**Downloaded in:** `{o.key}`, <{o.url}>" + (f" (archive member `{f.member}`)" if f.member else ""), "",
                     f"**SHA256:** `{f.sha256}`. **Role:** {f.role}.", "",
+                    (f"**Archived copy:** <{o.mirror}> (Zenodo, the same bytes; the build falls back to it if the publisher's URL fails)."
+                     if o.mirror else "**Archived copy:** none; this download is cited, not redistributed."), "",
                     f"**Columns it feeds ({len(fed)}):** " + (", ".join(f"[`{n}`](../columns/{n}.md)" for n in fed)
                                                              or "none (documentation, or a shapefile member read with the others)"), ""]
             emit(out / "sources" / f"{_slug(f.path)}.md", "\n".join(page))

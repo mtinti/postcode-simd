@@ -21,7 +21,8 @@ licences:
   maps_gov_scot: "Open Government Licence; the evidence for each file is under redistribution_evidence"
   statistics_gov_scot: "Open Government Licence v3.0, stated on each dataset page; publisher the Scottish Government, contact simd@gov.scot"
 
-# What may be archived on Zenodo (docs/plans/Zenodo_Plan.md). upload: the Open Government Licence
+# What may be archived on Zenodo (docs/plans/Zenodo_Plan.md). The uploaded downloads are in the record
+# https://doi.org/10.5281/zenodo.23119743 (concept DOI 10.5281/zenodo.23119742); each object's mirror is its copy there. upload: the Open Government Licence
 # allows redistribution with attribution, so the downloads are archived byte for byte. cite: the
 # downloads are cited in full (product, release, URL, SHA256), never redistributed (decided
 # 3 October 2026). Every publisher of a remote object must have a setting.
@@ -135,6 +136,7 @@ remote_objects:
   - key: phs_2004
     publisher: phs
     url: https://www.opendata.nhs.scot/dataset/78d41fa9-1a62-4f7b-9edb-3e8522a93378/resource/a97fca71-ebbb-4897-a611-88024a76ff21/download/simd2004_02042020.csv
+    mirror: https://zenodo.org/records/23119743/files/phs_2004__simd2004_02042020.csv?download=1
     format: file
     sha256: dcc871e88353884a166c09ab406fa798d2e8f0ba58000db55066ba6723bda45f
     files:
@@ -142,6 +144,7 @@ remote_objects:
   - key: phs_2006
     publisher: phs
     url: https://www.opendata.nhs.scot/dataset/78d41fa9-1a62-4f7b-9edb-3e8522a93378/resource/6f871d03-d2af-4fe2-a615-d2d2ca76c3a5/download/simd2006_02042020.csv
+    mirror: https://zenodo.org/records/23119743/files/phs_2006__simd2006_02042020.csv?download=1
     format: file
     sha256: 69f9fb1a2e51d464366497c51f68aaaf80a23774f96daa5c492dc1db1aa8c578
     files:
@@ -149,6 +152,7 @@ remote_objects:
   - key: phs_2009v2
     publisher: phs
     url: https://www.opendata.nhs.scot/dataset/78d41fa9-1a62-4f7b-9edb-3e8522a93378/resource/d9738550-4cf9-428e-8453-c2aad463ff68/download/simd2009v2_23062019.csv
+    mirror: https://zenodo.org/records/23119743/files/phs_2009v2__simd2009v2_23062019.csv?download=1
     format: file
     sha256: effa76a989820f28a470cd3af4fc1268b7ac5313bb4d394c06e913e0b782bbb9
     files:
@@ -156,6 +160,7 @@ remote_objects:
   - key: phs_2012
     publisher: phs
     url: https://www.opendata.nhs.scot/dataset/78d41fa9-1a62-4f7b-9edb-3e8522a93378/resource/dd4b13d3-066b-4714-bb1f-730e1a1ee692/download/simd2012_02042020.csv
+    mirror: https://zenodo.org/records/23119743/files/phs_2012__simd2012_02042020.csv?download=1
     format: file
     sha256: c4c12b6346ee9fa14383e41eaccf6d479df0c745f3fafc753b035d3600a897d3
     files:
@@ -163,6 +168,7 @@ remote_objects:
   - key: phs_2016
     publisher: phs
     url: https://www.opendata.nhs.scot/dataset/78d41fa9-1a62-4f7b-9edb-3e8522a93378/resource/cadf715a-c365-4dcf-a6e0-acd7e3af21ec/download/simd2016_18052020.csv
+    mirror: https://zenodo.org/records/23119743/files/phs_2016__simd2016_18052020.csv?download=1
     format: file
     sha256: 3a98af3b181d8273eca18587663175ca28d18f338d3003be620798001aeca3a6
     files:
@@ -170,6 +176,7 @@ remote_objects:
   - key: phs_2020v2
     publisher: phs
     url: https://www.opendata.nhs.scot/dataset/78d41fa9-1a62-4f7b-9edb-3e8522a93378/resource/acade396-8430-4b34-895a-b3e757fa346e/download/simd2020v2_22062020.csv
+    mirror: https://zenodo.org/records/23119743/files/phs_2020v2__simd2020v2_22062020.csv?download=1
     format: file
     sha256: 686bc9aa38b61891f701e10d8a3970397c7be7f3819798dc43584ae42cb3a391
     files:
@@ -199,6 +206,7 @@ remote_objects:
   - key: sg_simd_2004
     publisher: maps_gov_scot
     url: https://maps.gov.scot/ATOM/shapefiles/SG_SIMD_2004.zip
+    mirror: https://zenodo.org/records/23119743/files/sg_simd_2004__SG_SIMD_2004.zip?download=1
     format: zip
     sha256: 3bc179d9eebac7873544c8d2fc3f6892aab3fa16fcccb317449aaec998de2603
     files:
@@ -206,6 +214,7 @@ remote_objects:
   - key: sg_simd_2006
     publisher: maps_gov_scot
     url: https://maps.gov.scot/ATOM/shapefiles/SG_SIMD_2006.zip
+    mirror: https://zenodo.org/records/23119743/files/sg_simd_2006__SG_SIMD_2006.zip?download=1
     format: zip
     sha256: fe7c662ee48cfe282b4c8ef9b96713ad76b1a0e448f0515d5243fb67e1c9a2c8
     files:
@@ -213,6 +222,7 @@ remote_objects:
   - key: sg_simd_2009
     publisher: maps_gov_scot
     url: https://maps.gov.scot/ATOM/shapefiles/SG_SIMD_2009.zip
+    mirror: https://zenodo.org/records/23119743/files/sg_simd_2009__SG_SIMD_2009.zip?download=1
     format: zip
     sha256: 438a14225afcfd1d36fc8a4ea45b14d81e74f1257054028ab1c7da6f65b9014a
     files:
@@ -220,6 +230,7 @@ remote_objects:
   - key: sg_simd_2012
     publisher: maps_gov_scot
     url: https://maps.gov.scot/ATOM/shapefiles/SG_SIMD_2012.zip
+    mirror: https://zenodo.org/records/23119743/files/sg_simd_2012__SG_SIMD_2012.zip?download=1
     format: zip
     sha256: c91aea4cbf39d116ba1bc219fe88034a4f351ac93930f4f9229c1ccf1a17733d
     files:
@@ -227,6 +238,7 @@ remote_objects:
   - key: sg_simd_2016
     publisher: maps_gov_scot
     url: https://maps.gov.scot/ATOM/shapefiles/SG_SIMD_2016.zip
+    mirror: https://zenodo.org/records/23119743/files/sg_simd_2016__SG_SIMD_2016.zip?download=1
     format: zip
     sha256: bffbec7c3f45da16d3dc5c34dcaef64435083167330fac4a5c3610bcefa8b5d0
     files:
@@ -234,6 +246,7 @@ remote_objects:
   - key: sg_simd_2020
     publisher: maps_gov_scot
     url: https://maps.gov.scot/ATOM/shapefiles/SG_SIMD_2020.zip
+    mirror: https://zenodo.org/records/23119743/files/sg_simd_2020__SG_SIMD_2020.zip?download=1
     format: zip
     sha256: 33f166949c0e8a54fe2601d63cd760fdd41b1f2aee54e7f3d411c82b7c38b9e0
     files:
@@ -246,6 +259,7 @@ remote_objects:
   - key: sg_urbanrural_2003_2004
     publisher: maps_gov_scot
     url: https://maps.gov.scot/ATOM/shapefiles/SG_UrbanRural_2003_2004.zip
+    mirror: https://zenodo.org/records/23119743/files/sg_urbanrural_2003_2004__SG_UrbanRural_2003_2004.zip?download=1
     format: zip
     sha256: 1389441b25a2804c55e0ba6aabb07083b789a9c16d08c08483b40b6b87905668
     files:
@@ -256,6 +270,7 @@ remote_objects:
   - key: sg_urbanrural_2005_2006
     publisher: maps_gov_scot
     url: https://maps.gov.scot/ATOM/shapefiles/SG_UrbanRural_2005_2006.zip
+    mirror: https://zenodo.org/records/23119743/files/sg_urbanrural_2005_2006__SG_UrbanRural_2005_2006.zip?download=1
     format: zip
     sha256: f792012c3f8b086a1af07aa0384d60763c3218e76634e1656b7d98c6a0314261
     files:
@@ -266,6 +281,7 @@ remote_objects:
   - key: sg_urbanrural_2007_2008
     publisher: maps_gov_scot
     url: https://maps.gov.scot/ATOM/shapefiles/SG_UrbanRural_2007_2008.zip
+    mirror: https://zenodo.org/records/23119743/files/sg_urbanrural_2007_2008__SG_UrbanRural_2007_2008.zip?download=1
     format: zip
     sha256: 9aa388730b66f81f28528752d0d05e5497229571f355e226734fdd73bd4318d8
     files:
@@ -276,6 +292,7 @@ remote_objects:
   - key: sg_urbanrural_2009_2010
     publisher: maps_gov_scot
     url: https://maps.gov.scot/ATOM/shapefiles/SG_UrbanRural_2009_2010.zip
+    mirror: https://zenodo.org/records/23119743/files/sg_urbanrural_2009_2010__SG_UrbanRural_2009_2010.zip?download=1
     format: zip
     sha256: d5db1b102f4ce08111eac925c03afa5f933f5fc46076b96bc77a93f651245b8d
     files:
@@ -286,6 +303,7 @@ remote_objects:
   - key: sg_urbanrural_2011_2012
     publisher: maps_gov_scot
     url: https://maps.gov.scot/ATOM/shapefiles/SG_UrbanRural_2011_2012.zip
+    mirror: https://zenodo.org/records/23119743/files/sg_urbanrural_2011_2012__SG_UrbanRural_2011_2012.zip?download=1
     format: zip
     sha256: 5f6f57badf3508c202279577ac46be4b24af3859636f408b5d72befe09a612ea
     files:
@@ -296,6 +314,7 @@ remote_objects:
   - key: sg_urbanrural_2013_2014
     publisher: maps_gov_scot
     url: https://maps.gov.scot/ATOM/shapefiles/SG_UrbanRural_2013_2014.zip
+    mirror: https://zenodo.org/records/23119743/files/sg_urbanrural_2013_2014__SG_UrbanRural_2013_2014.zip?download=1
     format: zip
     sha256: 725ed5bb2b722848a323f03fa034283da9edee0f822d6b911c09819113cc383e
     files:
@@ -306,6 +325,7 @@ remote_objects:
   - key: sg_urbanrural_2016
     publisher: maps_gov_scot
     url: https://maps.gov.scot/ATOM/shapefiles/SG_UrbanRural_2016.zip
+    mirror: https://zenodo.org/records/23119743/files/sg_urbanrural_2016__SG_UrbanRural_2016.zip?download=1
     format: zip
     sha256: f44f3b22237bf43d5d5d3776193106257b0756189f4f2055905f48010be41208
     files:
@@ -316,6 +336,7 @@ remote_objects:
   - key: sg_urbanrural_2020
     publisher: maps_gov_scot
     url: https://maps.gov.scot/ATOM/shapefiles/SG_UrbanRural_2020.zip
+    mirror: https://zenodo.org/records/23119743/files/sg_urbanrural_2020__SG_UrbanRural_2020.zip?download=1
     format: zip
     sha256: 5969d3377170c59273c37ba029eca6cf8b770adec90a72f4ec5fec92e47ba429
     files:
@@ -326,6 +347,7 @@ remote_objects:
   - key: sg_urbanrural_2022
     publisher: maps_gov_scot
     url: https://maps.gov.scot/ATOM/shapefiles/SG_UrbanRural_2022.zip
+    mirror: https://zenodo.org/records/23119743/files/sg_urbanrural_2022__SG_UrbanRural_2022.zip?download=1
     format: zip
     sha256: 1b18bce2d4201d5f99dfd3bdacbf9fb5bc7a966294cee94262165e2c398d85a9
     files:
@@ -341,6 +363,7 @@ remote_objects:
   - key: sgs_simd_2004_2012
     publisher: statistics_gov_scot
     url: https://statistics.gov.scot/downloads/cube-table?uri=http%3A%2F%2Fstatistics.gov.scot%2Fdata%2Fscottish-index-of-multiple-deprivation-historical-i
+    mirror: https://zenodo.org/records/23119743/files/sgs_simd_2004_2012__simd_historical_2004_2012.csv?download=1
     format: file
     sha256: d9745d9d7763fbe961322ae24bc0542bd00b18fcc3fd1044b23cb27503f4318f
     files:
@@ -348,6 +371,7 @@ remote_objects:
   - key: sgs_simd_2016
     publisher: statistics_gov_scot
     url: https://statistics.gov.scot/downloads/cube-table?uri=http%3A%2F%2Fstatistics.gov.scot%2Fdata%2Fscottish-index-of-multiple-deprivation-historical-ii
+    mirror: https://zenodo.org/records/23119743/files/sgs_simd_2016__simd_historical_2016.csv?download=1
     format: file
     sha256: 3be67d034964cbbbba379291ac2014bd347ac28d6134341a5ef3c05d5203341a
     files:
@@ -355,6 +379,7 @@ remote_objects:
   - key: sgs_simd_2020
     publisher: statistics_gov_scot
     url: https://statistics.gov.scot/downloads/cube-table?uri=http%3A%2F%2Fstatistics.gov.scot%2Fdata%2Fscottish-index-of-multiple-deprivation
+    mirror: https://zenodo.org/records/23119743/files/sgs_simd_2020__simd_2020.csv?download=1
     format: file
     sha256: 25fea7ddaf54659ac24c6d9e9c6af73d3da18ef2a8477c30b61a7c937f3dabbf
     files:
