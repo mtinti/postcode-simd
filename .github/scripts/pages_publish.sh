@@ -81,21 +81,36 @@ contains() {   # does build commit $1 contain $commit?
     identical|ahead) return 0 ;; *) return 1 ;;
   esac
 }
-read -r status built < <(gh api "repos/${GITHUB_REPOSITORY}/pages/builds/latest" --jq '"\(.status) \(.commit)"' 2>/dev/null || echo "none none")
-if [ "$status" = "built" ] && contains "$built"; then
-  echo "Pages already built ${built::7}, which contains ${commit::7}"; exit 0
-fi
+while read -r status built; do
+  if [ "$status" = "built" ] && contains "$built"; then
+    echo "Pages already built ${built::7}, which contains ${commit::7}"; exit 0
+  fi
+done < <(gh api "repos/${GITHUB_REPOSITORY}/pages/builds?per_page=5" --jq '.[] | "\(.status) \(.commit)"' 2>/dev/null || true)
 gh api -X POST "repos/${GITHUB_REPOSITORY}/pages/builds" > /dev/null
 echo "requested a Pages build for ${commit::7}"
+# A request can produce two builds a second apart: the first is cancelled by the second and recorded
+# as "errored: Page build failed", while the second builds. So read the recent builds, not only the
+# latest: succeed if any build containing the commit is built; fail only when every such build has
+# errored and none has been queued or building for three checks in a row.
+settled_errors=0
 for i in $(seq 1 60); do
   sleep 10
-  read -r status built < <(gh api "repos/${GITHUB_REPOSITORY}/pages/builds/latest" --jq '"\(.status) \(.commit)"')
-  if contains "$built"; then
+  outcome=""; pending=""
+  while read -r status built; do
+    contains "$built" || continue
     case "$status" in
-      built) echo "Pages built ${built::7}, which contains ${commit::7}"; exit 0 ;;
-      errored) echo "Pages build of ${built::7} errored"; exit 1 ;;
+      built) outcome=built; break ;;
+      errored) [ -n "$outcome" ] || outcome=errored ;;
+      *) pending=yes ;;
     esac
+  done < <(gh api "repos/${GITHUB_REPOSITORY}/pages/builds?per_page=5" --jq '.[] | "\(.status) \(.commit)"')
+  if [ "$outcome" = built ]; then echo "Pages built a commit containing ${commit::7}"; exit 0; fi
+  if [ "$outcome" = errored ] && [ -z "$pending" ]; then
+    settled_errors=$((settled_errors + 1))
+    [ "$settled_errors" -ge 3 ] && { echo "every Pages build containing ${commit::7} errored"; exit 1; }
+  else
+    settled_errors=0
   fi
-  echo "waiting: latest Pages build ${built::7} is ${status}"
+  echo "waiting for a Pages build of ${commit::7}"
 done
 echo "Pages did not finish a build containing ${commit::7} in time"; exit 1
