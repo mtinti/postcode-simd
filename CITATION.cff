@@ -1,6 +1,7 @@
-# How to cite this software. Read by GitHub ("Cite this repository") and by Zenodo, which archives
-# every GitHub release; .zenodo.json adds what CFF does not carry. Keep version in step with
-# pyproject.toml (tested).
+# How to cite this software, read by GitHub ("Cite this repository"). Zenodo, which archives every
+# GitHub release, uses .zenodo.json instead whenever it exists and ignores this file: the two are
+# not combined, so .zenodo.json carries its own complete metadata (creators, licence, keywords).
+# Keep both in step with each other and this version with pyproject.toml (tested).
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 title: "Postcode-SIMD reference tables"
