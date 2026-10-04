@@ -2,6 +2,21 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23120390.svg)](https://doi.org/10.5281/zenodo.23120390)
 
+![Phrases in the titles of 263 papers that use SIMD. The largest are socioeconomic deprivation,
+socioeconomic status and socioeconomic inequality, followed by area deprivation, social
+deprivation, risk factor and hospital admission.](docs/images/simd_titles_wordcloud.png)
+
+*Phrases in the titles of 263 papers that use SIMD, 2005–2026, from
+[SIMD literature word clouds](https://github.com/mtinti/simd-wordclouds/tree/32598f96f272f6ac6b6976c96c34d95fadc88edf),
+Michele Tinti, CC BY 4.0.*
+
+Since its first edition in 2004, the Scottish Index of Multiple Deprivation has been used in
+more than [250 published studies](https://github.com/mtinti/simd-wordclouds/blob/32598f96f272f6ac6b6976c96c34d95fadc88edf/simd_papers.csv),
+found by repeated literature searches; the list is close to complete but not guaranteed to be.
+This repository fetches every public source needed to attach SIMD to health and administrative
+records, each pinned by its SHA256, and builds tables that link by postcode. Every row also
+carries its 2001, 2011 and 2022 data zones, so SIMD can be joined by data zone as well.
+
 **Column provenance: <https://mtinti.github.io/postcode-simd/>**. For every column of both tables:
 where its value comes from, what was done to it, how the build checks it, and why.
 
