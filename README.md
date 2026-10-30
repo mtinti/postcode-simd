@@ -1,5 +1,15 @@
 # Postcode-SIMD reference tables
 
+> **This is branch `build/nrs-2026-1`.** It builds both tables from the NRS **2026/1** releases
+> (Scottish Postcode Directory 2026/1 and Scottish Statistics Postcode Lookup 2026/1), for
+> HEAL-Scot, whose partner DataLoch uses those releases. Everything else is as on `main` at
+> ca5318b. The two Scottish Parliament columns are the 2021 ones,
+> `ScottishParliamentaryRegion2021Code` and `ScottishParliamentaryConstituency2021Code`, and the
+> schema versions are `postcode_simd_wide_v5_nrs2026_1` and `postcode_simd_sspl_v5_nrs2026_1`.
+> The branch is never merged. For the current release, use `main`. The plan is
+> [docs/plans/NRS_2026_1_Build_Plan.md](docs/plans/NRS_2026_1_Build_Plan.md), and the decision is
+> `nrs-2026-1-build` in [simd_ingest/decisions.yaml](simd_ingest/decisions.yaml).
+
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23120390.svg)](https://doi.org/10.5281/zenodo.23120390)
 
 ![Phrases in the titles of 263 papers that use SIMD. The largest are socioeconomic deprivation,

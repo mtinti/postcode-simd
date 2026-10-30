@@ -8,7 +8,10 @@
 # postcode_simd_sspl_v5 appends the computed population-weighted Scotland quintile and decile of each
 # domain rank, 82, then each edition's data-zone population, 6, the 311 unchanged = 399.
 # Data zones follow the SSPL's allocation: the zone containing the 2022 output-area centroid.
-version: postcode_simd_sspl_v5
+# postcode_simd_sspl_v5_nrs2026_1 is postcode_simd_sspl_v5 built from the NRS 2026/1 lookup, whose
+# two Scottish Parliament fields are the 2021 ones: ScottishParliamentaryRegion2021Code and
+# ScottishParliamentaryConstituency2021Code replace the 2026 fields, in the same places.
+version: postcode_simd_sspl_v5_nrs2026_1
 table: postcode_simd
 index_source: sspl
 allocation: oa2022_centroid
@@ -141,12 +144,12 @@ fields:
   nullable: false
   source: lookup
   note: ''
-- name: ScottishParliamentaryRegion2026Code
+- name: ScottishParliamentaryRegion2021Code
   type: string
   nullable: false
   source: lookup
   note: ''
-- name: ScottishParliamentaryConstituency2026Code
+- name: ScottishParliamentaryConstituency2021Code
   type: string
   nullable: false
   source: lookup

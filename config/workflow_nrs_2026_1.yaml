@@ -1,0 +1,21 @@
+# The NRS 2026/1 build of branch build/nrs-2026-1: workflow.yaml with its own results folder,
+# so the production results/ is never written. docs/plans/NRS_2026_1_Build_Plan.md.
+
+# Operational settings. Relative paths resolve against the project root, which is the
+# parent of this file's directory. Use absolute paths to run against another location.
+source_manifest: simd_ingest/sources.yaml
+spd_schema: simd_ingest/spd_schema.yaml
+sspl_schema: simd_ingest/sspl_schema.yaml
+export_contract: simd_ingest/export_contract.yaml   # what the CSV and SQL examples leave out
+decisions: simd_ingest/decisions.yaml
+output_schema: simd_ingest/output_schema.yaml            # main table, from the SSPL
+output_schema_history: simd_ingest/output_schema_history.yaml  # history table, from the SPD
+
+# offline: use pre-supplied files under source_roots.offline; no network access.
+# download: fetch every pinned object into cache_root and place files under source_roots.download.
+source_mode: offline
+source_roots:
+  offline: manual_data
+  download: data/sources
+cache_root: data/cache
+results_root: results_nrs_2026_1

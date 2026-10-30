@@ -45,8 +45,10 @@ jobs:
           echo "publishing to: ${dest:-the site root}"
       - run: python -m simd_ingest.provenance_site
       - run: mkdocs build
+      # Branch build/nrs-2026-1 only: it builds an older NRS release and never publishes a site,
+      # for the branch or its tags. The site describes main (decision nrs-2026-1-build).
       - name: Publish to gh-pages and wait for Pages
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: .github/scripts/pages_publish.sh publish "$GITHUB_REF_NAME" build/provenance_site
 
   remove-preview:

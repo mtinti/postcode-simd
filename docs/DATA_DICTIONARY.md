@@ -1,4 +1,4 @@
-# Data dictionary: postcode_simd, schema `postcode_simd_sspl_v5`
+# Data dictionary: postcode_simd, schema `postcode_simd_sspl_v5_nrs2026_1`
 
 The **main table**: one row per whole postcode from the Scottish Statistics Postcode Lookup (SSPL), both user types, the
 latest life of each postcode (deleted ones included), with all 6 SIMD editions attached.
@@ -7,9 +7,9 @@ Every geography, including both data-zone vintages, is the one containing the ce
 postcode-in-zone allocation see the history table, [DATA_DICTIONARY_HISTORY.md](DATA_DICTIONARY_HISTORY.md).
 Generated from `simd_ingest/output_schema.yaml`; do not edit by hand.
 
-Current build: 230,103 rows by 399 columns, main index release 2026_2,
-allocation `oa2022_centroid`, built 2026-10-03T11:29:41Z. Parquet SHA256 `ae6e009a3931497cff43de553c01a846787ec5b9cc0af02f9e57680e6f278259`; rows-only fingerprint
-`270e9bacc2901193044d83e21234fac4a5e60b4e548dcd17fa16fcafe7c5dff9`. The file hash also covers the embedded provenance metadata,
+Current build: 229,708 rows by 399 columns, main index release 2026_1,
+allocation `oa2022_centroid`, built 2026-10-30T12:17:20Z. Parquet SHA256 `745492c1404a55a68b3456eaf22abe174a6725cdf09a189fc484606d275d9e8a`; rows-only fingerprint
+`99ff73871715b677273c3ab864485bc2da4f4d7aadc6956140c6c0e81a32dd99`. The file hash also covers the embedded provenance metadata,
 so it changes when the decision log changes; compare fingerprints under the same pinned runtime.
 
 ## Key
@@ -103,8 +103,8 @@ An empty `deleted_on` is a null and agrees with `is_current`. The source text co
 | phs | simd2012_02042020.csv | `c4c12b6346ee9fa1…` |
 | phs | simd2016_18052020.csv | `3a98af3b181d8273…` |
 | phs | simd2020v2_22062020.csv | `686bc9aa38b61891…` |
-| nrs | spd_postcodeindex_cut_26_2_csv.zip | `4e93069ddb9c39c2…` |
-| nrs | sspl-2026-2.zip | `b3cc78a21b1cdecd…` |
+| nrs | spd_postcodeindex_cut_26_1_csv.zip | `415d579a963c3511…` |
+| nrs | sspl-2026-1.zip | `b8bc805567a167dd…` |
 | maps_gov_scot | SG_SIMD_2004.zip | `3bc179d9eebac787…` |
 | maps_gov_scot | SG_SIMD_2006.zip | `fe7c662ee48cfe28…` |
 | maps_gov_scot | SG_SIMD_2009.zip | `438a14225afcfd1d…` |
@@ -218,8 +218,8 @@ Licences: phs: Open Government Licence v3.0, stated in the PHS open data package
 | 23 | `LocalGovernmentDistrict1995Code` | string | no | lookup |  |
 | 24 | `LocalGovernmentDistrict1991Code` | string | no | lookup |  |
 | 25 | `ElectoralWard2022Code` | string | no | lookup |  |
-| 26 | `ScottishParliamentaryRegion2026Code` | string | no | lookup |  |
-| 27 | `ScottishParliamentaryConstituency2026Code` | string | no | lookup |  |
+| 26 | `ScottishParliamentaryRegion2021Code` | string | no | lookup |  |
+| 27 | `ScottishParliamentaryConstituency2021Code` | string | no | lookup |  |
 | 28 | `UKParliamentaryConstituency2024Code` | string | no | lookup |  |
 | 29 | `HealthBoardArea2019Code` | string | no | lookup |  |
 | 30 | `HealthBoardArea2006Code` | string | no | lookup |  |

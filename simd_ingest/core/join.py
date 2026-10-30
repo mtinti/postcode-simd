@@ -77,10 +77,13 @@ def join_edition(table: pd.DataFrame, edition_table: pd.DataFrame, ed: dict, kin
 
 
 def build_postcode_simd(index: pd.DataFrame, phs_tables: dict, gov_tables: dict, registry: Registry,
-                        schema: dict, report: Report, label: str = "join", extra: pd.DataFrame | None = None) -> pd.DataFrame:
+                        schema: dict, report: Report, label: str = "join", extra: pd.DataFrame | None = None,
+                        full_coverage: bool = False) -> pd.DataFrame:
     """The ladder: the index, then one join per PHS edition, then one per government edition.
     The output schema supplies the column order and the natural key; label prefixes the checks
-    so that the two tables of one build stay apart."""
+    so that the two tables of one build stay apart. full_coverage makes every source data zone
+    having a record a blocking check; otherwise the coverage is only observed."""
+    zone_coverage(index, phs_tables, gov_tables, registry, report, label, full_coverage)
     out = index
     for ed in registry.phs_editions:
         out = join_edition(out, phs_tables[ed["key"]], ed, "phs", registry, report, label)
@@ -92,6 +95,26 @@ def build_postcode_simd(index: pd.DataFrame, phs_tables: dict, gov_tables: dict,
         report.equal(f"{label}.extra_rows_aligned", bool(extra.index.equals(index.index)), True)
         out = pd.concat([out, extra], axis=1)
     return finish(out, index, registry, [f["name"] for f in schema["fields"]], schema["key"], report, label)
+
+
+def zone_coverage(index: pd.DataFrame, phs_tables: dict, gov_tables: dict, registry: Registry,
+                  report: Report, label: str, required: bool) -> None:
+    """The reverse of every_record_matched: does every data zone of the SIMD sources have a record?
+
+    The zone universe of a vintage is every zone of every PHS and Government edition on it. The
+    history table keeps deleted lives, so it should hold every zone; the main table keeps only the
+    latest life, and a zone whose last postcode has gone is absent from it. Absent zones are
+    reported by code, never filled."""
+    tables = [(ed, phs_tables[ed["key"]]) for ed in registry.phs_editions]
+    tables += [(ed, gov_tables[ed["key"]]) for ed in registry.govscot_editions]
+    for vintage in sorted({int(ed["dz_vintage"]) for ed, _ in tables}):
+        universe = set().union(*(set(t["dz_code"]) for ed, t in tables if int(ed["dz_vintage"]) == vintage))
+        missing = sorted(universe - set(index[f"DataZone{vintage}Code"].dropna()))
+        name = f"{label}.dz{vintage}.coverage"
+        report.observe(name, {"zones": len(universe), "with_a_record": len(universe) - len(missing), "missing": missing})
+        if required:
+            report.equal(name, missing, [], detail=f"{len(universe) - len(missing):,} of {len(universe):,} "
+                         f"{vintage} data zones have at least one record")
 
 
 def finish(table: pd.DataFrame, index: pd.DataFrame, registry: Registry, columns: list, key: list,

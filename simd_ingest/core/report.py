@@ -180,6 +180,17 @@ def render(report: Report, registry: Registry, tables: dict, info: dict, mode: s
                 L.append(f"| {n}. {'PHS' if kind == 'phs' else 'Government'} {k} | DataZone{ed['dz_vintage']}Code | "
                          f"{rows_label} | {added or 'NOT RECORDED'} | {_passed(report, f'join.{name}.{kind}.{k}.every_record_matched')} |")
         L += [""]
+        vintages = sorted({int(ed["dz_vintage"]) for ed in registry.phs_editions + registry.govscot_editions})
+        L += ["| Data zones | In the SIMD sources | With at least one record | Without a record | Gate |",
+              "| --- | ---: | ---: | --- | --- |"]
+        for v in vintages:
+            c = report.observations.get(f"join.{name}.dz{v}.coverage")
+            if c is None:
+                L.append(f"| {v} | NOT RECORDED | | | |")
+                continue
+            gate = _passed(report, f"join.{name}.dz{v}.coverage") if name == "history" else "observed only"
+            L.append(f"| {v} | {c['zones']:,} | {c['with_a_record']:,} | {', '.join(c['missing']) or 'none'} | {gate} |")
+        L += [""]
 
     # 7b. rurality
     agreement = report.observations.get("rurality.agreement")

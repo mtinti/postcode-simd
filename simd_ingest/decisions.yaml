@@ -841,3 +841,30 @@ decisions:
       verified on Zenodo by MD5 before publishing, every mirror answers, and a public download
       matched its pinned SHA256. Plan: docs/plans/Zenodo_Plan.md.
 
+
+  - id: nrs-2026-1-build
+    date: 2026-10-30
+    status: implemented
+    decision: >-
+      The branch build/nrs-2026-1 builds both tables from the NRS 2026/1 releases, SPD 2026/1
+      and SSPL 2026/1, with every other source, rule and check as on main at ca5318b. It is never
+      merged into main, which builds the current release. The two Scottish Parliament fields keep
+      the names NRS published, ScottishParliamentaryRegion2021Code and
+      ScottishParliamentaryConstituency2021Code, in the place of the 2026 fields, and both output
+      schemas carry their own version names, postcode_simd_wide_v5_nrs2026_1 and
+      postcode_simd_sspl_v5_nrs2026_1. The branch also requires every data zone of the SIMD
+      sources to have a record in the history table, and reports the main table's coverage
+      without requiring it. The provenance site is not published from the branch.
+    reason: >-
+      HEAL-Scot. DataLoch uses the 2026/1 releases, so HIC's tables for the project are built
+      from the same releases (Michele Tinti, 30 October 2026). The 2021 and 2026 Parliament
+      fields are different boundaries, so renaming one to the other would be wrong, and a table
+      with different columns must not share a schema version with the 2026/2 one. The coverage
+      check makes explicit what every_record_matched does not prove: that no zone lacks a
+      postcode.
+    evidence: >-
+      SPD 2026/1 bulletin: 247,261 postcodes, 161,793 live, 85,468 deleted. SSPL 2026/1 counted:
+      229,708 records, 161,565 live. The two Parliament fields are the only header change in
+      SmallUser.csv, LargeUser.csv and SingleRecord.csv; every other NRS description is identical
+      to 2026/2 (docs/reviews/2026-10-30-nrs-2026-1-descriptions.md). Plan:
+      docs/plans/NRS_2026_1_Build_Plan.md.

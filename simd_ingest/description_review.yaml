@@ -8,6 +8,12 @@ reviews:
   date: '2026-10-02'
   commit: 4a40b6e538a149d87a3ab2f37665eae92c6ebb17
   record: docs/reviews/2026-10-02-column-descriptions.md
+- id: 2026-10-30-nrs-2026-1-descriptions
+  reviewer: Claude (AI-assisted review)
+  kind: AI-assisted
+  date: '2026-10-30'
+  commit: ca5318be6c429ee70bc7c9bbd41d4698443a4aa0
+  record: docs/reviews/2026-10-30-nrs-2026-1-descriptions.md
 scope_notes:
   glossary: 'The SIMD glossary describes the 2020v2 shapefile. Its approval covers 2020v2 only: on an
     earlier edition''s page its descriptions are 2020v2 examples, not a verification of that edition''s
@@ -196,12 +202,12 @@ nrs:
   ScottishIndexOfMultipleDeprivation2020Rank:
     verdict: approved
     review: 2026-10-02-column-descriptions
-  ScottishParliamentaryConstituency2026Code:
+  ScottishParliamentaryConstituency2021Code:
     verdict: approved
-    review: 2026-10-02-column-descriptions
-  ScottishParliamentaryRegion2026Code:
+    review: 2026-10-30-nrs-2026-1-descriptions
+  ScottishParliamentaryRegion2021Code:
     verdict: approved
-    review: 2026-10-02-column-descriptions
+    review: 2026-10-30-nrs-2026-1-descriptions
   Settlement2001Code:
     verdict: approved
     review: 2026-10-02-column-descriptions

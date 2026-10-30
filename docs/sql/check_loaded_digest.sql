@@ -55,8 +55,8 @@ BEGIN
     (N'SplitIndicator', 6, N'nvarchar', NULL, NULL, 0),
     (N'CouncilArea2019Code', 7, N'nvarchar', NULL, NULL, 0),
     (N'UKParliamentaryConstituency2024Code', 8, N'nvarchar', NULL, NULL, 0),
-    (N'ScottishParliamentaryRegion2026Code', 9, N'nvarchar', NULL, NULL, 0),
-    (N'ScottishParliamentaryConstituency2026Code', 10, N'nvarchar', NULL, NULL, 0),
+    (N'ScottishParliamentaryRegion2021Code', 9, N'nvarchar', NULL, NULL, 0),
+    (N'ScottishParliamentaryConstituency2021Code', 10, N'nvarchar', NULL, NULL, 0),
     (N'ElectoralWard2022Code', 11, N'nvarchar', NULL, NULL, 0),
     (N'HealthBoardArea2019Code', 12, N'nvarchar', NULL, NULL, 0),
     (N'HealthBoardArea2006Code', 13, N'nvarchar', NULL, NULL, 0),
@@ -528,8 +528,8 @@ BEGIN
        OR DATALENGTH(REPLACE(REPLACE([SplitIndicator] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([SplitIndicator])
        OR DATALENGTH(REPLACE(REPLACE([CouncilArea2019Code] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([CouncilArea2019Code])
        OR DATALENGTH(REPLACE(REPLACE([UKParliamentaryConstituency2024Code] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([UKParliamentaryConstituency2024Code])
-       OR DATALENGTH(REPLACE(REPLACE([ScottishParliamentaryRegion2026Code] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([ScottishParliamentaryRegion2026Code])
-       OR DATALENGTH(REPLACE(REPLACE([ScottishParliamentaryConstituency2026Code] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([ScottishParliamentaryConstituency2026Code])
+       OR DATALENGTH(REPLACE(REPLACE([ScottishParliamentaryRegion2021Code] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([ScottishParliamentaryRegion2021Code])
+       OR DATALENGTH(REPLACE(REPLACE([ScottishParliamentaryConstituency2021Code] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([ScottishParliamentaryConstituency2021Code])
        OR DATALENGTH(REPLACE(REPLACE([ElectoralWard2022Code] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([ElectoralWard2022Code])
        OR DATALENGTH(REPLACE(REPLACE([HealthBoardArea2019Code] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([HealthBoardArea2019Code])
        OR DATALENGTH(REPLACE(REPLACE([HealthBoardArea2006Code] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([HealthBoardArea2006Code])
@@ -630,8 +630,8 @@ BEGIN
            ISNULL([SplitIndicator], NCHAR(0)),
            ISNULL([CouncilArea2019Code], NCHAR(0)),
            ISNULL([UKParliamentaryConstituency2024Code], NCHAR(0)),
-           ISNULL([ScottishParliamentaryRegion2026Code], NCHAR(0)),
-           ISNULL([ScottishParliamentaryConstituency2026Code], NCHAR(0)),
+           ISNULL([ScottishParliamentaryRegion2021Code], NCHAR(0)),
+           ISNULL([ScottishParliamentaryConstituency2021Code], NCHAR(0)),
            ISNULL([ElectoralWard2022Code], NCHAR(0)),
            ISNULL([HealthBoardArea2019Code], NCHAR(0)),
            ISNULL([HealthBoardArea2006Code], NCHAR(0)),
@@ -1101,8 +1101,8 @@ BEGIN
     (N'LocalGovernmentDistrict1995Code', 21, N'nvarchar', NULL, NULL, 0),
     (N'LocalGovernmentDistrict1991Code', 22, N'nvarchar', NULL, NULL, 0),
     (N'ElectoralWard2022Code', 23, N'nvarchar', NULL, NULL, 0),
-    (N'ScottishParliamentaryRegion2026Code', 24, N'nvarchar', NULL, NULL, 0),
-    (N'ScottishParliamentaryConstituency2026Code', 25, N'nvarchar', NULL, NULL, 0),
+    (N'ScottishParliamentaryRegion2021Code', 24, N'nvarchar', NULL, NULL, 0),
+    (N'ScottishParliamentaryConstituency2021Code', 25, N'nvarchar', NULL, NULL, 0),
     (N'UKParliamentaryConstituency2024Code', 26, N'nvarchar', NULL, NULL, 0),
     (N'HealthBoardArea2019Code', 27, N'nvarchar', NULL, NULL, 0),
     (N'HealthBoardArea2006Code', 28, N'nvarchar', NULL, NULL, 0),
@@ -1533,8 +1533,8 @@ BEGIN
        OR DATALENGTH(REPLACE(REPLACE([LocalGovernmentDistrict1995Code] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([LocalGovernmentDistrict1995Code])
        OR DATALENGTH(REPLACE(REPLACE([LocalGovernmentDistrict1991Code] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([LocalGovernmentDistrict1991Code])
        OR DATALENGTH(REPLACE(REPLACE([ElectoralWard2022Code] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([ElectoralWard2022Code])
-       OR DATALENGTH(REPLACE(REPLACE([ScottishParliamentaryRegion2026Code] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([ScottishParliamentaryRegion2026Code])
-       OR DATALENGTH(REPLACE(REPLACE([ScottishParliamentaryConstituency2026Code] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([ScottishParliamentaryConstituency2026Code])
+       OR DATALENGTH(REPLACE(REPLACE([ScottishParliamentaryRegion2021Code] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([ScottishParliamentaryRegion2021Code])
+       OR DATALENGTH(REPLACE(REPLACE([ScottishParliamentaryConstituency2021Code] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([ScottishParliamentaryConstituency2021Code])
        OR DATALENGTH(REPLACE(REPLACE([UKParliamentaryConstituency2024Code] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([UKParliamentaryConstituency2024Code])
        OR DATALENGTH(REPLACE(REPLACE([HealthBoardArea2019Code] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([HealthBoardArea2019Code])
        OR DATALENGTH(REPLACE(REPLACE([HealthBoardArea2006Code] COLLATE Latin1_General_100_BIN2_UTF8, NCHAR(0), N''), NCHAR(31), N'')) <> DATALENGTH([HealthBoardArea2006Code])
@@ -1612,8 +1612,8 @@ BEGIN
            ISNULL([LocalGovernmentDistrict1995Code], NCHAR(0)),
            ISNULL([LocalGovernmentDistrict1991Code], NCHAR(0)),
            ISNULL([ElectoralWard2022Code], NCHAR(0)),
-           ISNULL([ScottishParliamentaryRegion2026Code], NCHAR(0)),
-           ISNULL([ScottishParliamentaryConstituency2026Code], NCHAR(0)),
+           ISNULL([ScottishParliamentaryRegion2021Code], NCHAR(0)),
+           ISNULL([ScottishParliamentaryConstituency2021Code], NCHAR(0)),
            ISNULL([UKParliamentaryConstituency2024Code], NCHAR(0)),
            ISNULL([HealthBoardArea2019Code], NCHAR(0)),
            ISNULL([HealthBoardArea2006Code], NCHAR(0)),

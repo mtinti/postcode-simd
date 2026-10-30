@@ -19,3 +19,6 @@ local/
 
 # The generated provenance site (python -m simd_ingest.provenance_site; mkdocs build)
 build/
+
+# The NRS 2026/1 build output (config/workflow_nrs_2026_1.yaml).
+results_nrs_2026_1/

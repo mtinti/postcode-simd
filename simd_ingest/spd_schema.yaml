@@ -13,8 +13,8 @@ small_user:
   - SplitIndicator
   - CouncilArea2019Code
   - UKParliamentaryConstituency2024Code
-  - ScottishParliamentaryRegion2026Code
-  - ScottishParliamentaryConstituency2026Code
+  - ScottishParliamentaryRegion2021Code
+  - ScottishParliamentaryConstituency2021Code
   - ElectoralWard2022Code
   - HealthBoardArea2019Code
   - HealthBoardArea2006Code
@@ -79,8 +79,8 @@ large_user:
   - SplitIndicator
   - CouncilArea2019Code
   - UKParliamentaryConstituency2024Code
-  - ScottishParliamentaryRegion2026Code
-  - ScottishParliamentaryConstituency2026Code
+  - ScottishParliamentaryRegion2021Code
+  - ScottishParliamentaryConstituency2021Code
   - ElectoralWard2022Code
   - HealthBoardArea2019Code
   - HealthBoardArea2006Code

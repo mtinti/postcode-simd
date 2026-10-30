@@ -9,7 +9,10 @@
 # decile and vigintile of each of the 41 domain ranks, then the 2020v2 housing source status = 354.
 # postcode_simd_wide_v5 appends the computed population-weighted Scotland quintile and decile of each
 # domain rank, 82, then each edition's data-zone population, 6, the 354 unchanged = 442.
-version: postcode_simd_wide_v5
+# postcode_simd_wide_v5_nrs2026_1 is postcode_simd_wide_v5 built from the NRS 2026/1 directory, whose
+# two Scottish Parliament fields are the 2021 ones: ScottishParliamentaryRegion2021Code and
+# ScottishParliamentaryConstituency2021Code replace the 2026 fields, in the same places.
+version: postcode_simd_wide_v5_nrs2026_1
 table: postcode_simd_history
 index_source: spd
 allocation: postcode_grid_reference
@@ -76,12 +79,12 @@ fields:
   nullable: false
   source: directory
   note: ''
-- name: ScottishParliamentaryRegion2026Code
+- name: ScottishParliamentaryRegion2021Code
   type: string
   nullable: false
   source: directory
   note: ''
-- name: ScottishParliamentaryConstituency2026Code
+- name: ScottishParliamentaryConstituency2021Code
   type: string
   nullable: false
   source: directory

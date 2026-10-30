@@ -201,7 +201,7 @@ def build(cfg: dict, mode: str, report: Report) -> dict:
                 extra = rurality.attach_rurality(indices[spec["index"]], registry, cfg["source_roots"][mode], report)
                 report.require()
             tables[name] = build_postcode_simd(indices[spec["index"]], phs, gov, registry, schemas[name], report,
-                                               label=f"join.{name}", extra=extra)
+                                               label=f"join.{name}", extra=extra, full_coverage=name == "history")
         report.require()
         report.observe("table_agreement", compare_tables(tables["main"], tables["history"], registry))
         print("Write, reopen, check and publish")
