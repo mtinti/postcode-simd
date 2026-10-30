@@ -25,6 +25,17 @@ download the build reads, byte for byte, with its licence evidence and credit; t
 products are cited there, not redistributed. The build falls back to these copies if a publisher
 moves a file, and verifies them by SHA256 like any other.
 
+**Versions on Zenodo**, newest postcode release first. To cite whichever version is newest, use the
+concept DOI, <https://doi.org/10.5281/zenodo.23120390>. To cite the build you used, use its own DOI.
+
+| Version | NRS postcode releases | DOI |
+| --- | --- | --- |
+| [6.1.0](https://github.com/mtinti/postcode-simd/releases/tag/v6.1.0) | SPD and SSPL 2026/2 | [10.5281/zenodo.23120391](https://doi.org/10.5281/zenodo.23120391) |
+| [6.1.0 built from NRS 2026/1](https://github.com/mtinti/postcode-simd/releases/tag/v6.1.0-nrs2026.1), for HEAL-Scot | SPD and SSPL 2026/1 | [10.5281/zenodo.23815059](https://doi.org/10.5281/zenodo.23815059) |
+
+The 2026/1 build is on branch `build/nrs-2026-1`. Use it only when your data were linked with NRS
+2026/1.
+
 A CLI pipeline that rebuilds two postcode-to-SIMD tables from hash-pinned public files.
 Routine maintenance is a refresh of one of the two NRS postcode products. Adding a SIMD
 edition is a separate, less frequent change to the source registry and output schemas.
