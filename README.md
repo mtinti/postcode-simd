@@ -30,6 +30,7 @@ concept DOI, <https://doi.org/10.5281/zenodo.23120390>. To cite the build you us
 
 | Version | NRS postcode releases | DOI |
 | --- | --- | --- |
+| [6.1.1](https://github.com/mtinti/postcode-simd/releases/tag/v6.1.1) | SPD and SSPL 2026/2 | [10.5281/zenodo.23815952](https://doi.org/10.5281/zenodo.23815952) |
 | [6.1.0](https://github.com/mtinti/postcode-simd/releases/tag/v6.1.0) | SPD and SSPL 2026/2 | [10.5281/zenodo.23120391](https://doi.org/10.5281/zenodo.23120391) |
 | [6.1.0 built from NRS 2026/1](https://github.com/mtinti/postcode-simd/releases/tag/v6.1.0-nrs2026.1), for HEAL-Scot | SPD and SSPL 2026/1 | [10.5281/zenodo.23815059](https://doi.org/10.5281/zenodo.23815059) |
 
